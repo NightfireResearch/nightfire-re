@@ -111,14 +111,14 @@ for fte in filetable:
 # UK: around 19020 (first bytes are 0B 90 01 00)
 # So first 4 bytes just gives the offset of the table
 
-for filename in ["UKTxt.dat"]:#os.listdir(target_dir):
+for filename in ["SWTxt.dat"]:#os.listdir(target_dir):
 	if not filename.endswith(".dat"):
 		continue
 
 	with open(target_dir + "/" + filename, "rb") as f:
 		text_data = f.read()
 
-	table_offset = struct.unpack("I", text_data[0:4])[0] + 5 # the table seems to be slightly off - a header indicating table length? Padding to next word?
+	table_offset = (struct.unpack("I", text_data[0:4])[0] + 7) & ~0b11 # the table seems to be slightly off - a header + padding to next word?
 
 
 	table_len = struct.unpack("I", text_data[table_offset:table_offset+4])[0]
