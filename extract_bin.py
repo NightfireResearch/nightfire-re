@@ -64,14 +64,26 @@ def extract_all(target_dir):
 		entries = util.chunks(pDirData, entry_size)
 		i = 0
 		cumulative_offset = 0
-		for e in entries:
-			size, attrs, name = struct.unpack("<IB9s", e)
+		dd_offset = 0
+		while i < numFiles:
+			size, attrs, name = struct.unpack("<IB9s", pDirData[dd_offset: dd_offset + entry_size])
 			try:
 				name = name.decode("ascii").split("\x00")[0]
 			except UnicodeDecodeError:
-				print("FAILED TO HANDLE A FILENAME!!!")
-				continue
+				name = "unknown_or_directory"
+				# TODO: Understand why this comes up!
+
 			print(f"Got subfile {i} with name {name}, attrs {attrs} size {size}")
+
+			# Directories?
+			# Or is it just C-string reading??
+			if attrs == 0x0C:
+				dd_offset += 12
+				i+=1
+				continue
+
+			dd_offset += 14
+
 			file_data = bin_file[data_start + cumulative_offset : data_start + cumulative_offset + size]
 
 			folder = target_dir + "/" + filename + "_extract"
