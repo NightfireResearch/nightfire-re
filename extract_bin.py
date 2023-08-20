@@ -50,27 +50,27 @@ def extract_all(target_dir):
 		# This seems OK for most, but for some (eg 07000002) this doesn't work - there are some null names and the offsets are screwed.
 		# Is this because there's also the concept of subdirectories, and only some have subdirs?
 		# TODO: Confirm with Ghidra
-		entry_size = 4+1+8+1
+		entry_size_max = 4+1+8+1
+		entry_size_min = 4+1+1
 
 
 		# Read in the directory data containing sub-file names
-		pDirData = bin_file[0x800 : 0x800 + entry_size * numFiles]
+		pDirData = bin_file[0x800 : ]
 
 		print(f"Found some sub files: {numFiles}")
 
 		# Data starts at (header_size + directory data size + cumulative offset)
 		data_start = 0x800 + dd_size
 
-		entries = util.chunks(pDirData, entry_size)
 		i = 0
 		cumulative_offset = 0
 		dd_offset = 0
 		while i < numFiles:
-			size, attrs, name = struct.unpack("<IB9s", pDirData[dd_offset: dd_offset + entry_size])
+			size, attrs, name = struct.unpack("<IB9s", pDirData[dd_offset: dd_offset + entry_size_max])
 			try:
 				name = name.decode("ascii").split("\x00")[0]
 			except UnicodeDecodeError:
-				name = "unknown_or_directory"
+				name = ""
 				# TODO: Understand why this comes up!
 
 			print(f"Got subfile {i} with name {name}, attrs {attrs} size {size}")
@@ -78,11 +78,11 @@ def extract_all(target_dir):
 			# Directories?
 			# Or is it just C-string reading??
 			if attrs == 0x0C:
-				dd_offset += 12
+				dd_offset += entry_size_min
 				i+=1
 				continue
 
-			dd_offset += 14
+			dd_offset += entry_size_min + len(name)
 
 			file_data = bin_file[data_start + cumulative_offset : data_start + cumulative_offset + size]
 
