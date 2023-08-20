@@ -23,6 +23,7 @@ def extract_all(target_dir):
 		# Others are generic?
 
 		# It appears that sometimes the data might be Europacked / need decompression in Euro_Decomp_Buf
+		# Or are these codepaths never touched?
 
 		# First it reads 0x800 bytes into pDirHeader.241
 		pDirHeader = bin_file[0 : 0x800]
@@ -47,17 +48,14 @@ def extract_all(target_dir):
 		# ASCII representation of the hex hashcode - 8 bytes
 		# ?? - 1 byte (null terminator?
 
-		# This seems OK for most, but for some (eg 07000002) this doesn't work - there are some null names and the offsets are screwed.
+		# For some (eg 07000002) there are some null names
 		# Is this because there's also the concept of subdirectories, and only some have subdirs?
 		# TODO: Confirm with Ghidra
 		entry_size_max = 4+1+8+1
 		entry_size_min = 4+1+1
 
-
 		# Read in the directory data containing sub-file names
 		pDirData = bin_file[0x800 : ]
-
-		print(f"Found some sub files: {numFiles}")
 
 		# Data starts at (header_size + directory data size + cumulative offset)
 		data_start = 0x800 + dd_size
@@ -78,11 +76,15 @@ def extract_all(target_dir):
 			# Directories?
 			# Or is it just C-string reading??
 			if attrs == 0x0C:
-				dd_offset += entry_size_min
-				i+=1
-				continue
+				#dd_offset += entry_size_min
+				#i+=1
+				#continue
+				pass
 
 			dd_offset += entry_size_min + len(name)
+
+			if name == "":
+				name = f"unknown_at_offset_{dd_offset}"
 
 			file_data = bin_file[data_start + cumulative_offset : data_start + cumulative_offset + size]
 
