@@ -73,3 +73,23 @@ Audio file names are in DEBUG.TXT and indicates that the internal name was "Bond
 ## Videos
 
 * "encoded by TMPGEnc b12a" into PSS format. This appears to be decoded by Action.elf as Mpeg data with interleaved audio.
+
+
+## Translations
+
+Translations are found in FILES.BIN. They are pretty simple UTF8/UTF16 null-terminated strings with offset.
+
+We could import into enum using Ghidra:
+```
+from ghidra.program.model.data import EnumDataType
+# maximum enum value is (2^length)-1 according to some comment, but if you pass 8 it should be every possible Java long value, so I am not sure
+enum = EnumDataType("EnumName", length)
+enum.add("One", 1)
+enum.add("Two", 2)
+enum.add("Three", 3)
+dataTypeManager.addDataType(enum, None)
+```
+
+We'd need something like ChatGPT to summarise/simplify all the strings for import.
+
+This would make it easy to interpret stuff like `P_CNCONTROLS_Handler__FUcP9M_CONTROLUiUiii` - the `Txt_BindLabel` calls would explain exactly what's going on.
