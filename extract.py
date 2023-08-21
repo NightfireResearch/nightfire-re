@@ -17,6 +17,8 @@ import extract_bigf
 
 extract_bigf.extract("extract/DRIVING/MIS01.mus", "driving_unpack/MIS01")
 
+# Note: VIV is compressed (RefPack), other two types are not compressed
+
 
 # Symbols to Ghidra
 # https://win-archaeology.fandom.com/wiki/.SYM_Format
