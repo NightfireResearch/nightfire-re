@@ -124,12 +124,21 @@ Within each of the "hash code" files, there is a sub-set of files also packed in
 
 This should just be a task of slicing up the array?
 
+### Level Names / Memory Addresses
+
+002a4c60 mentions Castle_CourtYards and goes on to mention others too.
+
+2a4590 triggers level loading (@linkz), looks like there's lots of game state related stuff around there in RAM
+
+
 ### Background Full Motion Video (BGFMV)
 
 * Uses SceMpeg and has a separate audio decoder (FP8)
 * Note the xbox version just plays back under VLC, so unless PS2 is higher quality this is not too useful.
 
 ### Woman Animation
+
+`psiDecompressWoman__Fv(void)` decompresses the frame
 
 pWoman is playback head, PS2Woman is the start of data. Some kind of RLE. Has 0x4000 = 128x128px.
 
@@ -149,6 +158,14 @@ We also see some pattern of data start where Space buffer should start (0x25D7E0
 
 Many of the Europacked things contains a file called "woman", all similar (but not identical?) sizes.
 
+
+### Scripting
+
+Script_Update__FP10SCRIPTINFO runs all the loaded scripts
+
+Script_Run__FP10SCRIPTINFO seems to handle the majority of interpreting
+
+
 ### Emulation
 
 PCSX2 shows:
@@ -158,3 +175,9 @@ PCSX2 shows:
 
 
 * On selecting language, we go to 
+
+
+
+# MISC
+
+C_NIS_Handler__FUcP9M_CONTROLUiUiii seems to have a bunch of debug stuff exposed!

@@ -3,6 +3,8 @@
 import struct
 import os
 import util
+import external_knowledge
+
 ###
 ### Driving Engine
 ###
@@ -31,14 +33,9 @@ print("---- Unpacking Action engine resources ----")
 # uint32_t offset_into_bin
 # uint32_t size_within_bin
 # char[8] padding
-# FIXME: Find the table ourselves
-text_start = 0x00107100
-filetable_start = 0x002453a0
-elf_header_size = 4096
 
-# 0x0013F2A0, as seen by searching the first filename using a hex editor
-offset_within_elf = (filetable_start - text_start) + elf_header_size
-length_of_table = 118
+offset_within_elf = external_knowledge.filetable_offset_in_elf
+length_of_table = external_knowledge.filetable_length
 
 with open("extract/ACTION.ELF", "rb") as f:
     action_elf = f.read()
@@ -55,6 +52,10 @@ with open("extract/FILES.BIN", "rb") as f:
 
 # Extract the contents to a file within the target directory
 target_dir = "files_bin_unpack"
+
+if not os.path.exists(target_dir):
+   	os.makedirs(target_dir)
+
 for fte in filetable:
 
 	# Interpret the struct
@@ -62,6 +63,10 @@ for fte in filetable:
 	fname = content[0].decode("ascii").split("\x00")[0]
 	offset = content[1]
 	size = content[2]
+
+	hashcode = fname.replace(".bin", "")
+	if hashcode in external_knowledge.hashcode_name_mapping.keys():
+		fname = external_knowledge.hashcode_name_mapping[hashcode] + ".bin"
 
 	# Dump the relevant region to a file
 	with open(target_dir + "/" + fname, "wb") as f:

@@ -9,9 +9,6 @@ def extract_all(target_dir):
 		if not filename.endswith(".bin"):
 			continue
 
-		if not "07000002.bin" in filename:
-			continue
-
 		with open(target_dir + "/" + filename, "rb") as f:
 			bin_file = f.read()
 
@@ -75,7 +72,7 @@ def extract_all(target_dir):
 
 			# Directories?
 			# Or is it just C-string reading??
-			if attrs == 0x0C:
+			if attrs == 0x0C: # Weird hacky entry that modifies LoadableIndex?? Deferred loading? Triggerable by scripting?
 				#dd_offset += entry_size_min
 				#i+=1
 				#continue
@@ -86,12 +83,27 @@ def extract_all(target_dir):
 			if name == "":
 				name = f"unknown_at_offset_{dd_offset}"
 
+
+			# Attrs tells us what loader is used to load the file:
+			# 0x00, 0x02: Special case of below, but does not run AnimPostLoadInit
+			# 0x01: Map Parser (DirFileHash, didDoAnimPostLoad) -> zero for second param results in ambient light, sound and path data not being loaded 
+			# 0x03, 0x04, 0x05: Animation Load
+			# 0x06: AnimSkeleton
+			# 0x07: Script (compiled?)
+			# 0x08: Menu Manager
+			# 0x0B: Change memory type to 1?
+			# 0x0C: Some weird behaviour that modifies LoadableIndex?? Some kind of deferred loading? Triggerable by scripting?
+			# 0x0f: Icon
+			# 0x10: Woman
+
+			# For the next tool in the pipeline, let's give each file an extension based on its attrs
+			hh = "{:02x}".format(attrs)
 			file_data = bin_file[data_start + cumulative_offset : data_start + cumulative_offset + size]
 
 			folder = target_dir + "/" + filename + "_extract"
 			if not os.path.exists(folder):
    				os.makedirs(folder)
-			with open(folder + "/" + name, "wb") as f:
+			with open(folder + "/" + name + f".x{hh}", "wb") as f:
 				f.write(file_data)
 			i+=1
 			cumulative_offset += size
