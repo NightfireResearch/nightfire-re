@@ -20,6 +20,8 @@ with open("files_bin_unpack/HT_Level_AllCharacters2.bin_extract/woman.x10", "rb"
 
 	framenum = 0
 
+	frames = []
+
 	while framenum < 348:
 
 		frameSize = 0x4000
@@ -80,8 +82,13 @@ with open("files_bin_unpack/HT_Level_AllCharacters2.bin_extract/woman.x10", "rb"
 			phase = 1 - phase
 
 		# Write the image to file
-		i = Image.frombytes('L', (128, 128,), bytes(framedata))
-		i.save(f"frames/test_{framenum}.png")
+		i = Image.frombytes('L', (128, 128,), bytes(framedata)).convert("P")
+		#i.save(f"frames/test_{framenum}.png")
 		framenum+=1
+
+		frames.append(i)
+
+
+	frames[0].save('woman.webp', save_all=True, append_images = frames[1:], optimize=False, duration=20, loop=0)
 
 
