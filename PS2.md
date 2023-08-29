@@ -12,6 +12,11 @@ It also has a number of IRX modules (for the IOP?).
 
 So far, nothing appears to have been compiled with symbol stripping, or even basic compiler optimisations (functions which would be inlined or seem to have no effect have been kept - like debug strings!).
 
+# Overall
+
+Mangling:
+
+`Input_Action__Fs15GameActions_tagUs(iVar15,10,4)` - Fs15... means a function returning short, with a (15-char) GameActions_tag, and an Unsigned short?
 
 ## Base.elf
 

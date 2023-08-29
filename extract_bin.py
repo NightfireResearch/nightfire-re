@@ -1,5 +1,5 @@
 # .BIN files often contain other files
-
+# This code roughly matches LoaderLoad__F11tLoaderTypeUiPUcUi
 import os
 import struct
 import util
@@ -93,8 +93,8 @@ def extract_all(target_dir):
 			# 0x08: Menu Manager
 			# 0x0B: Change memory type to 1?
 			# 0x0C: Some weird behaviour that modifies LoadableIndex?? Some kind of deferred loading? Triggerable by scripting?
-			# 0x0f: Icon
-			# 0x10: Woman
+			# 0x0f: Icon (only used by PS2 memory card?)
+			# 0x10: Woman (only used by menu animation?)
 
 			# For the next tool in the pipeline, let's give each file an extension based on its attrs
 			hh = "{:02x}".format(attrs)
