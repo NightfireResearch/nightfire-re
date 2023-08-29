@@ -18,6 +18,35 @@ Mangling:
 
 `Input_Action__Fs15GameActions_tagUs(iVar15,10,4)` - Fs15... means a function returning short, with a (15-char) GameActions_tag, and an Unsigned short?
 
+There's also a very comprehensive SFX list in the ELF at 002e96a0
+
+# Action.elf Malloc
+
+
+0x003052d8 contains a list of strings that explain what kind of memory is being allocated for. Some kind of built in analytics / pie chart viewer during dev?
+
+There's a second and third parameter to malloc. Third mostly (all?) zero. 
+
+Second is interesting:
+block morph gets 0x0904
+TriHeap is 1a04
+AddDMA uses 1180
+AnimObjectNew allocates with 0x2404, 0x3b04, and 0x2604
+psiCreateMapTextures uses 0x2c10, 2b10, 904
+createLoadingBlob uses 0x2810
+
+Malloc looks at the low byte, subtracts 1, then looks at the resulting low half-byte.
+
+ie:
+TriHeap 0x1a04 -> 0x04 -> 0x03 -> 0x0f
+loadblob 0x2810 -> 0x10 -> 0x0f -> 0x0f
+
+this logic only seems to do something different in the hypothetical case of, say:
+0xaa20 -> 0x20 -> 0x1f -> 0x1f
+
+0x2980 seems to be a special case for this function?
+
+
 ## Base.elf
 
 This seems to be a "bootstrapping" launcher, which roughly:
