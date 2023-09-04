@@ -94,7 +94,7 @@ def extract_all(target_dir):
 			# 0x0B: Change memory type to 1?
 			# 0x0C: Some weird behaviour that modifies LoadableIndex?? Some kind of deferred loading? Triggerable by scripting?
 			# 0x0f: Icon (only used by PS2 memory card?)
-			# 0x10: Woman (only used by menu animation?)
+			# 0x10: Woman (handled by decompress_woman.py)
 
 			# For the next tool in the pipeline, let's give each file an extension based on its attrs
 			hh = "{:02x}".format(attrs)
