@@ -25,6 +25,89 @@ There's also a very comprehensive SFX list in the ELF at 002e96a0
 
 0x003052d8 contains a list of strings that explain what kind of memory is being allocated for. Some kind of built in analytics / pie chart viewer during dev?
 
+If we convert to a list, we get:
+
+0x00: malloc_zero
+0x01: malloc_celstructs
+0x02: malloc_compplaneeq
+0x03: malloc_entity_table
+0x04: malloc_objs
+0x05: malloc_viewerstructs
+0x06: malloc_worldstructs
+0x07: malloc_lightstructs
+0x08: malloc_portalstructs
+0x09: malloc_celgliststructs
+0x0a: malloc_map_header
+0x0b: malloc_textures
+0x0c: malloc_anim_distance_table
+0x0d: malloc_anim_frame_table
+0x0e: malloc_anim_frame_buffer
+0x0f: malloc_xyzmiscqzyx
+0x10: malloc_temp_buffer
+0x11: malloc_PS2_DMA_List
+0x12: malloc_Xbox
+0x13: malloc_SFXdata
+0x14: malloc_scriptdata
+0x15: malloc_bot_path1
+0x16: malloc_Gamecube
+0x17: malloc_parsefilebuffer
+0x18: malloc_pathpointers
+0x19: malloc_rigidbody
+0x1a: malloc_colldata
+0x1b: malloc_llist
+0x1c: malloc_anim_skin_data
+0x1d: malloc_anim_skel_data
+0x1e: malloc_anim_seq_data
+0x1f: malloc_anim_script_data
+0x20: malloc_anim_skin_structs
+0x21: malloc_anim_skinmat_structs
+0x22: malloc_anim_altskin_structs
+0x23: malloc_anim_seq_structs
+0x24: malloc_anim_seq_data_buffers
+0x25: malloc_anim_script_structs
+0x26: malloc_anim_object_structs
+0x27: malloc_plrhud
+0x28: malloc_PS2_Object
+0x29: malloc_PS2_File
+0x2a: malloc_PS2_Sprite
+0x2b: malloc_PS2_Texture
+0x2c: malloc_PS2_Palette
+0x2d: malloc_PS2_Particle
+0x2e: malloc_PS2_Clone
+0x2f: malloc_PC_Texture
+0x30: malloc_PC_Mesh
+0x31: malloc_Menu
+0x32: malloc_shard
+0x33: malloc_copter_path
+0x34: malloc_drone_spawn_objs
+0x35: malloc_drone_spawn_vars
+0x36: malloc_lang_data
+0x37: malloc_light_data
+0x38: malloc_unpak_buffer
+0x39: malloc_aram_buffer
+0x3a: malloc_anim_cache
+0x3b: malloc_anim_morph_data_buffers
+0x3c: malloc_anim_set_structs
+0x3d: malloc_anim_unpak_opt
+0x3e: malloc_anim_seq_hdr
+0x3f: malloc_physics
+0x40: malloc_load_dir
+0x41: malloc_load_data
+0x42: malloc_game_particle
+0x43: malloc_GC_Anim_Cache
+0x44: malloc_GC_DL
+0x45: malloc_GC_Skins
+0x46: malloc_GC_PCList128
+0x47: malloc_GC_BigBuffer
+0x48: malloc_GC_AnimMatrix
+0x49: malloc_GC_Card
+0x4a: malloc_GC_USB2EXI
+0x4b: malloc_GC_Texture
+0x4c: malloc_GC_Sound
+0x4d: malloc_bot_path2
+0x4e: malloc_bot_path3
+0x4f: malloc_null
+
 There's a second and third parameter to malloc. Third mostly (all?) zero. 
 
 Second is interesting:
@@ -34,6 +117,11 @@ AddDMA uses 1180
 AnimObjectNew allocates with 0x2404, 0x3b04, and 0x2604
 psiCreateMapTextures uses 0x2c10, 2b10, 904
 createLoadingBlob uses 0x2810
+Menu_Malloc uses 0x3104
+
+We can note that the HIGH half of the second parameter gives us the allocation type.
+
+Eg Menu_Malloc function uses 0x3104 -> 0x31 -> malloc_Menu
 
 Malloc looks at the low byte, subtracts 1, then looks at the resulting low half-byte.
 
@@ -44,7 +132,7 @@ loadblob 0x2810 -> 0x10 -> 0x0f -> 0x0f
 this logic only seems to do something different in the hypothetical case of, say:
 0xaa20 -> 0x20 -> 0x1f -> 0x1f
 
-0x2980 seems to be a special case for this function?
+0x2980 seems to be a special case for this function - PS2_File?
 
 
 ## Base.elf
@@ -154,9 +242,13 @@ It has a list of filenames (118) allowed as inputs to psiFileOpen/psiFileLoad:
 
 Internally, these are all just packed offsets within FILES.BIN, uncompressed.
 
+The transformation from the 118 files into "files.bin" might be what the devs referred to as the "file blobber".
+
 Within each of the "hash code" files, there is a sub-set of files also packed in? Is that what "Europacked" means, just a file containing more files? That explains the directory-traversal looking stuff that goes on.
 
 This should just be a task of slicing up the array?
+
+Game makes fairly extensive use of (doubly?) linked lists for dynamic objects, lights, sounds etc.
 
 ### Level Names / Memory Addresses
 
