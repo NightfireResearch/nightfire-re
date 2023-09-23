@@ -3,6 +3,19 @@
 import struct
 import util
 
+# DALS - Dynamic Audio Layering System?
+# Has Relaxed, Alert, Scared, Dead, NUMBEROF
+
+
+# From an interview with Neil Baldwin, one of the cofounders of Eurocom and lead audio engineer:
+# With Nightfire we didn’t have the same issues. On Nightfire we were quite ambitious and came up with a totally interactive music system. The music could be divided into “states” and certain external triggers would affect the decision making at loop points within the playback system. When it worked it was amazing but it took so bloody long to author the music to fit the system that we didn’t make full use of it really.
+
+# This information appears to be stored in the metafile alongside the ADPCM data
+
+
+
+
+
 # Step 1: Extract the banks
 
 # Audio is stored in multiple places:
