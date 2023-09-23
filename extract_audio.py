@@ -2,6 +2,7 @@
 # then decode into .wav or some other modern format
 import struct
 import util
+import os
 
 # DALS - Dynamic Audio Layering System?
 # Has Relaxed, Alert, Scared, Dead, NUMBEROF
@@ -13,13 +14,14 @@ import util
 # This information appears to be stored in the metafile alongside the ADPCM data
 
 
-
+# There's also a data table within the .ELF file ("SFXOutputData") that is 0x60d (1549) entries long.
+# Currently unclear how this table matches up. Look up number in SFX table (bank slot)?
 
 
 # Step 1: Extract the banks
 
 # Audio is stored in multiple places:
-# 1. Banks (language-specific)
+# 1. Banks (language-specific) (duplicates exist between banks)
 # 2. Streams (language-specific)
 # 3. Music
 
@@ -41,9 +43,9 @@ def extract(bank, subbank):
 	with open(f"{path}.SHF", "rb") as f:
 		shf = f.read()
 
-	# Data in SBF (Megabytes)
-	# ?? in SFX (692 bytes)
-	# ?? in SHF (220 bytes)
+	# SBF (large) - Track data, ADPCM, mono
+	# SFX (692 bytes) - SFX ID (unique?) + SFXParameters
+	# SHF (220 bytes) - Track (buffer) metadata. "Sample Header File"
 
 
 	print(f"Data bank size {len(sbf)}")
@@ -60,19 +62,15 @@ def extract(bank, subbank):
 		loop, offset, size, freq, unk1, ch, bits, unk2, unk3 = struct.unpack("<IIIIIIIII", shf[p_shf:p_shf+36])
 		p_shf += 36
 
-		#freq = freq * 12
-		# Frequency seems APPROX right but some error here?
-
-		# Unclear if/why this is needed vs just *12
-		# FIXME some end up breaking ffmpeg
-		f_real = {2731:32000, 1621:20000, 1882:24000, 941:11025, 1024:12000, 683:8000}[freq]
-
-		# Works for the final 2 tracks
-		#freq=32000
+		#freq = freq * 12 seems APPROX right but some error here.
+		# If we assume 2731 == 32kHz and error is some constant multiplicative value, we can 
+		# calculate the rest to the nearest integer value then find a nearby common sample rate
+		# 1621 is deeply weird - 18994 Hz?
+		f_real = {2731:32000, 1621:19200, 1882:22050, 941:11025, 1024:12000, 683:8000}[freq]
 
 		toc.append((loop, offset, size, freq, ch, bits,))
 
-		print(f"Got track with freq {freq}, channels {ch}, bits {bits}, loop {loop}")
+		print(f"Got track {bank}-{subbank}-{i} with freq {freq}, channels {ch}, bits {bits}, loop {loop}")
 
 		# Take the defined slice from the SBF data, attach a header
 		with open(f"audio/bnk{bank}_{subbank}_{i}.vag", "wb") as of:
@@ -90,8 +88,12 @@ def extract(bank, subbank):
 			of.write(bytes([0]*8)) # Padding
 			of.write(sbf[offset:offset+size]) # PSX ADPCM data
 
+		# Hack - FFMPEG
+		cmd = f"ffmpeg -f vag -i audio/bnk{bank}_{subbank}_{i}.vag audio/bnk{bank}_{subbank}_{i}.wav"
+		os.system(cmd)
 
-	# SFX - is this how we get stereo vs mono? (num SFX is <= nu SHF)
+
+	# SFX - is this how we get stereo vs mono? (num SFX is <= num SHF)
 	p_sfx = 0
 	numSfx = struct.unpack("<I", sfx[p_sfx:p_sfx+4])[0]
 	p_sfx += 4
@@ -99,19 +101,30 @@ def extract(bank, subbank):
 	print(f"Got numSfx: {numSfx}")
 
 	for i in range(numSfx):
-		unk1, unk2 = struct.unpack("<II", sfx[p_sfx:p_sfx+8])
+		sfxNum, sfxParamsOffset = struct.unpack("<II", sfx[p_sfx:p_sfx+8])
 		p_sfx += 8
 
-		print(f"SFX Data is {unk1}, {unk2}")
+		print(f"SFX Data is {sfxNum}, {sfxParamsOffset}")
+
+		params = sfx[sfxParamsOffset:sfxParamsOffset+124]
+
+		paramsData = struct.unpack("<31I", params)
+
+		# See SFXParameters in SFX.IRX in Ghidra
+		# Seems similar to "SFX parameter entry" from Sphinx and the Cursed Mummy
+		print(f"Num tracks is {paramsData[16]}, importance is {paramsData[5]}")
+
+
+	print(f"Leftover data after table: {len(sfx) - p_sfx}")
 
 	# Step 2: Convert to a useful format, combining stereo channels if needed?
-	# ffmpeg -i test_100.vag test_100.wav
+	# ffmpeg -f vag -i test_100.vag test_100.wav
 
 
-# extract(0, 0)
-# extract(0, 1)
-# extract(0, 2)
-# extract(0, 3)
+extract(0, 0)
+extract(0, 1)
+extract(0, 2)
+extract(0, 3)
 # extract(0, 4)
 # extract(0, 5)
 # extract(0, 6)
@@ -158,6 +171,8 @@ def music_extract(bank, subbank):
 	channel_r = b''.join(list(util.chunks(ssd, 128))[1::2])
 	deinterleaved={"l":channel_l, "r":channel_r}
 
+	# Sample rate is set in SFXInitialiseStreamUpdate
+	
 	for ch in ["l","r"]:
 		with open(f"audio/mus_{bank}_{subbank}_{ch}.vag", "wb") as of:
 			of.write("VAGp".encode("ascii"))
@@ -173,9 +188,9 @@ def music_extract(bank, subbank):
 
 
 # TODO: MFXINFO file tells us the number of banks?
-for i in range(1, 16):
-	music_extract(0, i)
-music_extract(1, 16)
+# for i in range(1, 16):
+# 	music_extract(0, i)
+# music_extract(1, 16)
 
 
 def extract_streams():
@@ -183,6 +198,8 @@ def extract_streams():
 	# TODO: LUT parsing
 	with open("extract/PS2/ENGLISH/STREAMS/STREAMS.BIN", "rb") as f:
 		streams = f.read()
+
+	# Sample rate is set in SFXInitialiseStreamUpdate
 
 	with open("audio/streams.vag", "wb") as of:
 		of.write("VAGp".encode("ascii"))

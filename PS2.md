@@ -8,7 +8,7 @@ ACTION.ELF
 BASE.ELF (identical to SLES_512.58)
 DRIVING.ELF
 
-It also has a number of IRX modules (for the IOP?).
+It also has a number of IRX modules (for the IOP) - responsible for SFX etc.
 
 So far, nothing appears to have been compiled with symbol stripping, or even basic compiler optimisations (functions which would be inlined or seem to have no effect have been kept - like debug strings!).
 
@@ -19,6 +19,21 @@ Mangling:
 `Input_Action__Fs15GameActions_tagUs(iVar15,10,4)` - Fs15... means a function returning short, with a (15-char) GameActions_tag, and an Unsigned short?
 
 There's also a very comprehensive SFX list in the ELF at 002e96a0
+
+# IOP
+
+Might be necessary to refer to this code to fully understand the music marker format, sound bank numbering etc.
+
+Interesting functions in SFX.IRX:
+
+* FindMusicTrackNumber does a lookup through "MusicTrackInfo" with 4-byte stride to match, and then adds 1.
+* FindSoundBankSlot does the same, but has some deug that indicates the value is a hashcode. Also shows 0x96 is the limit for "SB_MaximumAllocated".
+* SFXLoadSoundBank walks through which files are loaded, what data is there and how to interpret.
+* SFXInitialise loads SBINFO.SBI and just copies 0x96 values into `SoundBankInfo`.
+* sifrpc_server__FUiPvi handles comms with R5900
+
+They might have used "samples" where I would say "tracks"? (to avoid ambiguity of sample = value at a single point in time)
+
 
 # Action.elf Malloc
 

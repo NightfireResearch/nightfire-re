@@ -66,9 +66,10 @@ for fte in filetable:
 	offset = content[1]
 	size = content[2]
 
+	# If we know a filename rather than a hashcode, apply it
 	hashcode = fname.replace(".bin", "")
 	if hashcode in external_knowledge.hashcode_name_mapping.keys():
-		fname = external_knowledge.hashcode_name_mapping[hashcode] + ".bin"
+		fname = hashcode + "_" + external_knowledge.hashcode_name_mapping[hashcode] + ".bin"
 
 	# Dump the relevant region to a file
 	with open(target_dir + "/" + fname, "wb") as f:
@@ -83,7 +84,7 @@ for fte in filetable:
 import extract_dat
 extract_dat.extract_all(target_dir)
 
-# Containers for other, smaller files
+# Containers for other, smaller files (let's call this a "levelset"?)
 import extract_bin
 extract_bin.extract_all(target_dir)
 
