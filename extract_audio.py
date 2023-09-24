@@ -30,6 +30,43 @@ import os
 # However this debug does tell us a bit about the directory structure/original file format.
 
 
+# The banks contain duplication - there are 5831 mono entries, but only 1549 SFX IDs
+# This can be explained by a combination of:
+# - Banks contain duplication
+# - Stereo and polyphonic effects
+# - Randomly-selected variants of effects
+
+
+def rawDataToWav(data, freq, wavFilePath):
+
+	# Bypass for speed!
+	if True:
+		return
+
+	# Take the defined slice from the SBF data, attach a header
+	with open("tmpvag.vag", "wb") as of:
+		# SShd header
+		#header = '\x53\x53\x68\x64\x18\x00\x00\x00\x10\x00\x00\x00\xb0\x36\x00\x00\x02\x00\x00\x00\xc0\x2f\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x53\x53\x62\x64\x00\xe8\x11\x00'
+		
+		# VAG header
+		of.write("VAGp".encode("ascii"))
+		of.write(struct.pack("<I", 0x20)) # Version
+		of.write(struct.pack("<I", 0x00)) # Reserved
+		of.write(struct.pack("<I", 0x01)) # Channel size? - 1, 4, 0?
+		of.write(struct.pack(">I", freq)) # Sample rate, Hz - weirdly LE not BE? Or is this FFMpeg bug?
+		of.write(bytes([0]*12)) # Reserved
+		of.write("TESTFILE".encode("ascii"))
+		of.write(bytes([0]*8)) # Padding
+		of.write(data) # PSX ADPCM data
+
+	# FFMpeg can convert from .vag to .wav.
+	# Flags: 
+	# - Disable all stdout except errors (-hide_banner and -loflevel error)
+	# - Use the named format rather than relying on autodetection (-f vag)
+	# - Overwrite destination files (-y)
+	cmd = f"ffmpeg -hide_banner -loglevel error -f vag -y -i tmpvag.vag {wavFilePath}"
+	os.system(cmd)
+
 def extract(bank, subbank):
 
 	path = f"extract/PS2/ENGLISH/SB_{bank}/SB_{subbank}"
@@ -70,25 +107,7 @@ def extract(bank, subbank):
 
 		print(f"Got track {bank}-{subbank}-{i} with freq {freq}, channels {ch}, bits {bits}, loop {loop}")
 
-		# Take the defined slice from the SBF data, attach a header
-		with open(f"audio/bnk{bank}_{subbank}_{i}.vag", "wb") as of:
-			# SShd header
-			#header = '\x53\x53\x68\x64\x18\x00\x00\x00\x10\x00\x00\x00\xb0\x36\x00\x00\x02\x00\x00\x00\xc0\x2f\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x53\x53\x62\x64\x00\xe8\x11\x00'
-			
-			# VAG header
-			of.write("VAGp".encode("ascii"))
-			of.write(struct.pack("<I", 0x20)) # Version
-			of.write(struct.pack("<I", 0x00)) # Reserved
-			of.write(struct.pack("<I", 0x01)) # Channel size? - 1, 4, 0?
-			of.write(struct.pack(">I", f_real)) # Sample rate, Hz - weirdly LE not BE? Or is this FFMpeg bug?
-			of.write(bytes([0]*12)) # Reserved
-			of.write("TESTFILE".encode("ascii"))
-			of.write(bytes([0]*8)) # Padding
-			of.write(sbf[offset:offset+size]) # PSX ADPCM data
-
-		# Hack - FFMPEG
-		cmd = f"ffmpeg -f vag -i audio/bnk{bank}_{subbank}_{i}.vag audio/bnk{bank}_{subbank}_{i}.wav"
-		os.system(cmd)
+		rawDataToWav(sbf[offset:offset+size], f_real, f"audio/bnk{bank}_{subbank}_{i}.wav")
 
 
 	# SFX - is this how we get stereo vs mono? (num SFX is <= num SHF)
@@ -97,53 +116,49 @@ def extract(bank, subbank):
 	p_sfx += 4
 
 	print(f"Bank {subbank} has {numSfx} SFX")
-
+	totalTracks=0
 	for i in range(numSfx):
 		sfxNum, sfxParamsOffset = struct.unpack("<II", sfx[p_sfx:p_sfx+8])
 		p_sfx += 8
-
-		print(f"SFX Data is {sfxNum}, {sfxParamsOffset}")
-
-		params = sfx[sfxParamsOffset:sfxParamsOffset+124]
-
-		paramsData = struct.unpack("<31I", params)
+		params = struct.unpack("<31I", sfx[sfxParamsOffset:sfxParamsOffset+124])
 
 		# See SFXParameters in SFX.IRX in Ghidra
 		# Seems similar to "SFX parameter entry" from Sphinx and the Cursed Mummy
-		print(f"Num tracks within SFX (ID {sfxNum}) is {paramsData[16]}, importance is {paramsData[5]}")
+		print(f"Num tracks within SFX (ID {sfxNum}) is {params[16]}, importance is {params[5]}. All params: {params}")
+		totalTracks += params[16]
 
-
-	print(f"Leftover data after table: {len(sfx) - p_sfx}")
+	print(f"Bank {subbank} has a totalTracks {totalTracks}, vs in shf: {numShf}")
 
 	# Step 2: Convert to a useful format, combining stereo channels if needed?
 	# ffmpeg -f vag -i test_100.vag test_100.wav
 
 
+print("About to extract SFX banks...")
 extract(0, 0)
 extract(0, 1)
 extract(0, 2)
 extract(0, 3)
-# extract(0, 4)
-# extract(0, 5)
-# extract(0, 6)
-# extract(0, 7)
-# extract(1, 8)
-# extract(1, 9)
-# extract(1, 10)
-# extract(1, 11)
-# extract(1, 12)
-# extract(1, 13)
-# extract(1, 14)
-# extract(1, 15)
-# extract(2, 16)
-# extract(2, 17)
-# extract(2, 18)
-# extract(2, 19)
-# extract(2, 20)
-# extract(2, 21)
-# extract(2, 22)
-# extract(2, 23)
-# extract(3, 24)
+extract(0, 4)
+extract(0, 5)
+extract(0, 6)
+extract(0, 7)
+extract(1, 8)
+extract(1, 9)
+extract(1, 10)
+extract(1, 11)
+extract(1, 12)
+extract(1, 13)
+extract(1, 14)
+extract(1, 15)
+extract(2, 16)
+extract(2, 17)
+extract(2, 18)
+extract(2, 19)
+extract(2, 20)
+extract(2, 21)
+extract(2, 22)
+extract(2, 23)
+extract(3, 24)
 
 
 # Sounds weird - interleaved stereo?
@@ -172,22 +187,14 @@ def music_extract(bank, subbank):
 	# Sample rate is set in SFXInitialiseStreamUpdate
 	
 	for ch in ["l","r"]:
-		with open(f"audio/mus_{bank}_{subbank}_{ch}.vag", "wb") as of:
-			of.write("VAGp".encode("ascii"))
-			of.write(struct.pack("<I", 0x20)) # Version
-			of.write(struct.pack("<I", 0x00)) # Reserved
-			of.write(struct.pack("<I", 0x01)) # Channel size? - 1, 4, 0? FFMPEG does not pick this up, just guesses?
-			of.write(struct.pack(">I", 32000)) # Sample rate, Hz - weirdly LE not BE? Or is this FFMpeg bug?
-			of.write(bytes([0]*12)) # Reserved
-			of.write("TESTFILE".encode("ascii"))
-			of.write(bytes([0]*8)) # Padding
-
-			of.write(deinterleaved[ch]) # PSX ADPCM data
+		rawDataToWav(deinterleaved[ch], 32000, f"audio/mus_{bank}_{subbank}_{ch}.wav")
 
 
+
+print("About to extract music...")
 # TODO: MFXINFO file tells us the number of banks?
-# for i in range(1, 16):
-# 	music_extract(0, i)
+for i in range(1, 16):
+	music_extract(0, i)
 # music_extract(1, 16)
 
 
@@ -199,13 +206,7 @@ def extract_streams():
 
 	# Sample rate is set in SFXInitialiseStreamUpdate
 
-	with open("audio/streams.vag", "wb") as of:
-		of.write("VAGp".encode("ascii"))
-		of.write(struct.pack("<I", 0x20)) # Version
-		of.write(struct.pack("<I", 0x00)) # Reserved
-		of.write(struct.pack("<I", 0x01)) # Channel size? - 1, 4, 0?
-		of.write(struct.pack(">I", 22050)) # Sample rate, Hz - weirdly LE not BE? Or is this FFMpeg bug?
-		of.write(bytes([0]*12)) # Reserved
-		of.write("TESTFILE".encode("ascii"))
-		of.write(bytes([0]*8)) # Padding
-		of.write(streams) # PSX ADPCM data
+	rawDataToWav(streams, 22050, "audio/streams.wav")
+
+print("About to extract streams...")
+extract_streams()
