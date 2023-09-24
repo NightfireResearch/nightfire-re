@@ -63,9 +63,7 @@ def extract(bank, subbank):
 		p_shf += 36
 
 		#freq = freq * 12 seems APPROX right but some error here.
-		# If we assume 2731 == 32kHz and error is some constant multiplicative value, we can 
-		# calculate the rest to the nearest integer value then find a nearby common sample rate
-		# 1621 is deeply weird - 18994 Hz?
+		# We can calculate the value then find a nearby common sample rate
 		f_real = {2731:32000, 1621:19200, 1882:22050, 941:11025, 1024:12000, 683:8000}[freq]
 
 		toc.append((loop, offset, size, freq, ch, bits,))
@@ -98,7 +96,7 @@ def extract(bank, subbank):
 	numSfx = struct.unpack("<I", sfx[p_sfx:p_sfx+4])[0]
 	p_sfx += 4
 
-	print(f"Got numSfx: {numSfx}")
+	print(f"Bank {subbank} has {numSfx} SFX")
 
 	for i in range(numSfx):
 		sfxNum, sfxParamsOffset = struct.unpack("<II", sfx[p_sfx:p_sfx+8])
@@ -112,7 +110,7 @@ def extract(bank, subbank):
 
 		# See SFXParameters in SFX.IRX in Ghidra
 		# Seems similar to "SFX parameter entry" from Sphinx and the Cursed Mummy
-		print(f"Num tracks is {paramsData[16]}, importance is {paramsData[5]}")
+		print(f"Num tracks within SFX (ID {sfxNum}) is {paramsData[16]}, importance is {paramsData[5]}")
 
 
 	print(f"Leftover data after table: {len(sfx) - p_sfx}")
