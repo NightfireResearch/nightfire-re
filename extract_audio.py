@@ -88,6 +88,7 @@ import os
 # - Stereo and polyphonic effects
 # - Randomly-selected variants of effects
 
+os.system("mkdir -p audio/")
 
 def rawDataToWav(data, freq, wavFilePath):
 
@@ -181,9 +182,11 @@ def extract_bank(bank):
 			varLenOffset += 28
 			print(f"SFX {sfxNum} subtrack {i} has SHD index {shdIndex}")
 
-			# TODO: What does a negative index mean - streaming?
+			# A negative value here indicates streamed SFX.
+			# - StartSample will force sample rate to 1881 (22050 Hz)
+			# - ES_RequestVoiceHandle will assign a Stream rather than a Voice handle
 			if shdIndex < 0:
-				print(f"WARN: SFX {sfxNum} has a negative index, skipping")
+				print(f"SFX {sfxNum} is streamed, skipping")
 				skipCnt += 1
 				continue
 
