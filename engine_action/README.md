@@ -19,3 +19,4 @@ The ELF contains:
 * Character stats
 * malloc type names
 * Names for credits
+* Some SFX info (related to length and subtitling?)

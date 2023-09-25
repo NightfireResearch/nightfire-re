@@ -4,6 +4,66 @@ import struct
 import util
 import os
 
+
+###### SUMMARY OF FILE CONTENTS AND IMPORTANT AUDIO INFORMATION
+
+# It's worth reading the Sphinx and the Mummy SFX page first!
+# https://sphinxandthecursedmummy.fandom.com/wiki/SFX
+
+# ISO/PS2: Audio data and metadata directory
+#     - MFXINFO.MFXINFO		- ??, 150 (0x96) 1-int entries used by .IRX in SFXInitialiseAudioStreamSystem to load MusicTrackInfo[]
+#     - SBINFO.SBI			- ??, 150 (0x96) 1-int entries used by .IRX in SFXInitialise to load SoundBankInfo[]
+#     - DEBUG.TXT 			- ??, Contains an (incomplete?) list of SFX names in an unknown order
+# ISO/PS2/MUSIC/MFX_(0,1): Music tracks
+#         	- MFX_{NUM}.SMF - ??, Marker File, used by .IRX in SFXInitialiseStreamUpdate (hard to follow from here due to glitchy decompilation, goes into the ES machine)
+#			- MFX_{NUM}.SSD - ADPCM data, stereo, 32000
+# ISO/PS2/{LANGUAGE}/SB_(0,1,2,3): Sound banks
+#			- .SBF 			- ADPCM data, mono, concatenated sequences with different rates
+#			- .SFX 			- Data file containing SFXParameters for each SFX ID number. Used by .IRX to determine reverb, loop, ducking, random selection etc
+#			- .SHF 			- Soundbank Header File, see SampleHeaderData struct in .IRX. Basically an index to .SBF
+# ISO/PS2/{LANGUAGE}/STREAMS: Audio streams
+#			- STREAMS.BIN   - ADPCM data, mono, 22050
+#			- STREAMS.LUT	- ??, 3000 entries each 4-ints large, loaded by SFXInitialiseAudioStreamSystem into StreamLookupFileDataStore
+
+# There are 3 related systems:
+# - Sound banks (localised) - loaded into RAM? and instantly playable
+# - Streams (localised) - streamed from disc. "Barks", "Taunts", spoken tutorial messages etc.
+# - Music (non-localised) - streamed from disc.
+
+# Streams and music are conceptually very similar, just some minor differences:
+# - Sample rate
+# - Music has a Marker system enabling loops/jumps/ending; streams generally just play through?
+
+
+
+# Playing back a given SFX ID (SFXStart3D):
+# - For each "Bank Slot" in "SoundBankData":
+# 	- Check field9 is not zero ("is loaded"?)
+#     - For each of the numSfxEntries within the bank's "sfxMetadataEntries" (ie .SFX contents header), try to find a match for our SFX ID 
+#       - If a match is found, find that offset within the .SFX contents proper, as a SFXParameters struct
+#		- If it's got a single track, play it (some logic to check "is uniquely playing"?)
+#		- If it's multitrack, setup params and pass off to SFXSetup
+# SFXSetup then:
+# - Sets up the multiple voices needed
+# - Determines whether to suppress playback based on importance, volume and distance
+#   - Early return and set a flag if suppressed?
+# - Gets ducker/volume config from params
+# ...
+# - Determine sample pool index
+# - Write to weird value that Ghidra doesn't understand correctly
+# - Playback happens
+
+
+
+# Outstanding questions:
+# - Final details about purpose/structure of ?? above
+# - How to go from SFX ID to SHF ID(s)   ----->>>>> Done with SFXParameters->SamplePoolFiles->indexWithinShd
+# - Fields in SFXParameters
+# - Fields in other structs
+# - Flags values
+# - What are the two SFX files hard-coded into ES_CombineVolumes for? 0x1d7, 0x470 treated differently.
+# - Does streams LUT and SMF contain the ADPCM decoder state? This would be needed?
+
 # DALS - Dynamic Audio Layering System?
 # Has Relaxed, Alert, Scared, Dead, NUMBEROF
 
@@ -13,17 +73,9 @@ import os
 
 # This information appears to be stored in the metafile alongside the ADPCM data
 
-
+# In the EE:
 # There's also a data table within the .ELF file ("SFXOutputData") that is 0x60d (1549) entries long.
-# Currently unclear how this table matches up. Look up number in SFX table (bank slot)?
 
-
-# Step 1: Extract the banks
-
-# Audio is stored in multiple places:
-# 1. Banks (language-specific) (duplicates exist between banks)
-# 2. Streams (language-specific)
-# 3. Music
 
 # There are 233 entries listed in PS2/DEBUG.TXT
 # This appears to be incomplete - the .ELF file mentions a number of extra entries, eg SFX_WEAPON_XBOW_SHOT_01

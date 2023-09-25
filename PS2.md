@@ -31,6 +31,7 @@ Interesting functions in SFX.IRX:
 * SFXLoadSoundBank walks through which files are loaded, what data is there and how to interpret.
 * SFXInitialise loads SBINFO.SBI and just copies 0x96 values into `SoundBankInfo`.
 * sifrpc_server__FUiPvi handles comms with R5900
+* There's an array of 0x16 SFX IDs which are treated as underwater???
 
 They might have used "samples" where I would say "tracks"? (to avoid ambiguity of sample = value at a single point in time)
 
@@ -305,6 +306,8 @@ Many of the Europacked things contains a file called "woman", all similar (but n
 Script_Update__FP10SCRIPTINFO runs all the loaded scripts
 
 Script_Run__FP10SCRIPTINFO seems to handle the majority of interpreting
+
+Scripts are distinct from GameScripts! "script" is essentially just an animation timeline with keyframes, "gamescript" is more like gameplay logic. (Confirmed with a developer from Eurocom in the Sphinx discord)
 
 
 ### Emulation
