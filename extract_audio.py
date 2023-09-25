@@ -92,7 +92,7 @@ import os
 def rawDataToWav(data, freq, wavFilePath):
 
 	# Bypass for speed!
-	if True:
+	if False:
 		return
 
 	# Take the defined slice from the SBF data, attach a header
@@ -119,9 +119,9 @@ def rawDataToWav(data, freq, wavFilePath):
 	cmd = f"ffmpeg -hide_banner -loglevel error -f vag -y -i tmpvag.vag {wavFilePath}"
 	os.system(cmd)
 
-def extract(bank, subbank):
+def extract_bank(bank):
 
-	path = f"extract/PS2/ENGLISH/SB_{bank}/SB_{subbank}"
+	path = f"extract/PS2/ENGLISH/SB_{bank//8}/SB_{bank}"
 
 	with open(f"{path}.SBF", "rb") as f:
 		sbf = f.read()
@@ -132,20 +132,14 @@ def extract(bank, subbank):
 	with open(f"{path}.SHF", "rb") as f:
 		shf = f.read()
 
-	# SBF (large) - Track data, ADPCM, mono
-	# SFX (692 bytes) - SFX ID (unique?) + SFXParameters
-	# SHF (220 bytes) - Track (buffer) metadata. "Sample Header File"
-
-
-	print(f"Data bank size {len(sbf)}")
-
-	# SHF
+	# SHF - Sample Header File?
 	p_shf = 0
 	numShf = struct.unpack("<I", shf[p_shf:p_shf+4])[0]
 	p_shf += 4
 
-	print(f"Got numShf: {numShf}")
+	print(f"SHF contains {numShf} individual tracks.")
 
+	# Load into a table of contents for easy reference
 	toc = []
 	for i in range(numShf):
 		loop, offset, size, freq, unk1, ch, bits, unk2, unk3 = struct.unpack("<IIIIIIIII", shf[p_shf:p_shf+36])
@@ -155,68 +149,68 @@ def extract(bank, subbank):
 		# We can calculate the value then find a nearby common sample rate
 		f_real = {2731:32000, 1621:19200, 1882:22050, 941:11025, 1024:12000, 683:8000}[freq]
 
-		toc.append((loop, offset, size, freq, ch, bits,))
+		toc.append((loop, offset, size, f_real, ch, bits,))
 
-		print(f"Got track {bank}-{subbank}-{i} with freq {freq}, channels {ch}, bits {bits}, loop {loop}")
+		#print(f"Got track {bank}-{subbank}-{i} with freq {freq}, channels {ch}, bits {bits}, loop {loop}")
+		#rawDataToWav(sbf[offset:offset+size], f_real, f"audio/bnk{bank}_{subbank}_{i}.wav")
 
-		rawDataToWav(sbf[offset:offset+size], f_real, f"audio/bnk{bank}_{subbank}_{i}.wav")
 
-
-	# SFX - is this how we get stereo vs mono? (num SFX is <= num SHF)
+	# SFX - the index / parameters for each SFX
 	p_sfx = 0
 	numSfx = struct.unpack("<I", sfx[p_sfx:p_sfx+4])[0]
 	p_sfx += 4
 
-	print(f"Bank {subbank} has {numSfx} SFX")
+	print(f"Bank {bank} has {numSfx} SFX")
 	totalTracks=0
+	maxSfxCnt = 0
 	for i in range(numSfx):
 		sfxNum, sfxParamsOffset = struct.unpack("<II", sfx[p_sfx:p_sfx+8])
 		p_sfx += 8
-		params = struct.unpack("<31I", sfx[sfxParamsOffset:sfxParamsOffset+124])
 
-		# See SFXParameters in SFX.IRX in Ghidra
-		# Seems similar to "SFX parameter entry" from Sphinx and the Cursed Mummy
-		print(f"Num tracks within SFX (ID {sfxNum}) is {params[16]}, importance is {params[5]}. All params: {params}")
-		totalTracks += params[16]
+		# Unpack the known SFXParameters
+		reverb, flags, _, _, maxPolyphony, importance, _, _, _, duckerVolume,duckerDuration, _, cueTimeMin, cueTimeMax, selectRandomIfZero,_, pickRandomly, _, isPolyOrFlags, _, numSubTracks  = struct.unpack("<8I2H4I6HI", sfx[sfxParamsOffset:sfxParamsOffset+0x44])
+		
 
-	print(f"Bank {subbank} has a totalTracks {totalTracks}, vs in shf: {numShf}")
+		totalTracks += numSubTracks
+		maxSfxCnt = max(maxSfxCnt, numSubTracks)
+		skipCnt = 0
+		## A POSSIBLY VARIABLE length list of "SamplePoolFile" references?
+		varLenOffset = sfxParamsOffset + 0x44
+		for i in range(numSubTracks):
+			shdIndex, basePitchBend, randomPitchBend, baseVolume, randomVolume, basePan, randomPan = struct.unpack("<7i", sfx[varLenOffset: varLenOffset+28])
+			varLenOffset += 28
+			print(f"SFX {sfxNum} subtrack {i} has SHD index {shdIndex}")
 
-	# Step 2: Convert to a useful format, combining stereo channels if needed?
-	# ffmpeg -f vag -i test_100.vag test_100.wav
+			# TODO: What does a negative index mean - streaming?
+			if shdIndex < 0:
+				print(f"WARN: SFX {sfxNum} has a negative index, skipping")
+				skipCnt += 1
+				continue
+
+			# Look up the value from the table of contents
+			trk = toc[shdIndex]
+
+			outName = f"audio/HT_Audio_{sfxNum:08x}_{i}.wav"
+
+			if(os.path.exists(outName)):
+				print("File already exists, duplicated across banks")
+			else:
+				rawDataToWav(sbf[trk[1]:trk[1]+trk[2]], trk[3], outName)
+
+		# TODO: Look for conflicts / confirm that it's just straight duplication
+
+
 
 
 print("About to extract SFX banks...")
-extract(0, 0)
-extract(0, 1)
-extract(0, 2)
-extract(0, 3)
-extract(0, 4)
-extract(0, 5)
-extract(0, 6)
-extract(0, 7)
-extract(1, 8)
-extract(1, 9)
-extract(1, 10)
-extract(1, 11)
-extract(1, 12)
-extract(1, 13)
-extract(1, 14)
-extract(1, 15)
-extract(2, 16)
-extract(2, 17)
-extract(2, 18)
-extract(2, 19)
-extract(2, 20)
-extract(2, 21)
-extract(2, 22)
-extract(2, 23)
-extract(3, 24)
+for i in range(25):
+	extract_bank(i)
 
 
 # Sounds weird - interleaved stereo?
-def music_extract(bank, subbank):
+def music_extract(bank):
 
-	path = f"extract/PS2/MUSIC/MFX_{bank}/MFX_{subbank}"
+	path = f"extract/PS2/MUSIC/MFX_{bank//16}/MFX_{bank}"
 
 	# SMF (meta file) and SSD (data)	
 	with open(f"{path}.SMF", "rb") as f:
@@ -229,7 +223,7 @@ def music_extract(bank, subbank):
 	numSmf = struct.unpack("<I", smf[p_smf:p_smf+4])[0]
 	p_smf += 4
 
-	print(f"Music bank {bank}-{subbank} has {numSmf} tracks")
+	print(f"Music track {bank} has {numSmf} markers")
 
 	# Data is 2-channel, 16-bit samples, 128-byte (0x80) interleave, 32000Hz rate
 	channel_l = b''.join(list(util.chunks(ssd, 128))[::2])
@@ -239,20 +233,19 @@ def music_extract(bank, subbank):
 	# Sample rate is set in SFXInitialiseStreamUpdate
 	
 	for ch in ["l","r"]:
-		rawDataToWav(deinterleaved[ch], 32000, f"audio/mus_{bank}_{subbank}_{ch}.wav")
+		rawDataToWav(deinterleaved[ch], 32000, f"audio/mus_{bank}_{ch}.wav")
 
 
 
 print("About to extract music...")
 # TODO: MFXINFO file tells us the number of banks?
-for i in range(1, 16):
-	music_extract(0, i)
-# music_extract(1, 16)
+for i in range(1, 17):
+	music_extract(i)
 
 
 def extract_streams():
 	# Contains spoken voice lines
-	# TODO: LUT parsing
+	# TODO: LUT parsing (tracks are discontinuous, causing "Error while decoding stream #0:0: Invalid data found when processing input"?)
 	with open("extract/PS2/ENGLISH/STREAMS/STREAMS.BIN", "rb") as f:
 		streams = f.read()
 
