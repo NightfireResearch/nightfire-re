@@ -11,8 +11,8 @@ import os
 # https://sphinxandthecursedmummy.fandom.com/wiki/SFX
 
 # ISO/PS2: Audio data and metadata directory
-#     - MFXINFO.MFXINFO		- ??, 150 (0x96) 1-int entries used by .IRX in SFXInitialiseAudioStreamSystem to load MusicTrackInfo[]
-#     - SBINFO.SBI			- ??, 150 (0x96) 1-int entries used by .IRX in SFXInitialise to load SoundBankInfo[]
+#     - MFXINFO.MXI      	- The Hashcode representing each of the 16 music tracks? 		1-int entries used by .IRX in SFXInitialiseAudioStreamSystem to load MusicTrackInfo[]. Copied as 150 (0x96) entries.
+#     - SBINFO.SBI			- The Hashcode representing each of the 25 SFX banks? 			1-int entries used by .IRX in SFXInitialise to load SoundBankInfo[]. Coped as 150 (0x96) entries.
 #     - DEBUG.TXT 			- ??, Contains an (incomplete?) list of SFX names in an unknown order
 # ISO/PS2/MUSIC/MFX_(0,1): Music tracks
 #         	- MFX_{NUM}.SMF - ??, Marker File, used by .IRX in SFXInitialiseStreamUpdate (hard to follow from here due to glitchy decompilation, goes into the ES machine)
@@ -252,8 +252,15 @@ def extract_streams():
 	with open("extract/PS2/ENGLISH/STREAMS/STREAMS.BIN", "rb") as f:
 		streams = f.read()
 
-	# Sample rate is set in SFXInitialiseStreamUpdate
+	# LUT is loaded into StreamLookupFileDataStore by SFXInitialiseAudioStreamSystem
+	# as 3000 4-int entries
 
+	# There is indeed 16byte repetition (columns of 0x00 and 0x88 line up if window is 16 bytes wide)
+
+	# If we assume each entry is 4 bytes, that's 1681 stream tracks
+	# We can guess structure is offset, flags, adpcm0, adpcm1?
+
+	# Sample rate is set in SFXInitialiseStreamUpdate
 	rawDataToWav(streams, 22050, "audio/streams.wav")
 
 print("About to extract streams...")
