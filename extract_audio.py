@@ -32,7 +32,7 @@ import os
 
 # Streams and music are conceptually very similar, just some minor differences:
 # - Sample rate (22050 fixed for SFX streams, 32000 fixed for music streams)
-# - Unclear if the markers etc are usable with streamed SFX?
+# - SFX streams only use the marker system in a very straightforward way (one start, one end marker)
 
 # The banks contain duplication - there are 5831 mono entries, but only 1549 SFX IDs
 # This can be explained by a combination of:
@@ -58,15 +58,9 @@ import os
 # - Playback happens
 
 
-
 # Outstanding questions:
-# - Final details about purpose/structure of ?? above
-# - How to go from SFX ID to SHF ID(s)   ----->>>>> Done with SFXParameters->SamplePoolFiles->indexWithinShd
-# - Fields in SFXParameters
-# - Fields in other structs
-# - Flags values
 # - What are the two SFX files hard-coded into ES_CombineVolumes for? 0x1d7, 0x470 treated differently.
-# - Does streams LUT and SMF contain the ADPCM decoder state? This would be needed?
+
 
 # DALS - Dynamic Audio Layering System?
 # Has Relaxed, Alert, Scared, Dead, NUMBEROF
@@ -80,10 +74,11 @@ import os
 # In the EE:
 # There's also a data table within the .ELF file ("SFXOutputData") that is 0x60d (1549) entries long.
 
-
 # There are 233 entries listed in PS2/DEBUG.TXT
 # This appears to be incomplete - the .ELF file mentions a number of extra entries, eg SFX_WEAPON_XBOW_SHOT_01
 # However this debug does tell us a bit about the directory structure/original file format.
+# This is alphabetical in ENUM name
+# The SFX enum in the .ELF is also alphabetical.
 
 
 
