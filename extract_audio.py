@@ -15,7 +15,7 @@ import os
 #     - SBINFO.SBI			- The Hashcode representing each of the 25 SFX banks? 			1-int entries used by .IRX in SFXInitialise to load SoundBankInfo[]. Coped as 150 (0x96) entries.
 #     - DEBUG.TXT 			- ??, Contains an (incomplete?) list of SFX names in an unknown order
 # ISO/PS2/MUSIC/MFX_(0,1): Music tracks
-#         	- MFX_{NUM}.SMF - ??, Marker File, used by .IRX in SFXInitialiseStreamUpdate (hard to follow from here due to glitchy decompilation, goes into the ES machine)
+#         	- MFX_{NUM}.SMF - Stream Marker File - consists of various offsets and marker types (Start, End, Loop etc)
 #			- MFX_{NUM}.SSD - ADPCM data, stereo, 32000
 # ISO/PS2/{LANGUAGE}/SB_(0,1,2,3): Sound banks
 #			- .SBF 			- ADPCM data, mono, concatenated sequences with different rates
@@ -23,7 +23,7 @@ import os
 #			- .SHF 			- Soundbank Header File, see SampleHeaderData struct in .IRX. Basically an index to .SBF
 # ISO/PS2/{LANGUAGE}/STREAMS: Audio streams
 #			- STREAMS.BIN   - Marker data (0x88 bytes padded to 0x1000 bytes) concatenated with ADPCM data, mono, 22050
-#			- STREAMS.LUT	- 3000 entries each 4-ints large, loaded by SFXInitialiseAudioStreamSystem into StreamLookupFileDataStore.  consists of (Offset of marker data, Size of marker data, Offset of ADPCM data, Size of ADPCM data)
+#			- STREAMS.LUT	- 3000 entries each 4-ints large, loaded by SFXInitialiseAudioStreamSystem into StreamLookupFileDataStore. Consists of 1681x structs: (u32: Offset of marker data, u32: Size of marker data, u32: Offset of ADPCM data, u32: Size of ADPCM data)
 
 # There are 3 related systems:
 # - Sound banks (localised) - loaded into RAM? and instantly playable
@@ -34,7 +34,11 @@ import os
 # - Sample rate (22050 fixed for SFX streams, 32000 fixed for music streams)
 # - Unclear if the markers etc are usable with streamed SFX?
 
-
+# The banks contain duplication - there are 5831 mono entries, but only 1549 SFX IDs
+# This can be explained by a combination of:
+# - Banks contain duplication
+# - Stereo and polyphonic effects
+# - Randomly-selected variants of effects
 
 # Playing back a given SFX ID (SFXStart3D):
 # - For each "Bank Slot" in "SoundBankData":
@@ -82,11 +86,6 @@ import os
 # However this debug does tell us a bit about the directory structure/original file format.
 
 
-# The banks contain duplication - there are 5831 mono entries, but only 1549 SFX IDs
-# This can be explained by a combination of:
-# - Banks contain duplication
-# - Stereo and polyphonic effects
-# - Randomly-selected variants of effects
 
 os.system("mkdir -p audio/")
 
@@ -164,6 +163,7 @@ def extract_bank(bank):
 	print(f"Bank {bank} has {numSfx} SFX")
 	totalTracks=0
 	maxSfxCnt = 0
+	unusedShdIndexes = [x for x in range(len(toc))]
 	for i in range(numSfx):
 		sfxNum, sfxParamsOffset = struct.unpack("<II", sfx[p_sfx:p_sfx+8])
 		p_sfx += 8
@@ -174,45 +174,48 @@ def extract_bank(bank):
 
 		totalTracks += numSubTracks
 		maxSfxCnt = max(maxSfxCnt, numSubTracks)
-		skipCnt = 0
+
 		## A POSSIBLY VARIABLE length list of "SamplePoolFile" references?
 		varLenOffset = sfxParamsOffset + 0x44
 		for i in range(numSubTracks):
+
+			outName = f"audio/SFX_{sfxNum:08}_{i}.wav"
+
 			shdIndex, basePitchBend, randomPitchBend, baseVolume, randomVolume, basePan, randomPan = struct.unpack("<7i", sfx[varLenOffset: varLenOffset+28])
 			varLenOffset += 28
-			print(f"SFX {sfxNum} subtrack {i} has SHD index {shdIndex}")
+			#print(f"SFX {sfxNum} subtrack {i} has SHD index {shdIndex}")
 
 			# A negative value here indicates streamed SFX.
 			# - StartSample will force sample rate to 1881 (22050 Hz)
 			# - ES_RequestVoiceHandle will assign a Stream rather than a Voice handle
 			# Converted via indexOfStream = -1 - *(int *)&DAT_70000184->mfxId; in SFXInitialiseStreamUpdate
 			if shdIndex < 0:
-				print(f"SFX {sfxNum} is streamed, skipping")
-				skipCnt += 1
+				print(f"SFX {sfxNum} is streamed (stream index {-shdIndex-1}), copying")
+				os.system(f"cp audio/_streams_{-shdIndex-1}.wav {outName}")
 				continue
 
 			# Look up the value from the table of contents
 			trk = toc[shdIndex]
 
-			outName = f"audio/HT_Audio_{sfxNum:08x}_{i}.wav"
+			if shdIndex in unusedShdIndexes:
+				unusedShdIndexes.remove(shdIndex)
+
 
 			if(os.path.exists(outName)):
-				print("File already exists, duplicated across banks")
+				#print("File already exists, duplicated across banks")
+				pass
 			else:
 				rawDataToWav(sbf[trk[1]:trk[1]+trk[2]], trk[3], outName)
 
 		# TODO: Look for conflicts / confirm that it's just straight duplication
 
+	# There don't appear to be any unused SHD entries
+	assert len(unusedShdIndexes) == 0, f"In bank {bank} we found {len(unusedShdIndexes)} unused entries: {unusedShdIndexes}"
 
 
 
-print("About to extract SFX banks...")
-for i in range(25):
-	extract_bank(i)
 
-
-# Sounds weird - interleaved stereo?
-def music_extract(bank):
+def extract_music(bank):
 
 	path = f"extract/PS2/MUSIC/MFX_{bank//16}/MFX_{bank}"
 
@@ -237,98 +240,72 @@ def music_extract(bank):
 	# Sample rate is set in SFXInitialiseStreamUpdate
 	
 	for ch in ["l","r"]:
-		rawDataToWav(deinterleaved[ch], 32000, f"audio/mus_{bank}_{ch}.wav")
+		rawDataToWav(deinterleaved[ch], 32000, f"audio/_tmp_{bank}_{ch}.wav")
 
-
-
-print("About to extract music...")
-# TODO: MFXINFO file tells us the number of banks?
-for i in range(1, 17):
-	music_extract(i)
-	pass
+	# combine L and R into a single stereo track
+	os.system(f"ffmpeg -hide_banner -loglevel error -y -i audio/_tmp_{bank}_l.wav -i audio/_tmp_{bank}_r.wav -filter_complex \"[0:a][1:a]join=inputs=2:channel_layout=stereo[a]\" -map \"[a]\" audio/Mus_{bank}.wav")
 
 
 def extract_streams():
+
 	# Contains spoken voice lines
-	# TODO: LUT parsing (tracks are discontinuous, causing "Error while decoding stream #0:0: Invalid data found when processing input"?)
+	
 	with open("extract/PS2/ENGLISH/STREAMS/STREAMS.LUT", "rb") as f:
 		streamLut = f.read()
 
 	with open("extract/PS2/ENGLISH/STREAMS/STREAMS.BIN", "rb") as f:
 		streams = f.read()
+	
 	# LUT is loaded into StreamLookupFileDataStore by SFXInitialiseAudioStreamSystem
 	# as 3000 4-int entries
+	# 1681 is what would be implied by the file size; however this results in reading beyond the end of STREAMS.BIN
+	# It seems like the SFX banks never use above 822, which is also where the offsets finally overrun the .BIN
+	# so possible that the remaining entries are just junk.
 
-	# There is indeed 16byte repetition (columns of 0x00 and 0x88 line up if window is 16 bytes wide)
-
-	# If we assume each entry is 4 bytes, that's 1681 stream tracks
-	# A: Multiple of 2048, increasing.
-	# B: Always 0x88
-	# C: A + 0x1000
-	# D: length? In bytes? Always multiple of 0x10.
-
-	# If we assume Third = offset, Fourth = Length, it *mostly* works OK but some are weird:
-	# Eg: 
-	# Stream 150: "You missed. I think your targeting computer's failed, Drake. Or have you?"
-	# Stream 151: "Damn you, Bond! -- noone can hear you scream, except for me"
-	# Stream 152: "In space, Mr Bond, noone can hear you scream, except for me"
-	# Stream 153: "One of the missiles is about to fire James! -- zz will need to be disabled manually"
-	# Stream 154: "You've only a few seconds -- _ames"
-	# Stream 155: "Ten seconds to launch, James -- Launch -- _ever make it through the atmosphere"
-	# ...
-	# Stream 162: "Its navigation system is fried. It'll never make it through the atmosphere."
-
-	# This might be because 
-
-	## Follow the Code
-	# in SFXInitialiseStreamsUpdate, we see psiAsyncReadFile(*(int *)&DAT_70000184->fileHandle, streamLutData[lutTableIndexAt].field0_0x0, streamLutData[lutTableIndexAt].field1_0x4, DAT_70000184->buffer2);
-	# This implies:
-	# First and second are some number of bytes into the binary file, as expected. Maybe offset, stride?
-	# 
-
-	# THIS ALSO READS IT AS STREAM MARKER FILE
-
-	lutEntries = []
-
-	for i in range(1681): #1681
+	for i in range(823):
 		off = i * 16
 		markerBinOffset, markerBinSize, adpcmOffset, adpcmSize = struct.unpack("<IIII", streamLut[off:off+16])
 
 		print(f"LUT {i}: {markerBinOffset:08x}, {markerBinSize:02x}, {adpcmOffset:08x}, {adpcmSize:08x}")
 
 		## Let's test our assumptions
-		assert markerBinSize == 0x88, f"We thought b is always 0x88 but it isn't in case {i}"
-		assert markerBinOffset + 0x1000 == adpcmOffset, f"We thought a+0x1000 == c but it isn't in case {i}"
+		assert markerBinSize == 0x88, f"Marker binary data size should be 0x88 but is 0x{i:08x}"
+		assert markerBinOffset + 0x1000 == adpcmOffset, f"Expected 0x1000 offset - actually 0x{i:08x}"
 		# This passes for all entries!
+
+		assert markerBinOffset < len(streams), f"Marker bin offset {markerBinOffset:08x} is outside of binary file, length {len(streams):08x}"
+		assert markerBinOffset+markerBinSize < len(streams), f"Marker bin end point {(markerBinOffset+markerBinSize):08x} is outside of binary file, length {len(streams):08x}"
 
 		markerBinData = streams[markerBinOffset:markerBinOffset+markerBinSize]
 
-		# Let's assume this is like Sphinx - this looks like a Stream marker header data followed by said markers
+		# Looks like a Stream marker header data followed by said markers
 		startCount, markerCount, startOffset, markerOffset, baseVolume = struct.unpack("<IIIII", markerBinData[0:20])
 		print(f"Assuming marker header, this has startCount {startCount}, num {markerCount}, off {startOffset}, base volume {baseVolume}")
 
 		# Let's further assume we just have two markers - the Start marker, and the End marker
 		# For the purposes of extracting an SFX, we only need the End marker's position value
 		# Which we can just find at the same offset each time.
-
-		print(markerBinData)
-		# Name is -1 (0xFFFFFFFF)
-		# Offset comes immediately after
-		# for i in range(len(markerBinData)):
-		# 	if markerBinData[i] == 0xFF:
-		# 		print(f"Found FF at {i}")
-
 		trueSize = struct.unpack("<I", markerBinData[108:112])[0]
 
-		assert trueSize <= adpcmSize, "Would result in weird data"
+		assert trueSize <= adpcmSize, "True size must not be greater than available data"
 
-		print(f"True size {trueSize} is under {adpcmSize}")
-		# fixme
-		#trueSize = adpcmSize
+		rawDataToWav(streams[adpcmOffset:adpcmOffset+trueSize], 22050, f"audio/_streams_{i}.wav")
 
-		rawDataToWav(streams[adpcmOffset:adpcmOffset+trueSize], 22050, f"audio/streams_{i}.wav")
-	# Sample rate is set in SFXInitialiseStreamUpdate
-	#rawDataToWav(streams, 22050, "audio/streams.wav")
+
+
 
 print("About to extract streams...")
-extract_streams()
+if True:
+	extract_streams()
+
+print("About to extract SFX banks...")
+for i in range(25):
+	extract_bank(i)
+	pass
+
+
+print("About to extract music...")
+for i in range(1, 17):
+	extract_music(i)
+	pass
+
