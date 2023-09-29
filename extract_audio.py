@@ -22,8 +22,8 @@ import os
 #			- .SFX 			- Data file containing SFXParameters for each SFX ID number. Used by .IRX to determine reverb, loop, ducking, random selection etc
 #			- .SHF 			- Soundbank Header File, see SampleHeaderData struct in .IRX. Basically an index to .SBF
 # ISO/PS2/{LANGUAGE}/STREAMS: Audio streams
-#			- STREAMS.BIN   - ADPCM data, mono, 22050
-#			- STREAMS.LUT	- ??, 3000 entries each 4-ints large, loaded by SFXInitialiseAudioStreamSystem into StreamLookupFileDataStore
+#			- STREAMS.BIN   - Marker data (0x88 bytes padded to 0x1000 bytes) concatenated with ADPCM data, mono, 22050
+#			- STREAMS.LUT	- 3000 entries each 4-ints large, loaded by SFXInitialiseAudioStreamSystem into StreamLookupFileDataStore.  consists of (Offset of marker data, Size of marker data, Offset of ADPCM data, Size of ADPCM data)
 
 # There are 3 related systems:
 # - Sound banks (localised) - loaded into RAM? and instantly playable
@@ -31,8 +31,8 @@ import os
 # - Music (non-localised) - streamed from disc.
 
 # Streams and music are conceptually very similar, just some minor differences:
-# - Sample rate
-# - Music has a Marker system enabling loops/jumps/ending; streams generally just play through?
+# - Sample rate (22050 fixed for SFX streams, 32000 fixed for music streams)
+# - Unclear if the markers etc are usable with streamed SFX?
 
 
 
@@ -185,6 +185,7 @@ def extract_bank(bank):
 			# A negative value here indicates streamed SFX.
 			# - StartSample will force sample rate to 1881 (22050 Hz)
 			# - ES_RequestVoiceHandle will assign a Stream rather than a Voice handle
+			# Converted via indexOfStream = -1 - *(int *)&DAT_70000184->mfxId; in SFXInitialiseStreamUpdate
 			if shdIndex < 0:
 				print(f"SFX {sfxNum} is streamed, skipping")
 				skipCnt += 1
@@ -244,24 +245,90 @@ print("About to extract music...")
 # TODO: MFXINFO file tells us the number of banks?
 for i in range(1, 17):
 	music_extract(i)
+	pass
 
 
 def extract_streams():
 	# Contains spoken voice lines
 	# TODO: LUT parsing (tracks are discontinuous, causing "Error while decoding stream #0:0: Invalid data found when processing input"?)
+	with open("extract/PS2/ENGLISH/STREAMS/STREAMS.LUT", "rb") as f:
+		streamLut = f.read()
+
 	with open("extract/PS2/ENGLISH/STREAMS/STREAMS.BIN", "rb") as f:
 		streams = f.read()
-
 	# LUT is loaded into StreamLookupFileDataStore by SFXInitialiseAudioStreamSystem
 	# as 3000 4-int entries
 
 	# There is indeed 16byte repetition (columns of 0x00 and 0x88 line up if window is 16 bytes wide)
 
 	# If we assume each entry is 4 bytes, that's 1681 stream tracks
-	# We can guess structure is offset, flags, adpcm0, adpcm1?
+	# A: Multiple of 2048, increasing.
+	# B: Always 0x88
+	# C: A + 0x1000
+	# D: length? In bytes? Always multiple of 0x10.
 
+	# If we assume Third = offset, Fourth = Length, it *mostly* works OK but some are weird:
+	# Eg: 
+	# Stream 150: "You missed. I think your targeting computer's failed, Drake. Or have you?"
+	# Stream 151: "Damn you, Bond! -- noone can hear you scream, except for me"
+	# Stream 152: "In space, Mr Bond, noone can hear you scream, except for me"
+	# Stream 153: "One of the missiles is about to fire James! -- zz will need to be disabled manually"
+	# Stream 154: "You've only a few seconds -- _ames"
+	# Stream 155: "Ten seconds to launch, James -- Launch -- _ever make it through the atmosphere"
+	# ...
+	# Stream 162: "Its navigation system is fried. It'll never make it through the atmosphere."
+
+	# This might be because 
+
+	## Follow the Code
+	# in SFXInitialiseStreamsUpdate, we see psiAsyncReadFile(*(int *)&DAT_70000184->fileHandle, streamLutData[lutTableIndexAt].field0_0x0, streamLutData[lutTableIndexAt].field1_0x4, DAT_70000184->buffer2);
+	# This implies:
+	# First and second are some number of bytes into the binary file, as expected. Maybe offset, stride?
+	# 
+
+	# THIS ALSO READS IT AS STREAM MARKER FILE
+
+	lutEntries = []
+
+	for i in range(1681): #1681
+		off = i * 16
+		markerBinOffset, markerBinSize, adpcmOffset, adpcmSize = struct.unpack("<IIII", streamLut[off:off+16])
+
+		print(f"LUT {i}: {markerBinOffset:08x}, {markerBinSize:02x}, {adpcmOffset:08x}, {adpcmSize:08x}")
+
+		## Let's test our assumptions
+		assert markerBinSize == 0x88, f"We thought b is always 0x88 but it isn't in case {i}"
+		assert markerBinOffset + 0x1000 == adpcmOffset, f"We thought a+0x1000 == c but it isn't in case {i}"
+		# This passes for all entries!
+
+		markerBinData = streams[markerBinOffset:markerBinOffset+markerBinSize]
+
+		# Let's assume this is like Sphinx - this looks like a Stream marker header data followed by said markers
+		startCount, markerCount, startOffset, markerOffset, baseVolume = struct.unpack("<IIIII", markerBinData[0:20])
+		print(f"Assuming marker header, this has startCount {startCount}, num {markerCount}, off {startOffset}, base volume {baseVolume}")
+
+		# Let's further assume we just have two markers - the Start marker, and the End marker
+		# For the purposes of extracting an SFX, we only need the End marker's position value
+		# Which we can just find at the same offset each time.
+
+		print(markerBinData)
+		# Name is -1 (0xFFFFFFFF)
+		# Offset comes immediately after
+		# for i in range(len(markerBinData)):
+		# 	if markerBinData[i] == 0xFF:
+		# 		print(f"Found FF at {i}")
+
+		trueSize = struct.unpack("<I", markerBinData[108:112])[0]
+
+		assert trueSize <= adpcmSize, "Would result in weird data"
+
+		print(f"True size {trueSize} is under {adpcmSize}")
+		# fixme
+		#trueSize = adpcmSize
+
+		rawDataToWav(streams[adpcmOffset:adpcmOffset+trueSize], 22050, f"audio/streams_{i}.wav")
 	# Sample rate is set in SFXInitialiseStreamUpdate
-	rawDataToWav(streams, 22050, "audio/streams.wav")
+	#rawDataToWav(streams, 22050, "audio/streams.wav")
 
 print("About to extract streams...")
 extract_streams()
