@@ -29,7 +29,7 @@ def extract(text_data, is_unicode):
 	# 0 to 50 for test
 	entries = list(util.chunks(table_data, 4))[0:table_len] # padding at end?
 
-	stringTable = []
+	stringTable = [""] # 1-indexed elsewhere
 	for e in entries:
 
 		# Two different character encodings. Unclear why both files are provided rather than just using UTF16 consistently
@@ -51,10 +51,43 @@ def extract(text_data, is_unicode):
 
 	return stringTable
 
+def idx_to_hashcode(index):
+
+	# Fixups table (after the last translation is the number of fixups, then the fixup offset table)
+	# Fixups work as follows:
+	# indexInTable = fixupTable[(hashcode >> 18)] + (hashcode & 0xFFFF)
+	# Fixup table from UKTxtU (same as JPTxt, probably all the others too):
+	# Len: 7
+	# 0: 0
+	# 1: 1000
+	# 2: 1812
+	# 3: 1903
+	# 4: 1958
+	# 5: 2065
+	# 6: 2183
+	# If we assume no overlap in the ranges, the inverse is therefore:
+	# For 0-999, hashcode = index
+	# For 1000-1811, hashcode is 0x01000000 + index
+	# For 1812-1902, hashcode is 0x02000000 + index
+
+	inverseFixup = [0, 1000, 1812, 1903, 1958, 2065, 2183]
+
+	fixupOffset = [x for x in inverseFixup if x <= index]
+	fixupIdx = len(fixupOffset) - 1
+	fixupAmt = max(fixupOffset)
+
+	return (fixupIdx << 0x18) + index - fixupAmt
+
 
 def extract_all(target_dir):
+
+	translations = {}
+
 	for filename in os.listdir(target_dir):
-		if not filename.endswith(".dat"):
+		if not filename.endswith(".dat"): # Extract only translation files
+			continue
+
+		if not "txtu.dat" in filename.lower(): # Extract only the Unicode version
 			continue
 
 		is_unicode = ("txtu.dat" in filename.lower())
@@ -65,8 +98,11 @@ def extract_all(target_dir):
 
 		entries = extract(text_data, is_unicode)
 
+		translations[lang_id.upper()] = entries
+
 		print(f"Translation file {filename} is language {lang_id}, unicode: {is_unicode} has {len(entries)} entries")
 
+	return translations
 
 if __name__=="__main__":
 	extract_all("files_bin_unpack")
