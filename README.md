@@ -10,6 +10,54 @@ Longer term, this project might support:
 * A fan-made remake using the assets/levels within a modern game engine
 * A full engine decompilation project
 
+## Current Progress
+
+### Action Engine
+
+#### File Parsers
+* FILES.BIN dumped into sub-files
+* (Levels).BIN dumped into identified sections (TODO: Order)
+* RAM SFX, Stream SFX: Extracted to .WAV by hashcode
+* SFX parameters (radius, volume, reverb etc): Identified but not implemented.
+* Music: Entire data stream extracted to .WAV
+* Translated strings: Python can identify and extract the first block. Unclear what the second block is?
+* Animations/Skins: No progress.
+* Scripts: No progress.
+* GameScripts: No progress.
+* Level meshes: No progress.
+* Videos: Not required (XBox version is immediately playable, and seems similar quality)
+* SFX enum: Alphabetical list can be dumped from ACTION.ELF but it's out of order compared to hashcodes - annoying.
+* SFX Special Params (Captions): Identified but not implemented.
+* SFX Special Params (Water): Identified but not implemented.
+* Weapon stats: Baked into ACTION.ELF, TODO: extract from emulator dump?
+* Credits: Baked into ACTION.ELF, TODO: extract from emulator dump?
+
+#### Decompilation
+
+Quick summary of differences between PS2 and Xbox.
+* PS2 has an annoying, complex, multi-chip solution. Sound handled by a separate module running on IOP, and geometry handled with VIF. This makes some bits hard to follow.
+* PS2 has function names and many symbols named; Xbox has been stripped. The structure is similar though, except for platform-specific calls, so can manually transpose PS2 function names onto the Xbox binary.
+* PS2 has floating-point registers separate to others - order of arguments can be weird
+* PS2 has certain floating-point operations inlined (matrix multiply?). Xbox produces more readable floating-point code.
+* Xbox compiler seems to overall inline more aggressively than PS2. Especially memset is always inlined on Xbox, not on PS2. This isn't universal though - eg in AnimLoadFile, the PS2 seems to have inlined more.
+* Xbox compiler occasionally breaks calling convention (for performance?). PS2 does not seem to do this.
+* PS2 more often points to the "right" global when accessing structs. Xbox will instead "bake in" the offset of the element within the struct to the base number. Ghidra can probably fix this though.
+* Both platforms seem to share virtually identical in-memory representation of key objects in most places. There might be some platform differences though, this is from a quick look only.
+
+**PS2**
+
+* SFX.IRX: Annotated well enough to understand all audio structures, but perhaps not all effects and nuances. 
+* ACTION.ELF: Annotated lightly in many areas. Level loading, dynamic objects etc vaguely readable.
+* DRIVING.ELF: Not started.
+
+**XBox**
+* Action (default.xbe): Lightly annotated using PS2 for reference. Symbols missing but the XBox architecture means that floating-point code is nore readable overall.
+* Driving (Driving.xbe): Not started.
+
+### Driving Engine
+
+No substantial progress.
+
 ## Decompilation
 
 There is a Ghidra server containing some annotation of the PS2 ELFs - ask Riley in the Nightfire Research Team Discord for details/access.
