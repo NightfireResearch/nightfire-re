@@ -60,8 +60,14 @@ filetable_length = 118
 sfxnametable_offset_start = memaddr_to_elfaddr(0x002e96a0)
 sfxnametable_offset_end = 0x1EE538
 
-# 
+# Caption Lookup for SFX
 sndlbl_start = memaddr_to_elfaddr(0x002d33d8)
 sndlbl_entry_size = 8
 sndlbl_len_entries = 484
 sndlbl_end = sndlbl_start + sndlbl_entry_size * sndlbl_len_entries
+
+# SFX Properties
+sfxdata_start = memaddr_to_elfaddr(0x002ca2a0)
+sfxdata_entry_size = 0x18
+sfxdata_num_entries = 1549
+sfxdata_end = sfxdata_start + sfxdata_entry_size * sfxdata_num_entries

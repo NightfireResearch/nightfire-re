@@ -57,9 +57,8 @@ with open("sfx_enum.txt", "w") as f:
 # 1. Snd2Lbl: Go from a SFX ID to a translation table entry. (translationId: uint32, sfxID: uint32) - 484 entries.
 # 2. SFXOutputData: Contains (default?) parameters for playback. See "SFXOutputDataEntry" in Ghidra, not all fields understood yet
 
-# TODO: This
+# Part 1
 snd2lbl = util.chunks(action_elf[external_knowledge.sndlbl_start:external_knowledge.sndlbl_end], 8)
-
 with open("snd2lbl.csv", "w") as f:
 	f.write("flag,translation,sfxid\n")
 	for e in snd2lbl:
@@ -70,6 +69,23 @@ with open("snd2lbl.csv", "w") as f:
 
 		f.write(f"{flag},'{translation:08x},'{sfx:08x}\n")
 
+# Part 2
+sfxdata = util.chunks(action_elf[external_knowledge.sfxdata_start:external_knowledge.sfxdata_end], external_knowledge.sfxdata_entry_size)
+with open("sfxdata.csv", "w") as f:
+	f.write("sfxId,sfxIdOrBlank,rInner,rOuter,alertness,duration,loopAlways,loopSingleListener\n")
+	for i, (e) in enumerate(sfxdata):
+		(idx,rInner,rOuter,alertness,duration,loopAlways,loopSingleListener,pad1,pad2) = struct.unpack("<Iffffcccc", e)
+
+		bin2bool = {b'\x00': 0, b'\x01': 1}
+		
+		# Confirm assumption that this is always blank
+		assert pad1==b'\x00', f"Not padding1, value on {i} is {pad1}"
+		assert pad2==b'\x00', f"Not padding2, value on {i} is {pad2}"
+
+		loopAlways = bin2bool[loopAlways]
+		loopSingleListener = bin2bool[loopSingleListener]
+
+		f.write(f"{i},{idx},{rInner},{rOuter},{alertness},{duration},{loopAlways},{loopSingleListener}\n")
 
 #
 # Effects - particles, emitters, laser effects etc
