@@ -50,6 +50,11 @@ Quick summary of differences between PS2 and Xbox.
 * ACTION.ELF: Annotated lightly in many areas. Level loading, dynamic objects etc vaguely readable.
 * DRIVING.ELF: Not started.
 
+IMPORTANT for SFX: The GP Offset has likely been discovered! We have identified in SFXUpdateEnvironment that some specific variables (eg MaybeNewReverb, mapped to GP-0x7fa8) are linked to reverb, and nearby are some volumes. These line up with SFXNewReverb (0x338d8), SFXReverb (338dc), SFXNewIndoorsVolume etc.
+
+If (GP-0x7fa8) == 0x338d8, this means GP is 0x338d8 + 0x7fa8 = 0x3B880
+
+
 **XBox**
 * Action (default.xbe): Lightly annotated using PS2 for reference. Symbols missing but the XBox architecture means that floating-point code is nore readable overall.
 * Driving (Driving.xbe): Not started.
