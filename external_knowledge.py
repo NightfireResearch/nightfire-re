@@ -46,7 +46,22 @@ hashcode_name_mapping = {
 
 # From manual inspection of the files
 text_start = 0x00107100
-filetable_start = 0x002453a0
 elf_header_size = 4096
-filetable_offset_in_elf = (filetable_start - text_start) + elf_header_size
+
+def memaddr_to_elfaddr(memaddr):
+    return (memaddr - text_start) + elf_header_size
+
+
+filetable_offset_in_elf = memaddr_to_elfaddr(0x002453a0)
 filetable_length = 118
+
+
+# Starts at PS2 address 002e96a0 (1E35A0 in ELF), ends at 1EE520ish in ELF
+sfxnametable_offset_start = memaddr_to_elfaddr(0x002e96a0)
+sfxnametable_offset_end = 0x1EE538
+
+# 
+sndlbl_start = memaddr_to_elfaddr(0x002d33d8)
+sndlbl_entry_size = 8
+sndlbl_len_entries = 484
+sndlbl_end = sndlbl_start + sndlbl_entry_size * sndlbl_len_entries
