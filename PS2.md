@@ -18,7 +18,9 @@ Mangling:
 
 `Input_Action__Fs15GameActions_tagUs(iVar15,10,4)` - Fs15... means a function returning short, with a (15-char) GameActions_tag, and an Unsigned short?
 
-There's also a very comprehensive SFX list in the ELF at 002e96a0
+There's also a MOSTLY? comprehensive SFX list in the ELF at 002e96a0
+
+Some things look like they jump to dummy functions. Eg logging, sceSdVoiceTransStatus. But maybe that's not true - linked at ELF load time to a BIOS function?
 
 # IOP
 

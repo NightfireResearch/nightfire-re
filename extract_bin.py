@@ -21,6 +21,7 @@ def extract_all(target_dir):
 
 		# It appears that sometimes the data might be Europacked / need decompression in Euro_Decomp_Buf
 		# Or are these codepaths never touched?
+		# Never touched, seems uncompressed.
 
 		# First it reads 0x800 bytes into pDirHeader.241
 		pDirHeader = bin_file[0 : 0x800]
@@ -46,8 +47,7 @@ def extract_all(target_dir):
 		# ?? - 1 byte (null terminator?
 
 		# For some (eg 07000002) there are some null names
-		# Is this because there's also the concept of subdirectories, and only some have subdirs?
-		# TODO: Confirm with Ghidra
+		# 070xxxxxx is a map identifier (both SP and MP) - map data to be handled by 
 		entry_size_max = 4+1+8+1
 		entry_size_min = 4+1+1
 
@@ -89,7 +89,7 @@ def extract_all(target_dir):
 			# 0x01: Map Parser (DirFileHash, didDoAnimPostLoad) -> zero for second param results in ambient light, sound and path data not being loaded 
 			# 0x03, 0x04, 0x05: Animation Load
 			# 0x06: AnimSkeleton
-			# 0x07: Script (compiled?)
+			# 0x07: Script (keyframe animation)
 			# 0x08: Menu Manager
 			# 0x0B: Change memory type to 1?
 			# 0x0C: Some weird behaviour that modifies LoadableIndex?? Some kind of deferred loading? Triggerable by scripting?
@@ -103,7 +103,7 @@ def extract_all(target_dir):
 			folder = target_dir + "/" + filename + "_extract"
 			if not os.path.exists(folder):
    				os.makedirs(folder)
-			with open(folder + "/" + name + f".x{hh}", "wb") as f:
+			with open(folder + "/" + str(i).zfill(4) +"_" + name + f".x{hh}", "wb") as f:
 				f.write(file_data)
 			i+=1
 			cumulative_offset += size

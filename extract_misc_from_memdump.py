@@ -33,7 +33,7 @@ ammo_data = util.chunks(memdump[am_offset:am_offset+am_num*am_sz], am_sz)
 # Hashcodes for sprites (ammo status) 
 # Translation IDs for names
 # SFX IDs for shots, reload
-# Vectors for hand hold points, ejection port for casings, etc
+# Vectors for hand hold points, ejection port for casings, etc - "animation datum"
 # Ranges
 # Accuracies
 # Shake amounts
