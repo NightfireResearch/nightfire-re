@@ -13,7 +13,38 @@ from PIL import Image
 # We only care about the Map types here (0x00, 0x01, 0x02). 
 # Within the "map" type there are a few sub-blocks.
 
-lastPalette = []
+lastPalette = None
+lastImageData = None
+imageStats = [] 
+
+def manipulatePalette(data):
+
+    chunks = list(util.chunks(data, 128))
+
+    return chunks[0] + chunks[2] + chunks[1] + chunks[3] + chunks[4] + chunks[6] + chunks[5] + chunks[7]
+
+
+def depalettize(indexed_data, palette, idx, w, h, palD):
+
+    # For some reason palD divides sizeBytes in 2?
+
+    if palD == 1:
+        div = 1
+    else:
+        div = 2
+
+    image = Image.new("RGBA", (w, h))
+    pixels = image.load()
+
+    # Convert indexed data to RGBA and set pixel values
+    for y in range(h):
+        for x in range(w):
+            palette_index = indexed_data[(y * w + x)//div]
+            rgba_color = palette[palette_index] if palette_index < len(palette) else (0xFF, 0x00, 0x00)
+            pixels[x, y] = rgba_color
+
+    # Save the image to a bitmap file
+    image.save(f"skyrail/{idx}.png", "PNG")
 
 
 def handle_block(idx, data, identifier):
@@ -23,6 +54,8 @@ def handle_block(idx, data, identifier):
     data = data[4:]
 
     global lastPalette
+    global lastImageData
+    global imageStats
 
     print(f"Got a subblock of length {len(data)} with identifier {identifier:x}")
 
@@ -41,47 +74,66 @@ def handle_block(idx, data, identifier):
     # 5: AIPath
 
     # 0xe: map header
+    #???
+    if identifier == 0x0e:
+        _, entityCnt, pathCnt, texCnt, = struct.unpack("<IIII", data[0:16])
+        print(f"Map header: Allocates header (m_pmap) and sets up counts. maybeEntity: {entityCnt}, maybePath: {pathCnt}, maybeTex: {texCnt}")
 
     # 0xf: palette header
+    # ???
 
     # 0x10: texture header
+    # This gets stored verbatim in pBmpHeader / m_pmap->bmpHeader and m_pmap->bmpSize
+    # This is indexed into in steps of 0xc in psiCreateMapTextures and possibly tells us which palette?
+    # ???
+    if identifier == 0x10:
+        for entry in list(util.chunks(data, 0xc)):
+            flags, unk0, w, h, bytespp, divisor, = struct.unpack("<BBHHBB4x", entry)
+
+            # Mostly 1byte/pixel palettised, some are weird values
+            # Perhaps this is a misnomer? But it relates malloc size (?) to the width*height
+            #assert bytespp in [1, 2, 3, 7, 8, 12], f"Unexpected number of bytes per pixel {bytespp}"
+
+            # It looks like we loop over this number??
+            # Is this the number of bitmaps repeating / using said palette perhaps?
+
+            # TODO: How do we link a palette and image data to each entry?
+
+            # Not sure what this does, but we do (60 / divisor) in psiCreateMapTextures
+            # Maybe related to scaling?
+            assert divisor in [0, 2, 6, 12, 20, 17, 30],f"Divisor value unexpected: {divisor}"
+
+            print(f"Texture has w: {w+1}, h: {h+1}, bytespp: {bytespp}, divisor: {divisor}, palDepth: {flags & 1}")
+
+            imageStats.append((w+1,h+1,flags & 1,))
 
     # 0x11: palette data (PC)
+    # Not present?
 
     # 0x12: palette data (PSX)
+    # Pointer is stored at pPalHeader+4, and then pBmpHeader is incremented
+    # First u32 could be a hashcode (or 0xFFFFFFFF)?
     if identifier == 0x12:
+
+        print(f"Palette size: {len(data)}")
+
+
         pBytes = list(util.chunks(data, 4))
         lastPalette = []
         for b in pBytes:
             lastPalette.append((int(b[0]), int(b[1]), int(b[2]))) # final is alpha 0x80, ignore
 
+        w,h,palD = imageStats[0]
+        imageStats = imageStats[1:] # Pop the first entry
+
+        depalettize(lastImageData, lastPalette, idx, w, h, palD)
+
 
     # 0x15, 0x16: texture data (PC)
+    # Pointer is stored at (pBmpHeader + 8), nothing else
     if identifier == 0x16:
 
-        if len(lastPalette) < 25:
-            print(f"PALETTE NOT FULL {len(lastPalette)}, SKIPPING FOR NOW")
-            valid = False
-        else:
-            valid = True
-
-        if valid:
-
-            indexed_data = data
-
-            size = isqrt(len(indexed_data))
-            image = Image.new("RGBA", (size, size))
-            pixels = image.load()
-
-            # Convert indexed data to RGBA and set pixel values
-            for y in range(size):
-                for x in range(size):
-                    palette_index = indexed_data[y * size + x]
-                    rgba_color = lastPalette[palette_index]
-                    pixels[x, y] = rgba_color
-
-            # Save the image to a bitmap file
-            image.save(f"skyrail/{idx}.png", "PNG")
+        lastImageData = data
 
 
     # 0x17: texture data (GC)
