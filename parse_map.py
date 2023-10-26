@@ -16,6 +16,7 @@ from PIL import Image
 lastPalette = None
 lastImageData = None
 imageStats = [] 
+texBlockNum = 0
 
 def manipulatePalette(data):
 
@@ -32,8 +33,10 @@ def depalettize(indexed_data, palette, idx, w, h, palette_size):
     # This explains why there's a divide-by-two in the size 
     if palette_size == 64:
         bpp = 4
+        suffix = "_4bpp"
     else:
         bpp = 8
+        suffix = "_8bpp"
 
     image = Image.new("RGBA", (w, h))
     pixels = image.load()
@@ -55,7 +58,7 @@ def depalettize(indexed_data, palette, idx, w, h, palette_size):
             pixels[x, y] = rgba_color
 
     # Save the image to a bitmap file
-    image.save(f"skyrail/{idx}.png", "PNG")
+    image.save(f"skyrail/{idx}{suffix}.png", "PNG")
 
 
 def handle_block(idx, data, identifier):
@@ -67,6 +70,7 @@ def handle_block(idx, data, identifier):
     global lastPalette
     global lastImageData
     global imageStats
+    global texBlockNum
 
     print(f"Got a subblock of length {len(data)} with identifier {identifier:x}")
 
@@ -98,12 +102,15 @@ def handle_block(idx, data, identifier):
     # This is indexed into in steps of 0xc in psiCreateMapTextures and possibly tells us which palette?
     # ???
     if identifier == 0x10:
+        entryNum = 0
         for entry in list(util.chunks(data, 0xc)):
             flags, unk0, w, h, bytespp, divisor, = struct.unpack("<BBHHBB4x", entry)
 
             # Mostly 1byte/pixel palettised, some are weird values
             # Perhaps this is a misnomer? But it relates malloc size (?) to the width*height
             #assert bytespp in [1, 2, 3, 7, 8, 12], f"Unexpected number of bytes per pixel {bytespp}"
+            if bytespp != 1:
+                print(f"Image {len(imageStats)} has weird bytes per pixel {bytespp}")
 
             # It looks like we loop over this number??
             # Is this the number of bitmaps repeating / using said palette perhaps?
@@ -114,9 +121,11 @@ def handle_block(idx, data, identifier):
             # Maybe related to scaling?
             assert divisor in [0, 2, 6, 12, 20, 17, 30],f"Divisor value unexpected: {divisor}"
 
-            print(f"Texture has w: {w+1}, h: {h+1}, bytespp: {bytespp}, divisor: {divisor}, palDepth: {flags & 1}")
+            print(f"Texture {len(imageStats)} has w: {w+1}, h: {h+1}, bytespp: {bytespp}, divisor: {divisor}, palDepth: {flags & 1}")
 
-            imageStats.append((w+1,h+1,flags & 1,))
+            imageStats.append((w+1,h+1,flags & 1, f"{texBlockNum}_{entryNum}",))
+            entryNum += 1
+        texBlockNum += 1
 
     # 0x11: palette data (PC)
     # Not present?
@@ -128,16 +137,17 @@ def handle_block(idx, data, identifier):
 
         print(f"Palette size: {len(data)}")
 
-
+        # 16-colour images are broken, possibly they use some other ordering or colour depth?
         pBytes = list(util.chunks(data, 4))
         lastPalette = []
         for b in pBytes:
             lastPalette.append((int(b[0]), int(b[1]), int(b[2]))) # final is alpha 0x80, ignore
 
-        w,h,palD = imageStats[0]
+        imgId = len(imageStats)
+        w,h,palD, name = imageStats[0]
         imageStats = imageStats[1:] # Pop the first entry
 
-        depalettize(lastImageData, lastPalette, idx, w, h, len(data))
+        depalettize(lastImageData, lastPalette, name, w, h, len(data))
 
 
     # 0x15, 0x16: texture data (PC)
@@ -149,7 +159,7 @@ def handle_block(idx, data, identifier):
 
     # 0x17: texture data (GC)
 
-    # 0x18: texture data (XBox)
+    # 0x18: texture data (XBox) - Not present on PS2 but might contain texture names according to https://discord.com/channels/718106079401345025/732258863834988667/799711901349183488
 
     # 0x19: path data if param1 is not zero??
 
