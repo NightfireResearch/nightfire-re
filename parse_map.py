@@ -24,14 +24,16 @@ def manipulatePalette(data):
     return chunks[0] + chunks[2] + chunks[1] + chunks[3] + chunks[4] + chunks[6] + chunks[5] + chunks[7]
 
 
-def depalettize(indexed_data, palette, idx, w, h, palD):
+def depalettize(indexed_data, palette, idx, w, h, palette_size):
 
-    # For some reason palD divides sizeBytes in 2?
 
-    if palD == 1:
-        div = 1
+    # Palettes can have size 1024 bytes or 64 bytes. Each entry is 4 bytes of uncompressed colour, so
+    # 256 or 16 entries (ie a 4 or 8 bit index).
+    # This explains why there's a divide-by-two in the size 
+    if palette_size == 64:
+        bpp = 4
     else:
-        div = 2
+        bpp = 8
 
     image = Image.new("RGBA", (w, h))
     pixels = image.load()
@@ -39,7 +41,16 @@ def depalettize(indexed_data, palette, idx, w, h, palD):
     # Convert indexed data to RGBA and set pixel values
     for y in range(h):
         for x in range(w):
-            palette_index = indexed_data[(y * w + x)//div]
+
+            if bpp == 8:
+                palette_index = indexed_data[(y * w + x)]
+            else:
+                palette_index = indexed_data[(y * w + x) // 2]
+                if x%2 != 0:
+                    palette_index = palette_index >> 4
+                else:
+                    palette_index = palette_index & 0x0F
+
             rgba_color = palette[palette_index] if palette_index < len(palette) else (0xFF, 0x00, 0x00)
             pixels[x, y] = rgba_color
 
@@ -126,7 +137,7 @@ def handle_block(idx, data, identifier):
         w,h,palD = imageStats[0]
         imageStats = imageStats[1:] # Pop the first entry
 
-        depalettize(lastImageData, lastPalette, idx, w, h, palD)
+        depalettize(lastImageData, lastPalette, idx, w, h, len(data))
 
 
     # 0x15, 0x16: texture data (PC)
