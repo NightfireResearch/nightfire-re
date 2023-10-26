@@ -87,14 +87,21 @@ def extract_all(target_dir):
 			# Attrs tells us what loader is used to load the file:
 			# 0x00, 0x02: Special case of below, but does not run AnimPostLoadInit
 			# 0x01: Map Parser (DirFileHash, didDoAnimPostLoad) -> zero for second param results in ambient light, sound and path data not being loaded 
-			# 0x03, 0x04, 0x05: Animation Load
+			# 0x03, 0x04, 0x05: Animation Load (seems like 0x05 are only used? AnimPostLoadInit references hashcodes 05xxxxxx only)
+			# 03: Unused????
+			# 04: AnimSeqData
+			# 05: AnimSkinData
+			# 06: AnimScriptData
 			# 0x06: AnimSkeleton
 			# 0x07: Script (keyframe animation)
 			# 0x08: Menu Manager
-			# 0x0B: Change memory type to 1?
+			# 0x0B: Change memory type to 1 (no effect?), then handle as parsemap_parsemap(..., 0)
 			# 0x0C: Some weird behaviour that modifies LoadableIndex?? Some kind of deferred loading? Triggerable by scripting?
 			# 0x0f: Icon (only used by PS2 memory card?)
 			# 0x10: Woman (handled by decompress_woman.py)
+
+			# Some of these file formats (eg 0x03, 0x05, etc) start with their hashcode.
+			# Others don't seem to (eg map data always starts 0x00000001) - version number?
 
 			# For the next tool in the pipeline, let's give each file an extension based on its attrs
 			hh = "{:02x}".format(attrs)
