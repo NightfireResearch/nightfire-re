@@ -18,11 +18,16 @@ lastImageData = None
 imageStats = [] 
 texBlockNum = 0
 
-def manipulatePalette(data):
 
-    chunks = list(util.chunks(data, 128))
+def manipulatePalette20(data):
 
-    return chunks[0] + chunks[2] + chunks[1] + chunks[3] + chunks[4] + chunks[6] + chunks[5] + chunks[7]
+    # Swizzle the palette in chunks of 0x20 bytes, order 0, 2, 1, 3
+    chunks = list(util.chunks(data, 0x20))
+    newData = []
+    for i in range(4):
+        newData += chunks[0] + chunks[2] + chunks[1] + chunks[3] + chunks[4] + chunks[6] + chunks[5] + chunks[7]
+        chunks = chunks[8:]
+    return newData
 
 
 def depalettize(indexed_data, palette, idx, w, h, palette_size):
@@ -30,7 +35,7 @@ def depalettize(indexed_data, palette, idx, w, h, palette_size):
 
     # Palettes can have size 1024 bytes or 64 bytes. Each entry is 4 bytes of uncompressed colour, so
     # 256 or 16 entries (ie a 4 or 8 bit index).
-    # This explains why there's a divide-by-two in the size 
+    # This explains why there's a divide-by-two in the size
     if palette_size == 64:
         bpp = 4
         suffix = "_4bpp"
@@ -38,7 +43,7 @@ def depalettize(indexed_data, palette, idx, w, h, palette_size):
         bpp = 8
         suffix = "_8bpp"
 
-    image = Image.new("RGBA", (w, h))
+    image = Image.new("RGB", (w, h))
     pixels = image.load()
 
     # Convert indexed data to RGBA and set pixel values
@@ -137,10 +142,20 @@ def handle_block(idx, data, identifier):
 
         print(f"Palette size: {len(data)}")
 
-        # 16-colour images are broken, possibly they use some other ordering or colour depth?
+        # 256-colour images are broken, possibly they use some other ordering or colour depth?
+        # Try the swizzle?
+
+        # noesis / docs suggest 128 byte stride
+        # Another site says 0x20 bytes
+
+        if len(data) == 1024:
+            data = manipulatePalette20(data)
+            pass
+
         pBytes = list(util.chunks(data, 4))
         lastPalette = []
         for b in pBytes:
+            #assert b[3] == 0x80,f"Alpha is not 0x80 in palette in image {len(imageStats)} - it's {b[3]}"
             lastPalette.append((int(b[0]), int(b[1]), int(b[2]))) # final is alpha 0x80, ignore
 
         imgId = len(imageStats)
