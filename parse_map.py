@@ -19,7 +19,15 @@ imageStats = []
 texBlockNum = 0
 
 
+## TODO:
+# Image alpha - what is the correct way to scale this?
+# How are "anonymous" textures (ie ones without a hashcode) numbered/referenced in the rest of the level?
+
+
 def manipulatePalette20(data):
+
+    # This is a guess as to how we can reinterpret the palette, from the following:
+    # CSM1: The pixels are stored and swizzled every 0x20 bytes. This option is faster for PS2 rendering.
 
     # Swizzle the palette in chunks of 0x20 bytes, order 0, 2, 1, 3
     chunks = list(util.chunks(data, 0x20))
@@ -30,18 +38,16 @@ def manipulatePalette20(data):
     return newData
 
 
-def depalettize(indexed_data, palette, idx, w, h, palette_size):
+def depalettize(indexed_data, palette, w, h, filename):
 
 
     # Palettes can have size 1024 bytes or 64 bytes. Each entry is 4 bytes of uncompressed colour, so
     # 256 or 16 entries (ie a 4 or 8 bit index).
     # This explains why there's a divide-by-two in the size
-    if palette_size == 64:
+    if len(palette) == 16:
         bpp = 4
-        suffix = "_4bpp"
     else:
         bpp = 8
-        suffix = "_8bpp"
 
     image = Image.new("RGB", (w, h))
     pixels = image.load()
@@ -63,7 +69,7 @@ def depalettize(indexed_data, palette, idx, w, h, palette_size):
             pixels[x, y] = rgba_color
 
     # Save the image to a bitmap file
-    image.save(f"skyrail/{idx}{suffix}.png", "PNG")
+    image.save(filename, "PNG")
 
 
 def handle_block(idx, data, identifier):
@@ -77,7 +83,7 @@ def handle_block(idx, data, identifier):
     global imageStats
     global texBlockNum
 
-    print(f"Got a subblock of length {len(data)} with identifier {identifier:x}")
+    #print(f"Got a subblock of length {len(data)} with identifier {identifier:x}")
 
     with open(f"skyrail/subblock_{idx}_{identifier:x}.bin", "wb") as f:
         f.write(data)
@@ -109,7 +115,7 @@ def handle_block(idx, data, identifier):
     if identifier == 0x10:
         entryNum = 0
         for entry in list(util.chunks(data, 0xc)):
-            flags, unk0, w, h, bytespp, divisor, = struct.unpack("<BBHHBB4x", entry)
+            flags, unk0, w, h, bytespp, divisor, hashcode = struct.unpack("<BBHHBBI", entry)
 
             # Mostly 1byte/pixel palettised, some are weird values
             # Perhaps this is a misnomer? But it relates malloc size (?) to the width*height
@@ -126,9 +132,9 @@ def handle_block(idx, data, identifier):
             # Maybe related to scaling?
             assert divisor in [0, 2, 6, 12, 20, 17, 30],f"Divisor value unexpected: {divisor}"
 
-            print(f"Texture {len(imageStats)} has w: {w+1}, h: {h+1}, bytespp: {bytespp}, divisor: {divisor}, palDepth: {flags & 1}")
+            print(f"Texture {len(imageStats)} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, bytespp: {bytespp}, divisor: {divisor}, palDepth: {flags & 1}")
 
-            imageStats.append((w+1,h+1,flags & 1, f"{texBlockNum}_{entryNum}",))
+            imageStats.append((w+1,h+1,flags & 1, f"{texBlockNum}_{entryNum}",hashcode,))
             entryNum += 1
         texBlockNum += 1
 
@@ -140,7 +146,7 @@ def handle_block(idx, data, identifier):
     # First u32 could be a hashcode (or 0xFFFFFFFF)?
     if identifier == 0x12:
 
-        print(f"Palette size: {len(data)}")
+        #print(f"Palette size: {len(data)}")
 
         # 256-colour images are broken, possibly they use some other ordering or colour depth?
         # Try the swizzle?
@@ -159,10 +165,15 @@ def handle_block(idx, data, identifier):
             lastPalette.append((int(b[0]), int(b[1]), int(b[2]))) # final is alpha 0x80, ignore
 
         imgId = len(imageStats)
-        w,h,palD, name = imageStats[0]
+        w,h,palD,name,hashcode = imageStats[0]
         imageStats = imageStats[1:] # Pop the first entry
 
-        depalettize(lastImageData, lastPalette, name, w, h, len(data))
+        if hashcode != 0xFFFFFFFF:
+            filename = f"skyrail/{hashcode:08x}.png"
+        else:
+            filename = f"skyrail/{texBlockNum}_{imgId}.png"
+
+        depalettize(lastImageData, lastPalette, w, h, filename)
 
 
     # 0x15, 0x16: texture data (PC)
