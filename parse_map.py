@@ -23,6 +23,9 @@ texBlockNum = 0
 # Image alpha - what is the correct way to scale this?
 # How are "anonymous" textures (ie ones without a hashcode) numbered/referenced in the rest of the level?
 
+# PS2 alpha is in range 0-2 (0x80 = full alpha)
+def alphaScale(b):
+    return int(b * (255/0x80))
 
 def manipulatePalette20(data):
 
@@ -43,13 +46,13 @@ def depalettize(indexed_data, palette, w, h, filename):
 
     # Palettes can have size 1024 bytes or 64 bytes. Each entry is 4 bytes of uncompressed colour, so
     # 256 or 16 entries (ie a 4 or 8 bit index).
-    # This explains why there's a divide-by-two in the size
+    # This explains why there's a divide-by-two in the size (4-bit index = 2 pixels out per palettized byte in)
     if len(palette) == 16:
         bpp = 4
     else:
         bpp = 8
 
-    image = Image.new("RGB", (w, h))
+    image = Image.new("RGBA", (w, h))
     pixels = image.load()
 
     # Convert indexed data to RGBA and set pixel values
@@ -75,7 +78,7 @@ def depalettize(indexed_data, palette, w, h, filename):
 def handle_block(idx, data, identifier):
     # See parsemap_handle_block_id
 
-    # Strip the identifier/size off the image
+    # Strip the identifier/size off the block data
     data = data[4:]
 
     global lastPalette
@@ -161,8 +164,7 @@ def handle_block(idx, data, identifier):
         pBytes = list(util.chunks(data, 4))
         lastPalette = []
         for b in pBytes:
-            #assert b[3] == 0x80,f"Alpha is not 0x80 in palette in image {len(imageStats)} - it's {b[3]}"
-            lastPalette.append((int(b[0]), int(b[1]), int(b[2]))) # final is alpha 0x80, ignore
+            lastPalette.append((int(b[0]), int(b[1]), int(b[2]), alphaScale(b[3])))
 
         imgId = len(imageStats)
         w,h,palD,name,hashcode = imageStats[0]
