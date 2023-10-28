@@ -145,30 +145,23 @@ def handle_block(idx, data, identifier):
     # Not present?
 
     # 0x12: palette data (PSX)
-    # Pointer is stored at pPalHeader+4, and then pBmpHeader is incremented
-    # First u32 could be a hashcode (or 0xFFFFFFFF)?
     if identifier == 0x12:
 
-        #print(f"Palette size: {len(data)}")
-
-        # 256-colour images are broken, possibly they use some other ordering or colour depth?
-        # Try the swizzle?
-
-        # noesis / docs suggest 128 byte stride
-        # Another site says 0x20 bytes
-
+        # This type of palette is swizzled (for performance?)
         if len(data) == 1024:
             data = manipulatePalette20(data)
             pass
 
+        # Each colour within the palette is represented as 4 bytes, order RGBA (PS2 scaling for A)
         pBytes = list(util.chunks(data, 4))
         lastPalette = []
         for b in pBytes:
             lastPalette.append((int(b[0]), int(b[1]), int(b[2]), alphaScale(b[3])))
 
+        # Pop the first entry out of the "imageStats" list (ie data from 0x10 block)
         imgId = len(imageStats)
         w,h,palD,name,hashcode = imageStats[0]
-        imageStats = imageStats[1:] # Pop the first entry
+        imageStats = imageStats[1:]
 
         if hashcode != 0xFFFFFFFF:
             filename = f"skyrail/{hashcode:08x}.png"
@@ -179,9 +172,8 @@ def handle_block(idx, data, identifier):
 
 
     # 0x15, 0x16: texture data (PC)
-    # Pointer is stored at (pBmpHeader + 8), nothing else
+    # This is paired with a palette block that explains how we should interpret this data, useless on its own
     if identifier == 0x16:
-
         lastImageData = data
 
 
