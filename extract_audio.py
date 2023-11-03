@@ -13,7 +13,7 @@ import os
 # ISO/PS2: Audio data and metadata directory
 #     - MFXINFO.MXI         - The Hashcode representing each of the 16 music tracks?        1-int entries used by .IRX in SFXInitialiseAudioStreamSystem to load MusicTrackInfo[]. Copied as 150 (0x96) entries.
 #     - SBINFO.SBI          - The Hashcode representing each of the 25 SFX banks?           1-int entries used by .IRX in SFXInitialise to load SoundBankInfo[]. Coped as 150 (0x96) entries.
-#     - DEBUG.TXT           - ??, Contains an (incomplete?) list of SFX names in an unknown order
+#     - DEBUG.TXT           - ??, Contains an (incomplete?) list of SFX names in alphabetic order
 # ISO/PS2/MUSIC/MFX_(0,1): Music tracks
 #           - MFX_{NUM}.SMF - Stream Marker File - consists of various offsets and marker types (Start, End, Loop etc)
 #           - MFX_{NUM}.SSD - ADPCM data, stereo, 32000

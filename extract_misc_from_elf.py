@@ -7,45 +7,79 @@ import struct
 with open("extract/ACTION.ELF", "rb") as f:
     action_elf = f.read()
 
+
+# There are hardcoded checks for SFXID < 0x60d, which suggests there are a total of 1549 effect IDs
+# but the SFX name list is only 1394 entries long.
+
+# So how can we use these tables?
+# Let's take some examples
+# SFX_ENV_SEARCHLIGHT_SHATTER_01: Found at index 1035 in HC to String table, identified as 0xE5 in Spotlight script.
+# SFX_ENV_SEARCHLIGHT_SWITCH_ON: Found at index 1036 in HC to String table, identified as 0xE6 in Spotlight script.
+# These can be looked up in SFXOutputData
+# Entry 229 references SFX_ENV_SEARCHLIGHT_SWITCH_ON. 229 = 0xE5. So there's how the mapping works.
+# This is supported by / duplicated in Num to HC table, which has idx 1035 -> 0xE6 and idx 1036 -> 0xe5.
+
 #
-# SFX ENUM
+# "NumberToHashCode" at 00247c80 - is 11152 bytes long (8 x 1394 - so very likely is linked to SFX)
+#
+nthc = util.chunks(action_elf[external_knowledge.nthc_start:external_knowledge.nthc_end], external_knowledge.nthc_entry_size)
+
+with open("num_to_hc.txt", "w") as f:
+	for idx, a in enumerate(nthc):
+		hc, unk1 = struct.unpack("<II", a)
+
+		# Junk values / 8 byte padded
+		assert unk1==0, "Unk1 is not 0"
+
+		# Could correspond to the index in SFXOutputData?
+		assert hc in range(0, 1549), "Out of expected range"
+
+		f.write(f"{idx},0x{hc:08x}\n")
+
+
+#
+# "HashCodeToString" at 0024a810 - is 22304 bytes long (16 x 1394 - so could also be linked to SFX?)
 #
 
-# Starts at PS2 address 002e96a0 (1E35A0 in ELF), ends at 1EE520 in ELF
-# Names all start SFX_ and are null-terminated
-# First should be SFX_BODY_HIT_CARPET
-# Last should be SFX_WEAPON_XBOW_SHOT_01
+def string_from_address(data, memaddr):
+	elfaddr = external_knowledge.memaddr_to_elfaddr(memaddr)
+	return data[elfaddr:elfaddr+1000].split(b"\x00")[0].decode("ascii")
 
-sfxnames = [x for x in action_elf[external_knowledge.sfxnametable_offset_start:external_knowledge.sfxnametable_offset_end].split(b"\x00") if x]
+# This contains a hashcode (?) and the memory address of a string in the SFXNames table
+hcts = util.chunks(action_elf[external_knowledge.hcts_start:external_knowledge.hcts_end], external_knowledge.hcts_entry_size)
 
-assert sfxnames[0] == b"SFX_BODY_HIT_CARPET"
-assert sfxnames[-1] == b"SFX_WEAPON_XBOW_SHOT_01", f"Wrong last name {sfxnames[-1]}"
+with open("hc_to_str.csv", "w") as f:
+	f.write("Index,Hashcode,Name\n")
+	for idx, a in enumerate(hcts):
+		hc, unk1, ptr, unk2 = struct.unpack("<IIII", a)
 
-with open("sfx_enum.txt", "w") as f:
-	for n in sfxnames:
-		f.write(n.decode("ascii") + "\n")
+		# Junk values / it's padded to 8 bytes for some reason
+		assert unk1 == 0, "Unk1 is not 0"
+		assert unk2 == 0, "Unk2 is not 0"
 
-# TODO: There are hardcoded checks for SFXID < 0x60d, which suggests there are a total of 1549 effects
-# but this list is only 1394 entries long!
-# Adding the 233 entries in DEBUG.TXT would take us to 1627! (unless duplicates?)
-# Adding the 314 filename entries in DEBUG.TXT would take us further over.
+		# Could correspond to the index in SFXOutputData
+		assert hc in range(0, 1549), "Out of expected range"
 
-# So how can we use this table?
-# If we know which soundbank is loaded?
-# For example:
-# Line 1036: SFX_ENV_SEARCHLIGHT_SHATTER_01 ///// Hardcoded as 0xE5 in Spotlight script
-# Line 1037: SFX_ENV_SEARCHLIGHT_SWITCH_ON  ///// Hardcoded as 0xE6 in Spotlight script
-# This is used (only?) in HT_Level_CastleCourtyard?
-# which in Sound_Ready will have loaded sound bank 4
-# So we can guess sound bank 4 entry 0xE5 will be a searchlight shatter.
-# but it ISN'T! IT IS A SILENCED PISTOL SHOT?
-# 
-# It would also be a bit weird if SFX numbers could overlap because this could lead to
-# for example the wrong subtitle being shown, or SFX being shown for the wrong duration (see below)
-# So we can assume the SFX ID is reasonably unique?
+		# Pick out the string from the memory address
+		s = string_from_address(action_elf, ptr)
 
-# Perhaps SFX ID is some combination of BANK_ID | TRACK_NUM, or flattening the bank/track into a single number some other way results in SFX ID?
-# Or maybe there's some mapping in the IRX module?
+		#print(f"HC {hc:08x} has name {s}")
+		f.write(f"{idx},0x{hc:08x},{s}\n")
+
+
+
+#
+# "MapMusic" - ???
+#
+
+# TODO: This
+
+
+#
+# "MapDroneData" - ???
+#
+
+# TODO: This
 
 
 

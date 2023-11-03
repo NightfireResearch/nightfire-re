@@ -71,3 +71,15 @@ sfxdata_start = memaddr_to_elfaddr(0x002ca2a0)
 sfxdata_entry_size = 0x18
 sfxdata_num_entries = 1549
 sfxdata_end = sfxdata_start + sfxdata_entry_size * sfxdata_num_entries
+
+# NumberToHashCode
+nthc_start = memaddr_to_elfaddr(0x00247c80)
+nthc_entry_size = 8
+nthc_num_entries = 1394
+nthc_end = nthc_start + nthc_entry_size * nthc_num_entries
+
+# HashCodeToString
+hcts_start = memaddr_to_elfaddr(0x0024a810)
+hcts_entry_size = 16
+hcts_num_entries = 1394
+hcts_end = hcts_start + hcts_entry_size * hcts_num_entries
