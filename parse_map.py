@@ -17,6 +17,7 @@ lastPalette = None
 lastImageData = None
 imageStats = [] 
 texBlockNum = 0
+level_name = ""
 
 
 ## TODO:
@@ -40,17 +41,7 @@ def manipulatePalette20(data):
         chunks = chunks[8:]
     return newData
 
-
-def depalettize(indexed_data, palette, w, h, filename):
-
-
-    # Palettes can have size 1024 bytes or 64 bytes. Each entry is 4 bytes of uncompressed colour, so
-    # 256 or 16 entries (ie a 4 or 8 bit index).
-    # This explains why there's a divide-by-two in the size (4-bit index = 2 pixels out per palettized byte in)
-    if len(palette) == 16:
-        bpp = 4
-    else:
-        bpp = 8
+def depalettizeFrame(indexed_data, palette, w, h, bpp):
 
     image = Image.new("RGBA", (w, h))
     pixels = image.load()
@@ -71,11 +62,47 @@ def depalettize(indexed_data, palette, w, h, filename):
             rgba_color = palette[palette_index] if palette_index < len(palette) else (0xFF, 0x00, 0x00)
             pixels[x, y] = rgba_color
 
-    # Save the image to a bitmap file
-    image.save(filename, "PNG")
+    return image
 
 
-def handle_block(idx, data, identifier):
+def depalettize(indexed_data, palette, w, h, filename, animFrames):
+
+
+    # Palettes can have size 1024 bytes or 64 bytes. Each entry is 4 bytes of uncompressed colour, so
+    # 256 or 16 entries (ie a 4 or 8 bit index).
+    # This explains why there's a divide-by-two in the size (4-bit index = 2 pixels out per palettized byte in)
+    if len(palette) == 16:
+        bpp = 4
+    else:
+        bpp = 8
+
+    bytes_per_frame = w * h // (8//bpp)
+    num_bytes_required = animFrames * bytes_per_frame
+
+    print(f"Got {animFrames} frames of dimension {w}, {h} and depth {bpp} so expected {num_bytes_required}, got {len(indexed_data)} bytes")
+    if(num_bytes_required < len(indexed_data)):
+        print(f"Got too many bytes, extraction incomplete!!!")
+    if(num_bytes_required > len(indexed_data)):
+        print(f"Got too few bytes, skipping!!!")
+        return
+
+    if animFrames == 1:
+        # Save as PNG
+        image = depalettizeFrame(indexed_data, palette, w, h, bpp)
+        image.save(filename+".png", "PNG")
+
+    else:
+        # Extract as animated WEBP
+        frames = []
+        for i in range(animFrames):
+        
+            frames.append(depalettizeFrame(indexed_data[i*bytes_per_frame:(i+1)*bytes_per_frame], palette, w, h, bpp))
+
+        # Save all frames as WEBP
+        frames[0].save(filename +".webp", save_all=True, append_images = frames[1:], optimize=False, duration=200, loop=0)
+
+
+def handle_block(path, idx, data, identifier):
     # See parsemap_handle_block_id
 
     # Strip the identifier/size off the block data
@@ -88,7 +115,7 @@ def handle_block(idx, data, identifier):
 
     #print(f"Got a subblock of length {len(data)} with identifier {identifier:x}")
 
-    with open(f"skyrail/subblock_{idx}_{identifier:x}.bin", "wb") as f:
+    with open(f"{path}/subblock_{idx}_{identifier:x}.bin", "wb") as f:
         f.write(data)
     # 0, 8: dict_XYZ data
 
@@ -118,13 +145,7 @@ def handle_block(idx, data, identifier):
     if identifier == 0x10:
         entryNum = 0
         for entry in list(util.chunks(data, 0xc)):
-            flags, unk0, w, h, bytespp, divisor, hashcode = struct.unpack("<BBHHBBI", entry)
-
-            # Mostly 1byte/pixel palettised, some are weird values
-            # Perhaps this is a misnomer? But it relates malloc size (?) to the width*height
-            #assert bytespp in [1, 2, 3, 7, 8, 12], f"Unexpected number of bytes per pixel {bytespp}"
-            if bytespp != 1:
-                print(f"Image {len(imageStats)} has weird bytes per pixel {bytespp}")
+            flags, unk0, w, h, animFrames, divisor, hashcode = struct.unpack("<BBHHBBI", entry)
 
             # It looks like we loop over this number??
             # Is this the number of bitmaps repeating / using said palette perhaps?
@@ -133,11 +154,11 @@ def handle_block(idx, data, identifier):
 
             # Not sure what this does, but we do (60 / divisor) in psiCreateMapTextures
             # Maybe related to scaling?
-            assert divisor in [0, 2, 6, 12, 20, 17, 30],f"Divisor value unexpected: {divisor}"
+            assert divisor <= 60 ,f"Divisor value unexpected: {divisor}"
 
-            print(f"Texture {len(imageStats)} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, bytespp: {bytespp}, divisor: {divisor}, palDepth: {flags & 1}")
+            print(f"Texture {len(imageStats)} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
 
-            imageStats.append((w+1,h+1,flags & 1, f"{texBlockNum}_{entryNum}",hashcode,))
+            imageStats.append((w+1,h+1,flags & 1, f"{texBlockNum}_{entryNum}",hashcode,animFrames,))
             entryNum += 1
         texBlockNum += 1
 
@@ -160,15 +181,15 @@ def handle_block(idx, data, identifier):
 
         # Pop the first entry out of the "imageStats" list (ie data from 0x10 block)
         imgId = len(imageStats)
-        w,h,palD,name,hashcode = imageStats[0]
+        w,h,palD,name,hashcode,animFrames = imageStats[0]
         imageStats = imageStats[1:]
 
         if hashcode != 0xFFFFFFFF:
-            filename = f"skyrail/{hashcode:08x}.png"
+            filename = f"level_unpack/global_assets/{hashcode:08x}"
         else:
-            filename = f"skyrail/{texBlockNum}_{imgId}.png"
+            filename = f"{path}/{texBlockNum}_{imgId}"
 
-        depalettize(lastImageData, lastPalette, w, h, filename)
+        depalettize(lastImageData, lastPalette, w, h, filename,animFrames)
 
 
     # 0x15, 0x16: texture data (PC)
@@ -219,10 +240,16 @@ def handle_block(idx, data, identifier):
 
     # That's IT!
 
-if __name__ == "__main__":
-
-    target_dir = "files_bin_unpack/07000024_HT_Level_SkyRail.bin_extract/"
+def extract_leveldir(name):
+    global level_name
+    level_name = name
+    target_dir = f"files_bin_unpack/{level_name}.bin_extract/"
     ordered_dir=sorted(os.listdir(target_dir)) # Go through in the order set by the bin file
+
+    path = f"level_unpack/{level_name}"
+    os.system(f"mkdir -p {path}")
+    os.system(f"mkdir -p level_unpack/global_assets")
+
     for filename in ordered_dir:
 
         # If the main type was x00, x01, x02, x0b it would have been sent through to parsemap_parsemap.
@@ -284,7 +311,7 @@ if __name__ == "__main__":
             FileBlockSize[bh_identifier] += bh_size
             
             # Sub-block found - ID, size
-            handle_block(idx, data[pFileNextBlock:pFileNextBlock+bh_size], bh_identifier)
+            handle_block(path, idx, data[pFileNextBlock:pFileNextBlock+bh_size], bh_identifier)
 
 
             # Advance to next entry
@@ -318,4 +345,17 @@ if __name__ == "__main__":
         # parsemap_block_particles_ goes to Emitter_LoadDefs which stores the data at the specified hashcode.
 # This is then used by Emitter_Update / Emitter_Draw
 # There appear to be multiple types
+
+
+
+if __name__ == "__main__":
+
+    directory = "files_bin_unpack/"
+    print(f"Extracting all level content from levels in {directory}")
+    fnames=sorted(os.listdir(directory))
+    levels = [x.replace(".bin_extract", "") for x in fnames if ".bin_extract" in x]
+
+    for l in levels:
+        extract_leveldir(l)
+
 
