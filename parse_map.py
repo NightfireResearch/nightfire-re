@@ -65,7 +65,7 @@ def depalettizeFrame(indexed_data, palette, w, h, bpp):
     return image
 
 
-def depalettize(indexed_data, palette, w, h, filename, animFrames):
+def depalettize(indexed_data, palette, w, h, animFrames):
 
 
     # Palettes can have size 1024 bytes or 64 bytes. Each entry is 4 bytes of uncompressed colour, so
@@ -79,28 +79,249 @@ def depalettize(indexed_data, palette, w, h, filename, animFrames):
     bytes_per_frame = w * h // (8//bpp)
     num_bytes_required = animFrames * bytes_per_frame
 
-    print(f"Got {animFrames} frames of dimension {w}, {h} and depth {bpp} so expected {num_bytes_required}, got {len(indexed_data)} bytes")
+    #print(f"Got {animFrames} frames of dimension {w}, {h} and depth {bpp} so expected {num_bytes_required}, got {len(indexed_data)} bytes")
     if(num_bytes_required < len(indexed_data)):
         print(f"Got too many bytes, extraction incomplete!!!")
     if(num_bytes_required > len(indexed_data)):
         print(f"Got too few bytes, skipping!!!")
         return
 
-    if animFrames == 1:
-        # Save as PNG
-        image = depalettizeFrame(indexed_data, palette, w, h, bpp)
-        image.save(filename+".png", "PNG")
+    frames = []
+    for i in range(animFrames):    
+        frames.append(depalettizeFrame(indexed_data[i*bytes_per_frame:(i+1)*bytes_per_frame], palette, w, h, bpp))
 
+    return frames
+
+def framesToFile(frames, filename):
+
+    if frames==None:
+        print(f"Tried to write to {filename} but got no data, misunderstood the format?")
+        return
+
+    if len(frames) == 1:
+        frames[0].save(filename + ".png", "PNG")
     else:
-        # Extract as animated WEBP
-        frames = []
-        for i in range(animFrames):
-        
-            frames.append(depalettizeFrame(indexed_data[i*bytes_per_frame:(i+1)*bytes_per_frame], palette, w, h, bpp))
-
-        # Save all frames as WEBP
         frames[0].save(filename +".webp", save_all=True, append_images = frames[1:], optimize=False, duration=200, loop=0)
 
+
+def handler_entity_params(path, idx, data, identifier):
+    global framelists
+    print(f"DATA COMMIT: Len {len(data)}")
+    #pprint(data)
+
+    # Possibly a struct. According to parsemap_block_entity_params it should be 10 uints, 2 floats.
+    # These are stored within the current cel/glist, so likely represent some stats about the
+    # current object (num textures, num vertices, etc). There's also some residual data - ascii string name with padding
+    # Hashcode (or 0xFFFFFFFF)
+    # 2 further int-like things (possibly just one?)
+    # 9 float-like things
+    # string Name
+    params = struct.unpack("<3I9f", data[0:48])
+    hashcode = params[0]
+
+    # for p in params:
+    #     if type(p) == int:
+    #         print(f"hex: {p:08x}, dec: {p}")
+    #     else:
+    #         pprint(p)
+
+    # TODO: Something useful with this data?
+
+    name = (data[48:].split(b"\x00")[0].decode("ascii"))
+    print(f"Name: {name}")
+
+    # TODO: All the textures/geometry that were previously found now have an identifier!
+    # However the name may NOT BE UNIQUE - eg different weapons may both have parts named "Trigger"
+    pass
+
+def handler_map_header(path, idx, data, identifier):
+    _, entityCnt, pathCnt, texCnt, = struct.unpack("<IIII", data[0:16])
+    print(f"Map header: Allocates header (m_pmap) and sets up counts. maybeEntity: {entityCnt}, maybePath: {pathCnt}, maybeTex: {texCnt}")
+
+def handler_tex_header(path, idx, data, identifier):
+    global lastPalette
+    global lastImageData
+    global imageStats
+    global texBlockNum
+    entryNum = 0
+    for entry in list(util.chunks(data, 0xc)):
+        flags, unk0, w, h, animFrames, divisor, hashcode = struct.unpack("<BBHHBBI", entry)
+
+        # It looks like we loop over this number??
+        # Is this the number of bitmaps repeating / using said palette perhaps?
+
+        # TODO: How do we link a palette and image data to each entry?
+
+        # Not sure what this does, but we do (60 / divisor) in psiCreateMapTextures
+        # Maybe related to scaling?
+        # MAYBE RELATED TO ANIMATION FRAME RATE? NOT OBVIOUSLY SO THOUGH. ALSO WHAT DOES 0 MEAN?
+        assert divisor <= 60 ,f"Divisor value unexpected: {divisor}"
+
+        #print(f"Texture {len(imageStats)} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
+
+        imageStats.append((w+1,h+1,flags & 1, f"{texBlockNum}_{entryNum}",hashcode,animFrames,))
+        entryNum += 1
+    texBlockNum += 1
+
+def handler_tex_palette(path, idx, data, identifier):
+    global lastPalette
+    global lastImageData
+    global imageStats
+    global texBlockNum
+    global framelists
+    # This type of palette is swizzled (for performance?)
+    if len(data) == 1024:
+        data = manipulatePalette20(data)
+        pass
+
+    # Each colour within the palette is represented as 4 bytes, order RGBA (PS2 scaling for A)
+    pBytes = list(util.chunks(data, 4))
+    lastPalette = []
+    for b in pBytes:
+        lastPalette.append((int(b[0]), int(b[1]), int(b[2]), alphaScale(b[3])))
+
+    # Pop the first entry out of the "imageStats" list (ie data from 0x10 block)
+    imgId = len(imageStats)
+    w,h,palD,name,hashcode,animFrames = imageStats[0]
+    imageStats = imageStats[1:]
+
+    if hashcode != 0xFFFFFFFF:
+        filename = f"level_unpack/global_assets/{hashcode:08x}"
+        framesToFile(depalettize(lastImageData, lastPalette, w, h, animFrames), filename)
+    else:
+        filename = f"{path}/{texBlockNum}_{imgId}"
+        framesToFile(depalettize(lastImageData, lastPalette, w, h,animFrames), filename)
+
+def handler_tex_data(path, idx, data, identifier):
+    global lastImageData
+    lastImageData = data
+
+def handler_ps2gfx(path, idx, data, identifier):
+    
+    # Assume 3x uint32 header
+    # Field 0 identifies the number of bytes beyond the header
+    # Field 1 and 2 are always 0??
+
+    # It's a celglist struct? So likely a load of uint32, followed by data (floats?)
+
+    with open(f"{path}/mesh_{idx}_{identifier}.bin", "wb") as f:
+        f.write(data)
+    pass
+
+def handler_lightambient(path, idx, data, identifier):
+    # First 4 bytes: Num lights
+    # Then n * 32 bytes: Config for each light
+    (n,) = struct.unpack("<I", data[0:4])
+    print(f"Found {n} lights")
+
+    lights = util.chunks(data[4:], 32)
+
+    for i, light in enumerate(lights):
+
+        # See LightData struct / Light_SetAmbientRadiators
+        # could be posx, posy, posz, radius, unknown4, r, g, b
+        (posX, posY, posZ, radius, unk0, unk1, unk2, unk3, r, g, b) = struct.unpack("<ffffBBBBfff", light)
+
+        print(f"Light {i} data: ({posX}, {posY}, {posZ}), {radius} - colour {r}, {g}, {b}, unk {unk0:02x}, {unk1:02x}, {unk2:02x}, {unk3:02x}")
+    pass
+
+def handler_lod(path, idx, data, identifier):
+    # N entries of format (0xFFFFFFFF, 99999.0f)?
+    # Override the LOD for a given object (hashcode/FF) to the given distance?
+
+    entries = util.chunks(data, 8)
+
+    for i, e in enumerate(entries):
+        a, b = struct.unpack("<If", e)
+        # assert a == 0xFFFFFFFF, f"unexpected value {a} in LOD"
+        # assert b == 99999.0, f"Unexpected float {b} in LOD"
+        #print(f"Lod entry {i}: {a:08x} has dist {b}")
+        pass
+
+    # TODO: What is LOD data used for?
+
+def handler_aipath(path, idx, data, identifier):
+
+    # Header: version?, number of paths?
+    (version, numPaths) = struct.unpack("<II", data[0:8])
+    assert version==8, "Incorrectly assumed that the first field in AIPath is always 8"
+
+    # TODO: Interpret the data
+
+    nameBytes,unk0, numA, unk1 = struct.unpack("<128sI32xII12x", data[8:8+184])
+
+    name = nameBytes.split(b"\x00")[0].decode("ascii")
+
+    print(f"Found a path called {name}")
+
+    # For each Path: 
+    #   Name, padded to 128 bytes?
+    #   Number, padded to 32 bytes?
+    #   ??: Number of "Type A"
+
+    #   "Type A": 32 bytes (SubPen: 676ish entries?)
+    #       ??: 12 bytes
+    #       ??: 4x floats (xyz,1)
+    #       ??: 1x u32 (index?)
+
+    #   "Type B": 20 bytes (SubPen: 655ish entries?)
+    #       ??: 
+    #       ??: Idx from (short?)
+    #       ??: Idx to (short?)
+    pass
+
+
+def handler_default(path, idx, data, identifier):
+
+    print(f"Unknown block type {identifier:02x}, dumping...")
+
+    typename = typelookup.get(identifier, f"unknown{identifier:02x}")
+
+    with open(f"{path}/_{typename}_{idx}.bin", "wb") as f:
+        f.write(data)
+
+def handler_blank_discard(path, idx, data, identifier):
+    assert len(data)==0, "Handling a discard block but there is data"
+    return
+
+typelookup = {
+    0x00: "dictxyz",
+    0x01: "dictuv",
+    0x02: "dictrgba",
+    0x03: "dictcomlist03",
+    0x0b: "dictcomlist0b",
+    0x0f: "paletteheader",
+    0x17: "texturegc",
+    0x19: "maybepathdata",
+    0x1a: "staticdata",
+    0x20: "dictnorm",
+    0x21: "portal",
+    0x22: "coll22",
+    0x23: "coll23",
+    0x24: "cell",
+    0x25: "blockdatums",
+    0x28: "sounds",
+    0x29: "texpcdx",
+    0x2b: "morph",
+    0x2c: "hashlist",
+    0x2e: "maybecollision2e",
+    0x2f: "maybecollision2f",
+    0x30: "particles",
+}
+
+handlers = {
+    0x04: handler_entity_params,
+    0x05: handler_aipath,
+    0x0e: handler_map_header,
+    0x10: handler_tex_header,
+    0x12: handler_tex_palette,
+    0x16: handler_tex_data,
+    0x1c: handler_blank_discard,
+    0x26: handler_lightambient,
+    0x2d: handler_ps2gfx,
+    0x27: handler_lod,
+
+}
 
 def handle_block(path, idx, data, identifier):
     # See parsemap_handle_block_id
@@ -108,162 +329,14 @@ def handle_block(path, idx, data, identifier):
     # Strip the identifier/size off the block data
     data = data[4:]
 
-    global lastPalette
-    global lastImageData
-    global imageStats
-    global texBlockNum
-
     #print(f"Got a subblock of length {len(data)} with identifier {identifier:x}")
 
-    with open(f"{path}/subblock_{idx}_{identifier:x}.bin", "wb") as f:
-        f.write(data)
-    # 0, 8: dict_XYZ data
+    handler = handlers.get(identifier, handler_default)
 
-    # 1: dict_UV data
-
-    # 2: dict_RGBA data
-
-    # 3, 10, 0x0b: dict_comlist
-
-    # 4, 0x1f: entity_params + commit texture DMA
-    if identifier == 0x04:
-        print(f"DATA COMMIT: Len {len(data)}")
-        pprint(data)
-
-        # Possibly a struct. According to parsemap_block_entity_params it should be 10 uints, 2 floats.
-        # These are stored within the current cel/glist, so likely represent some stats about the
-        # current object (num textures, num vertices, etc). There's also some residual data - ascii string name with padding
-        # Hashcode (or 0xFFFFFFFF)
-        # 2 further int-like things (possibly just one?)
-        # 9 float-like things
-        # string Name
-        params = struct.unpack("<3I9f", data[0:48])
-        hashcode = params[0]
-
-        for p in params:
-            if type(p) == int:
-                print(f"hex: {p:08x}, dec: {p}")
-            else:
-                pprint(p)
-
-        name = (data[48:].split(b"\x00")[0].decode("ascii"))
-        print(f"Name: {name}")
-
-        # TODO: All the textures/geometry that were previously found now have an identifier!
-        pass
-
-    # 5: AIPath
-
-    # 0xe: map header
-    #???
-    if identifier == 0x0e:
-        _, entityCnt, pathCnt, texCnt, = struct.unpack("<IIII", data[0:16])
-        print(f"Map header: Allocates header (m_pmap) and sets up counts. maybeEntity: {entityCnt}, maybePath: {pathCnt}, maybeTex: {texCnt}")
-
-    # 0xf: palette header
-    # ???
-
-    # 0x10: texture header
-    # This gets stored verbatim in pBmpHeader / m_pmap->bmpHeader and m_pmap->bmpSize
-    # This is indexed into in steps of 0xc in psiCreateMapTextures and possibly tells us which palette?
-    # ???
-    if identifier == 0x10:
-        entryNum = 0
-        for entry in list(util.chunks(data, 0xc)):
-            flags, unk0, w, h, animFrames, divisor, hashcode = struct.unpack("<BBHHBBI", entry)
-
-            # It looks like we loop over this number??
-            # Is this the number of bitmaps repeating / using said palette perhaps?
-
-            # TODO: How do we link a palette and image data to each entry?
-
-            # Not sure what this does, but we do (60 / divisor) in psiCreateMapTextures
-            # Maybe related to scaling?
-            assert divisor <= 60 ,f"Divisor value unexpected: {divisor}"
-
-            print(f"Texture {len(imageStats)} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
-
-            imageStats.append((w+1,h+1,flags & 1, f"{texBlockNum}_{entryNum}",hashcode,animFrames,))
-            entryNum += 1
-        texBlockNum += 1
-
-    # 0x11: palette data (PC)
-    # Not present?
-
-    # 0x12: palette data (PSX)
-    if identifier == 0x12:
-
-        # This type of palette is swizzled (for performance?)
-        if len(data) == 1024:
-            data = manipulatePalette20(data)
-            pass
-
-        # Each colour within the palette is represented as 4 bytes, order RGBA (PS2 scaling for A)
-        pBytes = list(util.chunks(data, 4))
-        lastPalette = []
-        for b in pBytes:
-            lastPalette.append((int(b[0]), int(b[1]), int(b[2]), alphaScale(b[3])))
-
-        # Pop the first entry out of the "imageStats" list (ie data from 0x10 block)
-        imgId = len(imageStats)
-        w,h,palD,name,hashcode,animFrames = imageStats[0]
-        imageStats = imageStats[1:]
-
-        if hashcode != 0xFFFFFFFF:
-            filename = f"level_unpack/global_assets/{hashcode:08x}"
-        else:
-            filename = f"{path}/{texBlockNum}_{imgId}"
-
-        depalettize(lastImageData, lastPalette, w, h, filename,animFrames)
+    handler(path, idx, data, identifier)
 
 
-    # 0x15, 0x16: texture data (PC)
-    # This is paired with a palette block that explains how we should interpret this data, useless on its own
-    if identifier == 0x16:
-        lastImageData = data
 
-
-    # 0x17: texture data (GC)
-
-    # 0x18: texture data (XBox) - Not present on PS2 but might contain texture names according to https://discord.com/channels/718106079401345025/732258863834988667/799711901349183488
-
-    # 0x19: path data if param1 is not zero??
-
-    # 0x1a: static map data (followed immediately by dynamic data)
-
-    # 0x1c: Discards
-
-    # 0x1d: FINISH PROCESSING THIS FILE MARKER
-
-    # 0x20: dict_norm data
-
-    # 0x21: Portal data
-
-    # 0x22, 0x23: "coil data"
-
-    # 0x24: Cell data (zeroed)
-
-    # 0x25: block datums
-
-    # 0x26: Light ambient radiators
-
-    # 0x27: LOD
-
-    # 0x28: Sounds
-
-    # 0x29: texture (PCDX)
-
-    # 0x2b: Morph data
-
-    # 0x2c: Hashlist
-
-    # 0x2d: PS2 GFX
-
-    # 0x2e/2f: Collision data?
-
-    # 0x30: Particles
-
-    # That's IT!
 
 def extract_leveldir(name):
     global level_name
