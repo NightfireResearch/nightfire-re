@@ -104,7 +104,7 @@ def framesToFile(frames, filename):
         frames[0].save(filename +".webp", save_all=True, append_images = frames[1:], optimize=False, duration=200, loop=0)
 
 
-def handler_entity_params(path, idx, data, identifier):
+def handler_entity_params(path, idx, data, identifier, ident):
     global framelists
     print(f"DATA COMMIT: Len {len(data)}")
     #pprint(data)
@@ -119,6 +119,7 @@ def handler_entity_params(path, idx, data, identifier):
     params = struct.unpack("<3I9f", data[0:48])
     hashcode = params[0]
 
+    name = (data[48:].split(b"\x00")[0].decode("ascii"))
     # for p in params:
     #     if type(p) == int:
     #         print(f"hex: {p:08x}, dec: {p}")
@@ -127,18 +128,17 @@ def handler_entity_params(path, idx, data, identifier):
 
     # TODO: Something useful with this data?
 
-    name = (data[48:].split(b"\x00")[0].decode("ascii"))
     print(f"Name: {name}")
 
     # TODO: All the textures/geometry that were previously found now have an identifier!
     # However the name may NOT BE UNIQUE - eg different weapons may both have parts named "Trigger"
     pass
 
-def handler_map_header(path, idx, data, identifier):
+def handler_map_header(path, idx, data, identifier, ident):
     _, entityCnt, pathCnt, texCnt, = struct.unpack("<IIII", data[0:16])
     print(f"Map header: Allocates header (m_pmap) and sets up counts. maybeEntity: {entityCnt}, maybePath: {pathCnt}, maybeTex: {texCnt}")
 
-def handler_tex_header(path, idx, data, identifier):
+def handler_tex_header(path, idx, data, identifier, ident):
     global lastPalette
     global lastImageData
     global imageStats
@@ -159,11 +159,11 @@ def handler_tex_header(path, idx, data, identifier):
 
         #print(f"Texture {len(imageStats)} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
 
-        imageStats.append((w+1,h+1,flags & 1, f"{texBlockNum}_{entryNum}",hashcode,animFrames,))
+        imageStats.append((w+1,h+1,flags & 1, f"{ident}_{texBlockNum}_{entryNum}",hashcode,animFrames,))
         entryNum += 1
     texBlockNum += 1
 
-def handler_tex_palette(path, idx, data, identifier):
+def handler_tex_palette(path, idx, data, identifier, ident):
     global lastPalette
     global lastImageData
     global imageStats
@@ -189,14 +189,14 @@ def handler_tex_palette(path, idx, data, identifier):
         filename = f"level_unpack/global_assets/{hashcode:08x}"
         framesToFile(depalettize(lastImageData, lastPalette, w, h, animFrames), filename)
     else:
-        filename = f"{path}/{texBlockNum}_{imgId}"
+        filename = f"{path}/{ident}_{texBlockNum}_{imgId}"
         framesToFile(depalettize(lastImageData, lastPalette, w, h,animFrames), filename)
 
-def handler_tex_data(path, idx, data, identifier):
+def handler_tex_data(path, idx, data, identifier, ident):
     global lastImageData
     lastImageData = data
 
-def handler_ps2gfx(path, idx, data, identifier):
+def handler_ps2gfx(path, idx, data, identifier, ident):
     
     # Assume 3x uint32 header
     # Field 0 identifies the number of bytes beyond the header
@@ -208,7 +208,7 @@ def handler_ps2gfx(path, idx, data, identifier):
         f.write(data)
     pass
 
-def handler_lightambient(path, idx, data, identifier):
+def handler_lightambient(path, idx, data, identifier, ident):
     # First 4 bytes: Num lights
     # Then n * 32 bytes: Config for each light
     (n,) = struct.unpack("<I", data[0:4])
@@ -225,9 +225,9 @@ def handler_lightambient(path, idx, data, identifier):
         print(f"Light {i} data: ({posX}, {posY}, {posZ}), {radius} - colour {r}, {g}, {b}, unk {unk0:02x}, {unk1:02x}, {unk2:02x}, {unk3:02x}")
     pass
 
-def handler_lod(path, idx, data, identifier):
+def handler_lod(path, idx, data, identifier, ident):
     # N entries of format (0xFFFFFFFF, 99999.0f)?
-    # Override the LOD for a given object (hashcode/FF) to the given distance?
+    # Override the LOD for a given object (hashcode/0xFFFFFFFF) to the given distance?
 
     entries = util.chunks(data, 8)
 
@@ -240,19 +240,28 @@ def handler_lod(path, idx, data, identifier):
 
     # TODO: What is LOD data used for?
 
-def handler_aipath(path, idx, data, identifier):
+def handler_aipath(path, idx, data, identifier, ident):
 
     # Header: version?, number of paths?
     (version, numPaths) = struct.unpack("<II", data[0:8])
+
+    # Assigned to "AINetwork" - not sure if it has any meaning. If not 8, then does not load.
     assert version==8, "Incorrectly assumed that the first field in AIPath is always 8"
+
+    # See AIPath_Parse...
 
     # TODO: Interpret the data
 
-    nameBytes,unk0, numA, unk1 = struct.unpack("<128sI32xII12x", data[8:8+184])
+    nameBytes,maybeFlags, numA, unk1 = struct.unpack("<128sI32xII12x", data[8:8+184])
 
     name = nameBytes.split(b"\x00")[0].decode("ascii")
-
     print(f"Found a path called {name}")
+
+    if(maybeFlags & 1 == 0):
+        print("Handle according to the first half - paths/routes?")
+
+    else:
+        print("Handle according to the second half - bounds?")
 
     # For each Path: 
     #   Name, padded to 128 bytes?
@@ -271,7 +280,7 @@ def handler_aipath(path, idx, data, identifier):
     pass
 
 
-def handler_default(path, idx, data, identifier):
+def handler_default(path, idx, data, identifier, ident):
 
     print(f"Unknown block type {identifier:02x}, dumping...")
 
@@ -280,7 +289,7 @@ def handler_default(path, idx, data, identifier):
     with open(f"{path}/_{typename}_{idx}.bin", "wb") as f:
         f.write(data)
 
-def handler_blank_discard(path, idx, data, identifier):
+def handler_blank_discard(path, idx, data, identifier, ident):
     assert len(data)==0, "Handling a discard block but there is data"
     return
 
@@ -323,8 +332,12 @@ handlers = {
 
 }
 
-def handle_block(path, idx, data, identifier):
+def handle_block(path, idx, data, identifier, ident):
     # See parsemap_handle_block_id
+
+    if identifier not in [0x05]: # Quick hack for just studying one block type
+        pass
+        #return
 
     # Strip the identifier/size off the block data
     data = data[4:]
@@ -333,7 +346,7 @@ def handle_block(path, idx, data, identifier):
 
     handler = handlers.get(identifier, handler_default)
 
-    handler(path, idx, data, identifier)
+    handler(path, idx, data, identifier, ident)
 
 
 
@@ -345,7 +358,7 @@ def extract_leveldir(name):
     ordered_dir=sorted(os.listdir(target_dir)) # Go through in the order set by the bin file
 
     path = f"level_unpack/{level_name}"
-    os.system(f"mkdir -p {path}")
+    
     os.system(f"mkdir -p level_unpack/global_assets")
 
     for filename in ordered_dir:
@@ -358,6 +371,9 @@ def extract_leveldir(name):
         if filename.split(".")[1] not in ["x00", "x01", "x02", "x0b"]:
             #print(f"File {filename} is not map data (maybe anim or something), continuing...")
             continue
+        
+        # Make sure the directory exists, but only create it if we have map data to put inside
+        os.system(f"mkdir -p {path}")
 
         ident = filename.split(".")[0].split("_")[1]
         print(f"Extracting resources from {ident} in {level_name}")
@@ -412,7 +428,7 @@ def extract_leveldir(name):
             FileBlockSize[bh_identifier] += bh_size
             
             # Sub-block found - ID, size
-            handle_block(path, idx, data[pFileNextBlock:pFileNextBlock+bh_size], bh_identifier)
+            handle_block(path, idx, data[pFileNextBlock:pFileNextBlock+bh_size], bh_identifier, ident)
 
 
             # Advance to next entry
