@@ -126,6 +126,31 @@ def handle_block(path, idx, data, identifier):
     # 3, 10, 0x0b: dict_comlist
 
     # 4, 0x1f: entity_params + commit texture DMA
+    if identifier == 0x04:
+        print(f"DATA COMMIT: Len {len(data)}")
+        pprint(data)
+
+        # Possibly a struct. According to parsemap_block_entity_params it should be 10 uints, 2 floats.
+        # These are stored within the current cel/glist, so likely represent some stats about the
+        # current object (num textures, num vertices, etc). There's also some residual data - ascii string name with padding
+        # Hashcode (or 0xFFFFFFFF)
+        # 2 further int-like things (possibly just one?)
+        # 9 float-like things
+        # string Name
+        params = struct.unpack("<3I9f", data[0:48])
+        hashcode = params[0]
+
+        for p in params:
+            if type(p) == int:
+                print(f"hex: {p:08x}, dec: {p}")
+            else:
+                pprint(p)
+
+        name = (data[48:].split(b"\x00")[0].decode("ascii"))
+        print(f"Name: {name}")
+
+        # TODO: All the textures/geometry that were previously found now have an identifier!
+        pass
 
     # 5: AIPath
 
@@ -261,6 +286,9 @@ def extract_leveldir(name):
             #print(f"File {filename} is not map data (maybe anim or something), continuing...")
             continue
 
+        ident = filename.split(".")[0].split("_")[1]
+        print(f"Extracting resources from {ident} in {level_name}")
+
         # Follow logic of parsemap_parsemap
         print(f"Looking at map data {filename}...")
 
@@ -328,6 +356,9 @@ def extract_leveldir(name):
         # Mp_black_ops found in 010001de
         # Mp_snow_guard found in 010001dd
 
+        # Does this also contain detail about the anonymous textures? Eg in Henderson A, we see 0061_0100002e references lots of the "anonymous" textures
+        # like bullet hit graphics, watch laser, casings, and environmental effects like lightning and footprints.
+        # By eye it looks like actual bitmapped data is present in this file.
 
         # Go through and handle each subblock according to parsemap_handle_block_id
 
