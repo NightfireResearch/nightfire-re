@@ -21,30 +21,36 @@ level_name = ""
 
 # All entities starting "Mp_"
 skinNames = {
-    '0100015a': 'Mp_pussy_galore',
-    '0100016a': 'Mp_christmas_jones',
-    '01000170': 'Mp_wai_lin',
-    '0100017e': 'Mp_baron_samedi',
-    '010001a1': 'Mp_nick_nack',
-    '010001aa': 'Mp_mayday',
-    '010001ad': 'Mp_jaws',
-    '010001ae': 'Mp_odd_job',
-    '010001af': 'Mp_xenia_onatopp',
-    '010001b4': 'Mp_bond_combat',
-    '010001b7': 'Mp_drake',
-    '010001bc': 'Mp_rook_scarred',
-    '010001c5': 'Mp_kiko_combat',
-    '010001c9': 'Mp_alura_combat',
-    '010001d5': 'Mp_domanique',
-    '010001dd': 'Mp_snow_guard',
-    '010001de': 'Mp_black_ops',
-    '010001e1': 'Mp_yakuza_suit',
-    '010001e5': 'Mp_phoenix_soldier',
-    '010001e7': 'Mp_ninja',
-    '010001eb': 'Mp_bond_tux',
-    '010001ec': 'Mp_drake_suit',
-    '0100020b': 'Mp_bond_spacesuit'
+ '0100012a': 'MP_Renard',
+ '0100012d': 'MP_Scaramanga',
+ '0100012f': 'MP_Goldfinger',
+ '0100015a': 'Mp_pussy_galore',
+ '0100016a': 'Mp_christmas_jones',
+ '01000170': 'Mp_wai_lin',
+ '0100017e': 'Mp_baron_samedi',
+ '010001a1': 'Mp_nick_nack',
+ '010001aa': 'Mp_mayday',
+ '010001ad': 'Mp_jaws',
+ '010001ae': 'Mp_odd_job',
+ '010001af': 'Mp_xenia_onatopp',
+ '010001b4': 'Mp_bond_combat',
+ '010001b7': 'Mp_drake',
+ '010001bc': 'Mp_rook_scarred',
+ '010001c5': 'Mp_kiko_combat',
+ '010001c9': 'Mp_alura_combat',
+ '010001d5': 'Mp_domanique',
+ '010001dd': 'Mp_snow_guard',
+ '010001de': 'Mp_black_ops',
+ '010001e1': 'Mp_yakuza_suit',
+ '010001e5': 'Mp_phoenix_soldier',
+ '010001e7': 'Mp_ninja',
+ '010001eb': 'Mp_bond_tux',
+ '010001ec': 'Mp_drake_suit',
+ '01000208': 'MP_Zorin',
+ '0100020b': 'Mp_bond_spacesuit'
 }
+
+allNames = []
 
 
 ## TODO:
@@ -78,9 +84,11 @@ def handler_entity_params(path, idx, data, identifier, ident):
 
     print(f"Entity: {name} owned by {ident}_{idx} - {path}")
 
-    if name.startswith("Mp_"):
+    if name.startswith("Mp_") or name.startswith("MP_"): # None with "mp_"
         global skinNames
         skinNames[ident] = name
+
+    allNames.append(name)
 
     # TODO: All the textures/geometry that were previously found now have an identifier!
     # However the name may NOT BE UNIQUE - eg different weapons may both have parts named "Trigger"
@@ -434,4 +442,8 @@ if __name__ == "__main__":
         extract_leveldir(l)
 
     pprint(skinNames)
+
+    with open("all_entity_names.txt", "w") as f:
+        for n in allNames:
+            f.write(f"{n}\n")
 
