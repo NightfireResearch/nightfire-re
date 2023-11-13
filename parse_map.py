@@ -15,13 +15,40 @@ from PIL import Image
 
 lastPalette = None
 lastImageData = None
-imageStats = [] 
+imageStats = []
 texBlockNum = 0
 level_name = ""
 
+# All entities starting "Mp_"
+skinNames = {
+    '0100011c': 'zoe_partydress_b',
+    '0100015a': 'Mp_pussy_galore',
+    '0100016a': 'Mp_christmas_jones',
+    '01000170': 'Mp_wai_lin',
+    '0100017e': 'Mp_baron_samedi',
+    '010001a1': 'Mp_nick_nack',
+    '010001aa': 'Mp_mayday',
+    '010001ad': 'Mp_jaws',
+    '010001ae': 'Mp_odd_job',
+    '010001af': 'Mp_xenia_onatopp',
+    '010001b4': 'Mp_bond_combat',
+    '010001b7': 'Mp_drake',
+    '010001bc': 'Mp_rook_scarred',
+    '010001c5': 'Mp_kiko_combat',
+    '010001c9': 'Mp_alura_combat',
+    '010001d5': 'Mp_domanique',
+    '010001dd': 'Mp_snow_guard',
+    '010001de': 'Mp_black_ops',
+    '010001e1': 'Mp_yakuza_suit',
+    '010001e5': 'Mp_phoenix_soldier',
+    '010001e7': 'Mp_ninja',
+    '010001eb': 'Mp_bond_tux',
+    '010001ec': 'Mp_drake_suit',
+    '0100020b': 'Mp_bond_spacesuit'
+}
+
 
 ## TODO:
-# Image alpha - what is the correct way to scale this?
 # How are "anonymous" textures (ie ones without a hashcode) numbered/referenced in the rest of the level?
 
 # PS2 alpha is in range 0-2 (0x80 = full alpha)
@@ -106,10 +133,9 @@ def framesToFile(frames, filename):
 
 def handler_entity_params(path, idx, data, identifier, ident):
     global framelists
-    print(f"DATA COMMIT: Len {len(data)}")
     #pprint(data)
 
-    # Possibly a struct. According to parsemap_block_entity_params it should be 10 uints, 2 floats.
+    # Possibly a struct, handled by parsemap_block_entity_params
     # These are stored within the current cel/glist, so likely represent some stats about the
     # current object (num textures, num vertices, etc). There's also some residual data - ascii string name with padding
     # Hashcode (or 0xFFFFFFFF)
@@ -128,7 +154,11 @@ def handler_entity_params(path, idx, data, identifier, ident):
 
     # TODO: Something useful with this data?
 
-    print(f"Name: {name}")
+    print(f"Entity: {name} owned by {ident}_{idx} - {path}")
+
+    if name.startswith("Mp_"):
+        global skinNames
+        skinNames[ident] = name
 
     # TODO: All the textures/geometry that were previously found now have an identifier!
     # However the name may NOT BE UNIQUE - eg different weapons may both have parts named "Trigger"
@@ -187,10 +217,12 @@ def handler_tex_palette(path, idx, data, identifier, ident):
 
     if hashcode != 0xFFFFFFFF:
         filename = f"level_unpack/global_assets/{hashcode:08x}"
-        framesToFile(depalettize(lastImageData, lastPalette, w, h, animFrames), filename)
+    elif ident in skinNames.keys():
+        filename = f"level_unpack/mp_skins/{skinNames[ident]}/{imgId}"
     else:
         filename = f"{path}/{ident}_{texBlockNum}_{imgId}"
-        framesToFile(depalettize(lastImageData, lastPalette, w, h,animFrames), filename)
+    
+    framesToFile(depalettize(lastImageData, lastPalette, w, h,animFrames), filename)
 
 def handler_tex_data(path, idx, data, identifier, ident):
     global lastImageData
@@ -360,6 +392,10 @@ def extract_leveldir(name):
     path = f"level_unpack/{level_name}"
     
     os.system(f"mkdir -p level_unpack/global_assets")
+    os.system(f"mkdir -p level_unpack/mp_skins")
+
+    for v in skinNames.values():
+        os.system(f"mkdir -p level_unpack/mp_skins/{v}")
 
     for filename in ordered_dir:
 
@@ -376,7 +412,7 @@ def extract_leveldir(name):
         os.system(f"mkdir -p {path}")
 
         ident = filename.split(".")[0].split("_")[1]
-        print(f"Extracting resources from {ident} in {level_name}")
+        #print(f"Extracting resources from {ident} in {level_name}")
 
         # Follow logic of parsemap_parsemap
         print(f"Looking at map data {filename}...")
@@ -440,10 +476,7 @@ def extract_leveldir(name):
         # x02 could be Player Skins? The test scene with all characters has about 45 characters, and 48 skins. So including player arms, about right?
         # SkyRail has 35, SubPen 34, FortKnox 34, MissileSilo 34, SnowBlind 34, Ravine 34. So ~32 skins, Bond, Tank and Heli?
 
-        # Further supported by the strings:
-        # Mp_christmas_jones found in 0100016a
-        # Mp_black_ops found in 010001de
-        # Mp_snow_guard found in 010001dd
+
 
         # Does this also contain detail about the anonymous textures? Eg in Henderson A, we see 0061_0100002e references lots of the "anonymous" textures
         # like bullet hit graphics, watch laser, casings, and environmental effects like lightning and footprints.
