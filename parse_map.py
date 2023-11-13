@@ -19,42 +19,161 @@ imageStats = []
 texBlockNum = 0
 level_name = ""
 
-# All entities starting "Mp_"
-skinNames = {
- '0100012a': 'MP_Renard',
- '0100012d': 'MP_Scaramanga',
- '0100012f': 'MP_Goldfinger',
- '0100015a': 'Mp_pussy_galore',
- '0100016a': 'Mp_christmas_jones',
- '01000170': 'Mp_wai_lin',
- '0100017e': 'Mp_baron_samedi',
- '010001a1': 'Mp_nick_nack',
- '010001aa': 'Mp_mayday',
- '010001ad': 'Mp_jaws',
- '010001ae': 'Mp_odd_job',
- '010001af': 'Mp_xenia_onatopp',
- '010001b4': 'Mp_bond_combat',
- '010001b7': 'Mp_drake',
- '010001bc': 'Mp_rook_scarred',
- '010001c5': 'Mp_kiko_combat',
- '010001c9': 'Mp_alura_combat',
- '010001d5': 'Mp_domanique',
- '010001dd': 'Mp_snow_guard',
- '010001de': 'Mp_black_ops',
- '010001e1': 'Mp_yakuza_suit',
- '010001e5': 'Mp_phoenix_soldier',
- '010001e7': 'Mp_ninja',
- '010001eb': 'Mp_bond_tux',
- '010001ec': 'Mp_drake_suit',
- '01000208': 'MP_Zorin',
- '0100020b': 'Mp_bond_spacesuit'
+
+knownNames = {
+
+ # MP skins - all entities starting "Mp_", "MP_", and some manually-added extras
+ '0100012a': 'skins/MP_Renard',
+ '0100012d': 'skins/MP_Scaramanga',
+ '0100012f': 'skins/MP_Goldfinger',
+ '0100015a': 'skins/Mp_pussy_galore',
+ '0100016a': 'skins/Mp_christmas_jones',
+ '01000170': 'skins/Mp_wai_lin',
+ '0100017e': 'skins/Mp_baron_samedi',
+ '010001a1': 'skins/Mp_nick_nack',
+ '010001aa': 'skins/Mp_mayday',
+ '010001ad': 'skins/Mp_jaws',
+ '010001ae': 'skins/Mp_odd_job',
+ '010001af': 'skins/Mp_xenia_onatopp',
+ '010001b4': 'skins/Mp_bond_combat',
+ '010001b7': 'skins/Mp_drake',
+ '010001bc': 'skins/Mp_rook_scarred',
+ '010001c5': 'skins/Mp_kiko_combat',
+ '010001c9': 'skins/Mp_alura_combat',
+ '010001d5': 'skins/Mp_domanique',
+ '010001dd': 'skins/Mp_snow_guard',
+ '010001de': 'skins/Mp_black_ops',
+ '010001e1': 'skins/Mp_yakuza_suit',
+ '010001e5': 'skins/Mp_phoenix_soldier',
+ '010001e7': 'skins/Mp_ninja',
+ '010001eb': 'skins/Mp_bond_tux',
+ '010001ec': 'skins/Mp_drake_suit',
+ '01000208': 'skins/MP_Zorin',
+ '0100020b': 'skins/Mp_bond_spacesuit',
+ '010001ab': "skins/Elektra_pants",
+ '01000202': "skins/Bond_hands_femwhite",
+ '01000201': "skins/Bond_hands_femblack",
+ '010001fd': "skins/Bond_hands_malewhite",
+ '01000200': "skins/Bond_hands_maleblack",
+
+ # Named skins from SP
+ '01000180': "skins/Hazmat_heavy_1",
+ '010001a4': "skins/Hazmat_heavy_3",
+ '01000137': "skins/Tech_a",
+ '010000a7': "skins/Ninja",
+ '01000083': "skins/Yakcoatopen",
+
+ # Generic name in code (eg polySurface1) or misleading name - I've given an unique name to each
+ '0100005f': "skins/CastleExterior_GruntWithFullMask",
+ '010000b0': "skins/CastleExterior_GruntWithHat",
+ '010000af': "skins/CastleExterior_Grunt",
+ '01000087': "skins/CastleIndoors2_MayhewTux",
+ '010000b3': "skins/CastleIndoors2_BondTux",
+ '01000106': "skins/CastleIndoors_Grunt1",
+ '01000107': "skins/CastleIndoors_Grunt2",
+ '01000108': "skins/CastleIndoors_Grunt3",
+ '01000114': "skins/CastleIndoors_GruntSuit",
+ '0100006f': "skins/Henderson_Grunt1",
+ '0100007a': "skins/Henderson_Grunt2",
+ '010000c9': "skins/HendersonA_Kiko",
+ '01000079': "skins/HendersonA_Civilian1",
+ '01000075': "Skins/HendersonA_BondBlueSuit",
+ '01000096': "skins/Henderson_GruntWithBandana",
+ '01000145': "skins/HendersonB_Mayhew",
+ '010000ac': "skins/HendersonC_Civilian",
+ '010000ad': "skins/HendersonC_Grunt3",
+ '01000133': "skins/TowerA_CivilianSecurityGuard1",
+ '01000134': "skins/TowerA_CivilianSecurityGuard2",
+ '01000135': "skins/TowerB_CivilianSecurityGuard1",
+ '01000136': "skins/TowerB_CivilianSecurityGuard2",
+ '01000130': "skins/TowerC_Grunt",
+ '0100019a': "skins/TowerC_Dominique",
+ '01000158': "skins/TowerC_DrakeSuit",
+ '01000157': "skins/Tower2A_Dominique",
+ '01000164': "skins/Tower2A_Kiko",
+ '01000167': "skins/Tower2A_Drake",
+ '010000fe': "skins/Tower2B_CivilianOfficeWorker1",
+ '01000103': "skins/Tower2B_CivilianOfficeWorker2",
+ '01000131': "skins/Tower2B_GruntWithBandana",
+ '01000132': "skins/Tower2B_GruntWithMask",
+ '01000181': "skins/PowerStation_GruntHazmatNoMask",
+ '010001b8': "skins/EvilBase_GruntWithGoggles",
+ '010001c7': "skins/EvilBase_GruntWithBeret",
+ '010001ff': "skins/EvilBase_GruntWithHelmet",
+ '010001b0': "skins/EvilBase_GruntWithHelmet2",
+ '01000179': "skins/EvilBase_RookScarred",
+ '01000164': "skins/EvilBase_Kiko",
+ '010001c2': "skins/SpaceStationD_DrakeSpacesuit",
+ '010001f9': "skins/SpaceStationD_DrakeSpacesuitDead",
+ '01000092': "skins/Bond_GenericBlackTacticalGear",
+ '0100021b': "skins/MPGruntWithGogglesAndHelmet",
+
+
+ # Manual naming - might not match internal name
+ '0100008b': "weapons/SniperGreen",
+ '01000187': "weapons/SniperGreen2",
+ '01000213': "weapons/SniperWhite",
+ '01000215': "weapons/SniperWhite2",
+ '010001cd': "weapons/SniperWhite3",
+ '0100018d': "weapons/Tripbomb",
+ '0100018f': "weapons/Tripbomb_3rd",
+ '010000ab': "weapons/FragGrenade",
+ '01000185': "weapons/SmokeGrenade",
+ '01000186': "weapons/Flashbang",
+ '01000116': "weapons/DesertEagle",
+ '01000153': "weapons/MP5K",
+ '010001ce': "weapons/Crossbow",
+ '01000115': "weapons/RLaunch",
+ '01000188': "weapons/StickyMine",
+ '0100013b': "weapons/Shotgun",
+ '0100020d': "weapons/SamuraiMuzzleFlash",
+ '010001c1': "weapons/Samurai_3rd",
+ '01000172': "weapons/Suitcase",
+ '01000171': "weapons/GunSamuri", # As spelled in entity list 
+ '01000199': "weapons/SatchelCharge",
+ '0100019f': "weapons/SatchelCharge2",
+ '010001c4': "weapons/GoldenGun",
+ '010001b9': "weapons/Grenade_Launcher",
+ '010001cc': "weapons/Grenade_Launcher_3rd",
+ '01000156': "weapons/Pistol",
+ '010001b3': "weapons/PP7_Black",
+ '010001f1': "weapons/PP7_Gold",
+ '010001f3': "weapons/P2K_Black",
+ '010001f0': "weapons/P2K_Gold",
+ '010001a3': "weapons/Aims20", # unsure
+ '010001a9': "weapons/Aims20_3rd", # Referred to as HK OICW in entity list
+ '0100020e': "weapons/Torpedo_3rd",
+ '01000204': "weapons/OddjobHat",
+ '010001a0': "Launcher1",
+ '010001a5': "BeamLaser",
+
+ '01000160': "gadgets/QWorm",
+ '01000101': "gadgets/Grapple",
+ '0100011e': "gadgets/Key",
+ '0100019d': "gadgets/Shaver1",
+ '0100020c': "gadgets/Shaver2",
+ '010001f8': "gadgets/Watch_BlackGloves",
+ '010001e0': "gadgets/Watch_BareHands",
+ '01000074': "gadgets/Watch3_MP",
+ '01000071': "gadgets/Watch_Movables",
+ '01000162': "gadgets/QPen",
+ '01000161': "gadgets/PDA",
+ '010000e3': "gadgets/Lighter",
+
+
+ # Misc
+ '0100002e': "environment",
+ '01000081': "weapon_sfx",
+ '010000cf': "common_objects",
+ '010000ca': "mp_objects", # Pickups etc
+ '010000da': "mp_RCCar",
+ '010000d0': "vehicles/helicopter_phoenix",
+ '010000d8': "vehicles/truck",
+ '01000147': "emplacements",
+
 }
 
 allNames = []
-
-
-## TODO:
-# How are "anonymous" textures (ie ones without a hashcode) numbered/referenced in the rest of the level?
 
 
 
@@ -82,16 +201,15 @@ def handler_entity_params(path, idx, data, identifier, ident):
 
     # TODO: Something useful with this data?
 
+    # Is this how we link textures to entities? A single entity (eg a skin) can have multiple/range?
+
     print(f"Entity: {name} owned by {ident}_{idx} - {path}")
 
-    if name.startswith("Mp_") or name.startswith("MP_"): # None with "mp_"
-        global skinNames
-        skinNames[ident] = name
+    allNames.append(name + "   --->>>   " + str(ident))
 
-    allNames.append(name)
-
-    # TODO: All the textures/geometry that were previously found now have an identifier!
-    # However the name may NOT BE UNIQUE - eg different weapons may both have parts named "Trigger"
+    # TODO: All the "ps2gfx" geometry that were previously found now have an identifier!
+    # However the name alone may NOT BE UNIQUE - eg different weapons may both have parts named "Trigger"
+    # We must put into a subdirectory to prevent this.
     pass
 
 def handler_map_header(path, idx, data, identifier, ident):
@@ -147,8 +265,8 @@ def handler_tex_palette(path, idx, data, identifier, ident):
 
     if hashcode != 0xFFFFFFFF:
         filename = f"level_unpack/global_assets/{hashcode:08x}"
-    elif ident in skinNames.keys():
-        filename = f"level_unpack/mp_skins/{skinNames[ident]}/{imgId}"
+    elif ident in knownNames.keys():
+        filename = f"level_unpack/{knownNames[ident]}/{imgId}"
     else:
         filename = f"{path}/{ident}_{texBlockNum}_{imgId}"
     
@@ -166,7 +284,12 @@ def handler_ps2gfx(path, idx, data, identifier, ident):
 
     # It's a celglist struct? So likely a load of uint32, followed by data (floats?)
 
-    with open(f"{path}/mesh_{idx}_{identifier}.bin", "wb") as f:
+    if ident in knownNames.keys():
+        fn = f"level_unpack/{knownNames[ident]}/mesh_{idx}_{identifier}.bin"
+    else:
+        fn = f"{path}/{ident}_mesh_{idx}_{identifier}.bin"
+
+    with open(fn, "wb") as f:
         f.write(data)
     pass
 
@@ -322,10 +445,10 @@ def extract_leveldir(name):
     path = f"level_unpack/{level_name}"
     
     os.system(f"mkdir -p level_unpack/global_assets")
-    os.system(f"mkdir -p level_unpack/mp_skins")
+    os.system(f"mkdir -p level_unpack/skins")
 
-    for v in skinNames.values():
-        os.system(f"mkdir -p level_unpack/mp_skins/{v}")
+    for v in knownNames.values():
+        os.system(f"mkdir -p level_unpack/{v}")
 
     for filename in ordered_dir:
 
@@ -441,7 +564,6 @@ if __name__ == "__main__":
     for l in levels:
         extract_leveldir(l)
 
-    pprint(skinNames)
 
     with open("all_entity_names.txt", "w") as f:
         for n in allNames:
