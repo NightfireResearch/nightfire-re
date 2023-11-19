@@ -15,6 +15,7 @@ from pprint import pprint
 
 lastPalette = None
 lastImageData = None
+curGfx = None
 imageStats = []
 texBlockNum = 0
 level_name = ""
@@ -64,6 +65,7 @@ knownNames = {
  '01000083': "skins/Yakcoatopen",
 
  # Generic name in code (eg polySurface1) or misleading name - I've given an unique name to each
+ '010000ed': "skins/CastleCourtyard_VanDriver",
  '0100005f': "skins/CastleExterior_GruntWithFullMask",
  '010000b0': "skins/CastleExterior_GruntWithHat",
  '010000af': "skins/CastleExterior_Grunt",
@@ -103,6 +105,8 @@ knownNames = {
  '010001b0': "skins/EvilBase_GruntWithHelmet2",
  '01000179': "skins/EvilBase_RookScarred",
  '01000164': "skins/EvilBase_Kiko",
+ '010001c3': "skins/GruntWithEyepatch",
+ '010001fe': "skins/EvilSilo_GruntWithGoggles",
  '010001c2': "skins/SpaceStationD_DrakeSpacesuit",
  '010001f9': "skins/SpaceStationD_DrakeSpacesuitDead",
  '01000092': "skins/Bond_GenericBlackTacticalGear",
@@ -115,6 +119,7 @@ knownNames = {
  '01000213': "weapons/SniperWhite",
  '01000215': "weapons/SniperWhite2",
  '010001cd': "weapons/SniperWhite3",
+ '010000e1': "weapons/SnipersMixed",
  '0100018d': "weapons/Tripbomb",
  '0100018f': "weapons/Tripbomb_3rd",
  '010000ab': "weapons/FragGrenade",
@@ -125,10 +130,12 @@ knownNames = {
  '010001ce': "weapons/Crossbow",
  '01000115': "weapons/RLaunch",
  '01000188': "weapons/StickyMine",
+ '01000207': "weapons/StickyMine_3rd",
  '0100013b': "weapons/Shotgun",
  '0100020d': "weapons/SamuraiMuzzleFlash",
  '010001c1': "weapons/Samurai_3rd",
- '01000172': "weapons/Suitcase",
+ '01000172': "weapons/Suitcase1",
+ '010001a8': "Weapons/Suitcase2",
  '01000171': "weapons/GunSamuri", # As spelled in entity list 
  '01000199': "weapons/SatchelCharge",
  '0100019f': "weapons/SatchelCharge2",
@@ -140,18 +147,40 @@ knownNames = {
  '010001f1': "weapons/PP7_Gold",
  '010001f3': "weapons/P2K_Black",
  '010001f0': "weapons/P2K_Gold",
+ '010001ea': "weapons/P11",
  '010001a3': "weapons/Aims20", # unsure
  '010001a9': "weapons/Aims20_3rd", # Referred to as HK OICW in entity list
  '0100020e': "weapons/Torpedo_3rd",
+ '010000cc': "weapons/unknown_010000cc",
+ '010001cb': "weapons/unknown_010001cb",
+ '010000cd': "weapons/unknown_010000cd",
+ '010001cf': "weapons/unknown_010001cf",
+ '010001d4': "weapons/unknown_010001d4",
+ '010001f4': "weapons/unknown_010001f4",
+ '010001f5': "weapons/unknown_010001f5",
+ '0100006b': "weapons/unknown_0100006b",
+ '0100006d': "weapons/unknown_0100006d",
+ '0100006e': "weapons/unknown_0100006e",
+ '0100008a': "weapons/unknown_0100008a",
+ '0100008c': "weapons/unknown_0100008c",
+ '0100008d': "weapons/unknown_0100008d",
+ '0100015d': "weapons/unknown_0100015d",
+ '01000144': "weapons/unknown_01000144",
+ '010000bc': "weapons/unknown_010000bc",
+ '01000174': "weapons/unknown_01000174",
+ '010001ac': "weapons/unknown_010001ac",
+ '01000073': "weapons/MuzzleFlash_Ruger",
+ '010000a6': "weapons/MuzzleFlash_Sig",
  '01000204': "weapons/OddjobHat",
- '010001a0': "Launcher1",
- '010001a5': "BeamLaser",
+ '010001a0': "weapons/Launcher1",
+ '010001a5': "weapons/BeamLaser",
 
  '01000160': "gadgets/QWorm",
  '01000101': "gadgets/Grapple",
  '0100011e': "gadgets/Key",
  '0100019d': "gadgets/Shaver1",
  '0100020c': "gadgets/Shaver2",
+ '010001b1': "gadgets/Shaver3",
  '010001f8': "gadgets/Watch_BlackGloves",
  '010001e0': "gadgets/Watch_BareHands",
  '01000074': "gadgets/Watch3_MP",
@@ -159,17 +188,25 @@ knownNames = {
  '01000162': "gadgets/QPen",
  '01000161': "gadgets/PDA",
  '010000e3': "gadgets/Lighter",
+ '010000e2': "gadgets/Glasses",
 
 
  # Misc
+ '0100002d': "hit_sfx",
+ '01000004': "smoke_dust",
  '0100002e': "environment",
  '01000081': "weapon_sfx",
  '010000cf': "common_objects",
  '010000ca': "mp_objects", # Pickups etc
  '010000da': "mp_RCCar",
  '010000d0': "vehicles/helicopter_phoenix",
+ '01000163': "vehicles/helicopter_tower2b",
  '010000d8': "vehicles/truck",
+ '010000db': "vehicles/truck_corona_aibox",
+ '01000168': "vehicles/forklift",
+ '010000de': "vehicles/limo",
  '01000147': "emplacements",
+ '01000166': "markers",
 
 }
 
@@ -190,7 +227,7 @@ def handler_entity_params(path, idx, data, identifier, ident):
     # 9 float-like things
     # string Name
     params = struct.unpack("<3I9f", data[0:48])
-    hashcode = params[0]
+    hashcode = params[0] # This is confirmed as the value stored in hashtable - eg RCCarTurret has 0x02000502, which is referenced in Car_InitBits
 
     name = (data[48:].split(b"\x00")[0].decode("ascii"))
     # for p in params:
@@ -207,9 +244,28 @@ def handler_entity_params(path, idx, data, identifier, ident):
 
     allNames.append(name + "   --->>>   " + str(ident))
 
-    # TODO: All the "ps2gfx" geometry that were previously found now have an identifier!
-    # However the name alone may NOT BE UNIQUE - eg different weapons may both have parts named "Trigger"
-    # We must put into a subdirectory to prevent this.
+    name = name.replace("/", "__").replace("\\", "__")
+
+    global curGfx
+    assert curGfx != None, "Entity found without previous ps2gfx block"
+
+    if ident in knownNames.keys():
+        geom_fn = f"level_unpack/{knownNames[ident]}/{idx}-{name}_{hashcode:08x}.bin"
+        param_fn = f"level_unpack/{knownNames[ident]}/{idx}-{name}_{hashcode:08x}.params"
+    else:
+        geom_fn = f"{path}/{ident}_mesh_{idx}_{identifier}_{hashcode:08x}.bin"
+        param_fn = f"{path}/{ident}_mesh_{idx}_{identifier}_{hashcode:08x}.params"
+
+    with open(geom_fn, "wb") as f:
+        f.write(curGfx)
+
+    with open(param_fn, "wb") as f:
+        f.write(data)
+
+
+
+    curGfx = None
+
     pass
 
 def handler_map_header(path, idx, data, identifier, ident):
@@ -277,21 +333,11 @@ def handler_tex_data(path, idx, data, identifier, ident):
     lastImageData = data
 
 def handler_ps2gfx(path, idx, data, identifier, ident):
-    
-    # Assume 3x uint32 header
-    # Field 0 identifies the number of bytes beyond the header
-    # Field 1 and 2 are always 0??
 
-    # It's a celglist struct? So likely a load of uint32, followed by data (floats?)
-
-    if ident in knownNames.keys():
-        fn = f"level_unpack/{knownNames[ident]}/mesh_{idx}_{identifier}.bin"
-    else:
-        fn = f"{path}/{ident}_mesh_{idx}_{identifier}.bin"
-
-    with open(fn, "wb") as f:
-        f.write(data)
-    pass
+    # We don't have the entity name yet, let's wait until we get the name...
+    global curGfx
+    assert curGfx == None, "Last graphics object was not consumed by a subsequent entity_params block"
+    curGfx = data
 
 def handler_lightambient(path, idx, data, identifier, ident):
     # First 4 bytes: Num lights
@@ -364,6 +410,28 @@ def handler_aipath(path, idx, data, identifier, ident):
     #       ??: Idx to (short?)
     pass
 
+def handler_sound(path, idx, data, identifier, ident):
+
+    numSfx = struct.unpack("<I", data[0:4])[0]
+
+    data = data[4:]
+
+    assert len(data) == 0x20 * numSfx, f"Unexpected data length when handling {numSfx} sound effects, got {len(data)} bytes"
+
+    sfxes = util.chunks(data, 0x20)
+
+    for sfx in sfxes:
+
+        # Let's make some assumptions: All 32bit, (zero), (floats)....?
+        # Possibly Radius, XYZ, Vol, Rinner, Router,....?
+        z0, unk0 = struct.unpack("<II", sfx[0:8])
+
+        assert z0==0, "Expected value to be zero"
+
+        pass
+
+
+
 
 def handler_default(path, idx, data, identifier, ident):
 
@@ -414,6 +482,7 @@ handlers = {
     0x26: handler_lightambient,
     0x2d: handler_ps2gfx,
     0x27: handler_lod,
+    #0x28: handler_sound,
 
 }
 
