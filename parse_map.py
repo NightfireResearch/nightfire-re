@@ -109,6 +109,8 @@ knownNames = {
  '010001fe': "skins/EvilSilo_GruntWithGoggles",
  '010001c2': "skins/SpaceStationD_DrakeSpacesuit",
  '010001f9': "skins/SpaceStationD_DrakeSpacesuitDead",
+ '0100019b': "skins/SpaceStationD_Astronaut1",
+ '010001a2': "skins/SpaceStationD_Astronaut2",
  '01000092': "skins/Bond_GenericBlackTacticalGear",
  '0100021b': "skins/MPGruntWithGogglesAndHelmet",
 
@@ -227,7 +229,12 @@ def handler_entity_params(path, idx, data, identifier, ident):
     # 9 float-like things
     # string Name
     params = struct.unpack("<3I9f", data[0:48])
-    hashcode = params[0] # This is confirmed as the value stored in hashtable - eg RCCarTurret has 0x02000502, which is referenced in Car_InitBits
+    
+    # This is confirmed as the value stored in hashtable - eg RCCarTurret has 0x02000502, which is referenced in Car_InitBits
+    # This is NOT the same as the hashcode that contains this entity within the packed level.
+    # For example:
+    # 010000ca is the container for the MP heli within the packed level file, but the heli body itself "LittleNellie" is 02000194. There are two additional parts - blades/prop)
+    hashcode = params[0]
 
     name = (data[48:].split(b"\x00")[0].decode("ascii"))
     # for p in params:
@@ -351,9 +358,9 @@ def handler_lightambient(path, idx, data, identifier, ident):
 
         # See LightData struct / Light_SetAmbientRadiators
         # could be posx, posy, posz, radius, unknown4, r, g, b
-        (posX, posY, posZ, radius, unk0, unk1, unk2, unk3, r, g, b) = struct.unpack("<ffffBBBBfff", light)
+        (posX, posY, posZ, radius, unk0, r, g, b) = struct.unpack("<ffffffff", light)
 
-        print(f"Light {i} data: ({posX}, {posY}, {posZ}), {radius} - colour {r}, {g}, {b}, unk {unk0:02x}, {unk1:02x}, {unk2:02x}, {unk3:02x}")
+        print(f"Light {i} data: ({posX}, {posY}, {posZ}), {radius} - colour {r}, {g}, {b}, unk {unk0}")
     pass
 
 def handler_lod(path, idx, data, identifier, ident):
@@ -430,7 +437,17 @@ def handler_sound(path, idx, data, identifier, ident):
 
         pass
 
+def handler_collision2e(path, idx, data, identifier, ident):
 
+    # Example - let's look at block 924 of HendersonA
+
+    # Consists of:
+    # ??
+    # ??
+    # 528 bytes of short values starting at 0x48C - this is 88 triangle indices?
+    # 66 bytes of 0x40
+    # FF FF
+    pass
 
 
 def handler_default(path, idx, data, identifier, ident):
@@ -490,8 +507,8 @@ def handle_block(path, idx, data, identifier, ident):
     # See parsemap_handle_block_id
 
     if identifier not in [0x05]: # Quick hack for just studying one block type
-        pass
-        #return
+        pass # Run the entire map data
+        #return # Just study one block type
 
     # Strip the identifier/size off the block data
     data = data[4:]
