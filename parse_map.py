@@ -3,7 +3,7 @@ import struct
 import util
 from math import isqrt
 from pprint import pprint
-
+from pathlib import Path
 # Follow the structure of parsemap_handle_block_id to decode all the blocks/chunks/whatever of each map
 
 # Within, eg, "HT_Level_SkyRail.bin" there are a number of sub-blocks.
@@ -513,11 +513,11 @@ def extract_leveldir(name):
 
     path = f"level_unpack/{level_name}"
     
-    os.system(f"mkdir -p level_unpack/global_assets")
-    os.system(f"mkdir -p level_unpack/skins")
+    Path("level_unpack/global_assets").mkdir(parents=True, exist_ok=True)
+    Path("level_unpack/skins").mkdir(parents=True, exist_ok=True)
 
     for v in knownNames.values():
-        os.system(f"mkdir -p level_unpack/{v}")
+        Path(f"level_unpack/{v}").mkdir(parents=True, exist_ok=True)
 
     for filename in ordered_dir:
 
@@ -531,7 +531,7 @@ def extract_leveldir(name):
             continue
         
         # Make sure the directory exists, but only create it if we have map data to put inside
-        os.system(f"mkdir -p {path}")
+        Path(path).mkdir(parents=True, exist_ok=True)
 
         ident = filename.split(".")[0].split("_")[1]
         #print(f"Extracting resources from {ident} in {level_name}")
