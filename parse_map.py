@@ -15,6 +15,19 @@ import external_knowledge
 # We only care about the Map types here (0x00, 0x01, 0x02). 
 # Within the "map" type there are a few sub-blocks.
 
+
+# Currently not understood:
+# * Mesh / UV format (see parse_mesh.py for work in progress)
+# * Palette header
+# * How to link meshes to textures (palette header?)
+# * Some mesh parameters / bounding box details
+# * Some entity parameters
+# * Some texture details:
+#   * divisor by 60
+#   * some textures where data doesn't match expected size 
+# * Collision data
+# * Portal data
+
 lastPalette = None
 lastImageData = None
 curGfx = None
@@ -45,7 +58,7 @@ def handler_entity_params(path, idx, data, identifier, ident):
     # This is confirmed as the value stored in hashtable - eg RCCarTurret has 0x02000502, which is referenced in Car_InitBits
     # This is NOT the same as the hashcode that contains this entity within the packed level.
     # For example:
-    # 010000ca is the container for the MP heli within the packed level file, but the heli body itself "LittleNellie" is 02000194. There are two additional parts - blades/prop)
+    # 010000ca is the container for the MP heli within the packed level file, but the heli body itself "LittleNellie" is 02000194. There are two additional parts - blades/prop, each with their own hashcode)
     hashcode = params[0]
 
     name = (data[48:].split(b"\x00")[0].decode("ascii"))

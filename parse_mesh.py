@@ -44,17 +44,30 @@ def interpret_mesh(data):
     # Look at Shell_Magnum300 
     # Header (12 bytes)
     # ???
-    # VIFCMD? values (A8 03 1A 64): 0x1A of V2-32
+    # VIFCMD? values (A8 03 1A 64): unpack 0x1A of V2-32
     # Floating block 0x0b8 to about 0x188 (52 floats) - UV
     # ??? (03 01 00 01)
-    # VIFCMD? values (E2 02 1A 68): 0x1A of V3-32
+    # VIFCMD? values (E2 02 1A 68): unpack 0x1A of V3-32
     # Floating block 0x190 to about 0x2c8 (78 floats) - XYZ
     # VIFCMD? values (E4 02 1A 6E) - 0x1A of V4-8
     # ???????? values
-    # VIFCMD? values (E3 42 1A 6E) - 0x1A of V4-8
+    # VIFCMD? values (E3 42 1A 6E) - unpack 0x1A of V4-8
     # FFFFFF80 (26 RGBA8888) - Vertex colours (all white with alpha)?
     # ???????? (124 bytes) - Entity params / bounding box 6 floats / vertex count as u32: 26 / ?? count as u32: 20 (usable UV points?) 
-    # EOF
+    # Is this the data actually handled by parsemap_block_entity_params? Or is that the other?
+
+
+    # The end could well be the GLIST_BOX handled by RecurseAndDrawBoxes:
+    # 0x00: float[3] min
+    # 0x0c: float[3] max
+    # 0x18: i32 childA (or FFFFFFFF)
+    # 0x1c: i32 childB (or FFFFFFFF)
+    # 0x20: char* maybe dmaDataPtr?
+    # 0x24: i32 textureListPtr
+    # .....?
+    # 0x30: i32 vertexCnt within this box
+    # 0x34: i32 render flags
+
 
     # These XYZ points form two hexagons separated by some distance - a crude cylinder??
     # The first 20 of the UV points perfectly match up with the combined ammo image 32.png (flipped vertically)
@@ -65,6 +78,10 @@ def interpret_mesh(data):
     # Maybe this works out more efficient for the VIF?
     # This could also explain why some of the mesh entities contain repeated blocks
     # Either this is how you do disjoint/weird topology, or to work around a 255-triangle limit.
+
+    # This is MOSTLY workable however:
+    # - There's an overlapping / z-fighting effect on the top. One (pair of?) tris is correctly textured, one is not.
+    # - There are two glitched polygons internally
 
 
     xyzs = []
