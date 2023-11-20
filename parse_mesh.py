@@ -2,8 +2,6 @@ import util
 from pprint import pprint
 import struct
 
-import numpy as np
-import pygltflib
 
 def interpret_mesh(data):
     # Assume 3x uint32 header
@@ -89,8 +87,8 @@ def interpret_mesh(data):
     # Make a fake "triangle index" list
     tris = []
 
-    for x in range(0, 24):
-        if x%2!=0:
+    for x in range(1, 25):
+        if x%2==0:
             tris.append((x, x+1, x+2, ))
         else: # Opposite winding direction
             tris.append((x, x+2, x+1, ))
@@ -98,67 +96,33 @@ def interpret_mesh(data):
 
     pprint(xyzs)
 
+    with open("test.mtl", "w") as f:
+        f.write("""
+newmtl material0
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Tr 0.000000
+illum 1
+Ns 0.000000
+map_Kd 32.png
 
-    points = np.array(xyzs, dtype="float32")
-    triangles = np.array(tris, dtype="uint8")
+""")
 
-    triangles_binary_blob = triangles.flatten().tobytes()
-    points_binary_blob = points.tobytes()
-    gltf = pygltflib.GLTF2(
-        scene=0,
-        scenes=[pygltflib.Scene(nodes=[0])],
-        nodes=[pygltflib.Node(mesh=0)],
-        meshes=[
-            pygltflib.Mesh(
-                primitives=[
-                    pygltflib.Primitive(
-                        attributes=pygltflib.Attributes(POSITION=1), indices=0
-                    )
-                ]
-            )
-        ],
-        accessors=[
-            pygltflib.Accessor(
-                bufferView=0,
-                componentType=pygltflib.UNSIGNED_BYTE,
-                count=triangles.size,
-                type=pygltflib.SCALAR,
-                max=[int(triangles.max())],
-                min=[int(triangles.min())],
-            ),
-            pygltflib.Accessor(
-                bufferView=1,
-                componentType=pygltflib.FLOAT,
-                count=len(points),
-                type=pygltflib.VEC3,
-                max=points.max(axis=0).tolist(),
-                min=points.min(axis=0).tolist(),
-            ),
-        ],
-        bufferViews=[
-            pygltflib.BufferView(
-                buffer=0,
-                byteLength=len(triangles_binary_blob),
-                target=pygltflib.ELEMENT_ARRAY_BUFFER,
-            ),
-            pygltflib.BufferView(
-                buffer=0,
-                byteOffset=len(triangles_binary_blob),
-                byteLength=len(points_binary_blob),
-                target=pygltflib.ARRAY_BUFFER,
-            ),
-        ],
-        buffers=[
-            pygltflib.Buffer(
-                byteLength=len(triangles_binary_blob) + len(points_binary_blob)
-            )
-        ],
-    )
-    gltf.set_binary_blob(triangles_binary_blob + points_binary_blob)
+    with open("test.obj", "w") as f:
 
+        f.write("mtllib test.mtl\n")
 
-    with open("test.glb", "wb") as f:
-        f.write(b"".join(gltf.save_to_bytes()))
+        for xyz in xyzs:
+            f.write(f"v {xyz[0]} {xyz[1]} {xyz[2]} 1.0\n")
+
+        for uv in uvs:
+            f.write(f"vt {uv[0]} {uv[1]}\n")
+
+        f.write("usemtl material0\n")
+
+        for t in tris:
+            f.write(f"f {t[0]}/{t[0]} {t[1]}/{t[1]} {t[2]}/{t[2]}\n")
 
 
     # Looking at the logic, parsemap_block_entity_params is where everything finally gets committed - all previous xyz, rgba, etc get wrapped into one new celglist?
