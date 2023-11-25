@@ -66,12 +66,30 @@ def interpret_mesh(data):
     # 0x30: i32 vertexCnt within this box
     # 0x34: i32 render flags
 
-    # FIXME: How do we get here?
-    glist_box = data[0x3CC:]
+
+    with open("test.mtl", "w") as f:
+        f.write("""
+newmtl material0
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Tr 0.000000
+illum 1
+Ns 0.000000
+map_Kd 32.png
+
+""")
+
+    # How do we get here?
+    # It's not a const offset, as the number of boxes varies.
+    # Note that the 3rd int from the end of the file is very close to 0x3CC.
+    # Let's assume there's a "footer" struct encompassing all the leftover data beyond the glist_box data
+    unk0, unk1, unk2, boxlist_start, unk3, unk4 = struct.unpack("<6I", data[-24:])
+
+    glist_box = data[boxlist_start-4:-24]
 
     for i, box in enumerate(util.chunks(glist_box, 0x38)):
-        if len(box) < 0x38:
-            break # skip the residual data/padding at end
+
         minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, maybeTexList, unk0, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
 
         print(f"Box {i} bounds ({minX}, {minY}, {minZ} - {maxX}, {maxY}, {maxZ}) - {vtxCnt} vertices, {stripElemCnt} strip elements, {flags}")
@@ -107,78 +125,64 @@ def interpret_mesh(data):
         assert clrData[0:4] == bytes([0xFF, 0xFF, 0xFF, 0x80]), f"Bad colour data, got {clrData[0:4]} at {off:08x}"
 
 
+        # These XYZ points form two hexagons separated by some distance - a crude cylinder??
+        # The first 20 of the UV points perfectly match up with the combined ammo image 32.png (flipped vertically)
+        # The remaining 6 points form another hexagon in the corner - a hack?
 
-    # These XYZ points form two hexagons separated by some distance - a crude cylinder??
-    # The first 20 of the UV points perfectly match up with the combined ammo image 32.png (flipped vertically)
-    # The remaining 6 points form another hexagon in the corner - a hack?
+        # Importantly - there are only 12 points in the hexagonal prism. 
+        # So maybe there is no faces list at all - it is just drawing a strip, and the end caps result from the duplication.
+        # Maybe this works out more efficient for the VIF?
+        # This could also explain why some of the mesh entities contain repeated blocks
+        # Either this is how you do disjoint/weird topology, or to work around a 255-triangle limit.
 
-    # Importantly - there are only 12 points in the hexagonal prism. 
-    # So maybe there is no faces list at all - it is just drawing a strip, and the end caps result from the duplication.
-    # Maybe this works out more efficient for the VIF?
-    # This could also explain why some of the mesh entities contain repeated blocks
-    # Either this is how you do disjoint/weird topology, or to work around a 255-triangle limit.
-
-    # This is MOSTLY workable however:
-    # - There's an overlapping / z-fighting effect on the top. One (pair of?) tris is correctly textured, one is not.
-    # - There are two glitched polygons internally
-
-
-    xyzs = []
-    uvs = []
-    rgbas = []
-
-    for d in util.chunks(xyzData, 12):
-        xyz = struct.unpack("<fff", d)
-        xyzs.append(xyz)
-    
-    for d in util.chunks(uvData, 8):
-        uv = struct.unpack("<ff", d)
-        uvs.append(uv)
-
-    # for d in util.chunks(data[0x338:0x338+(stripElemCnt*4)], 4):
-    #     rgba = struct.unpack("<cccc", d)
-    #     rgbas.append(rgba)
+        # This is MOSTLY workable however:
+        # - There's an overlapping / z-fighting effect on the top. One (pair of?) tris is correctly textured, one is not.
+        # - There are two glitched polygons internally
 
 
-    # Make a fake "triangle index" list
-    tris = []
+        xyzs = []
+        uvs = []
+        rgbas = []
 
-    for x in range(1, 25):
-        if x%2==0:
-            tris.append((x, x+1, x+2, ))
-        else: # Opposite winding direction
-            tris.append((x, x+2, x+1, ))
+        for d in util.chunks(xyzData, 12):
+            xyz = struct.unpack("<fff", d)
+            xyzs.append(xyz)
+        
+        for d in util.chunks(uvData, 8):
+            uv = struct.unpack("<ff", d)
+            uvs.append(uv)
+
+        # for d in util.chunks(data[0x338:0x338+(stripElemCnt*4)], 4):
+        #     rgba = struct.unpack("<cccc", d)
+        #     rgbas.append(rgba)
 
 
-    pprint(xyzs)
+        # Make a fake "triangle index" list
+        tris = []
 
-    with open("test.mtl", "w") as f:
-        f.write("""
-newmtl material0
-Ka 1.000000 1.000000 1.000000
-Kd 1.000000 1.000000 1.000000
-Ks 0.000000 0.000000 0.000000
-Tr 0.000000
-illum 1
-Ns 0.000000
-map_Kd 32.png
+        for x in range(1, stripElemCnt-1):
+            if x%2==0:
+                tris.append((x, x+1, x+2, ))
+            else: # Opposite winding direction
+                tris.append((x, x+2, x+1, ))
 
-""")
 
-    with open("test.obj", "w") as f:
+        #pprint(xyzs)
 
-        f.write("mtllib test.mtl\n")
+        with open(f"test_{i}.obj", "w") as f:
 
-        for xyz in xyzs:
-            f.write(f"v {xyz[0]} {xyz[1]} {xyz[2]} 1.0\n")
+            f.write("mtllib test.mtl\n")
 
-        for uv in uvs:
-            f.write(f"vt {uv[0]} {uv[1]}\n")
+            for xyz in xyzs:
+                f.write(f"v {xyz[0]} {xyz[1]} {xyz[2]} 1.0\n")
 
-        f.write("usemtl material0\n")
+            for uv in uvs:
+                f.write(f"vt {uv[0]} {uv[1]}\n")
 
-        for t in tris:
-            f.write(f"f {t[0]}/{t[0]} {t[1]}/{t[1]} {t[2]}/{t[2]}\n")
+            f.write("usemtl material0\n")
+
+            for t in tris:
+                f.write(f"f {t[0]}/{t[0]} {t[1]}/{t[1]} {t[2]}/{t[2]}\n")
 
 
     # Looking at the logic, parsemap_block_entity_params is where everything finally gets committed - all previous xyz, rgba, etc get wrapped into one new celglist?
