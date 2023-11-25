@@ -80,7 +80,7 @@ map_Kd 32.png
 
 """)
 
-    # How do we get here?
+    # How do we get to the list of glist boxes?
     # It's not a const offset, as the number of boxes varies.
     # Note that the 3rd int from the end of the file is very close to 0x3CC.
     # Let's assume there's a "footer" struct encompassing all the leftover data beyond the glist_box data
@@ -96,31 +96,30 @@ map_Kd 32.png
 
         print(f"Data found at offset {offsetOfData:08x}, tex {maybeTexList:08x}")
 
-        # Could be texList, could be halting offset in stream?? Let's assume the latter for now
+        # "TexList" is the offset of (this?) box within the file, minus 12 bytes.
 
         # Let's also assume that "configure the VIF" stuff is identical size and unimportant(ish)
         # Therefore, we can guess that:
         # UV data follows at (0x0B8 - 0x010) = 0xA8 bytes from the start
-        boxData = data[offsetOfData + 0xA8: offsetOfData + maybeTexList + 3]
 
-        off = 0
+        off = offsetOfData + 0xA8
         sz = stripElemCnt * 8 # 2x floats
         print(f"UV data at offset {off:08x}, size {sz}")
-        uvData = boxData[off:off+sz] ### data[0x0b8:0x0b8+(stripElemCnt*8)]
+        uvData = data[off:off+sz] ### data[0x0b8:0x0b8+(stripElemCnt*8)]
 
         off = off + sz + 4 + 4 # padding of 4 bytes + instruction of 4 bytes (maybe quadword align? Confirm with more data)
         sz = stripElemCnt * 12 # 3x floats
         print(f"XYZ data at offset {off:08x}, size {sz}")
-        xyzData = boxData[off:off+sz] ### data[0x190:0x190+(stripElemCnt*12)]
+        xyzData = data[off:off+sz] ### data[0x190:0x190+(stripElemCnt*12)]
 
         off = off + sz + 0 + 4 # No padding, just the instruction
         sz = stripElemCnt * 4 # 3x V4-8
         print(f"Unknown data at offset {off:08x}, size {sz}")
-        unkData = boxData[off:off+sz]
+        unkData = data[off:off+sz]
 
         off = off + sz + 0 + 4 # No padding, just the instruction
         sz = stripElemCnt * 4 # 3x V4-8
-        clrData = boxData[off:off+sz]
+        clrData = data[off:off+sz]
         print(f"Colour data at offset {off:08x}, size {sz}")
         assert clrData[0:4] == bytes([0xFF, 0xFF, 0xFF, 0x80]), f"Bad colour data, got {clrData[0:4]} at {off:08x}"
 
