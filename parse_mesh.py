@@ -145,11 +145,11 @@ map_Kd 32.png
 
     for i, box in enumerate(util.chunks(glist_box, 0x38)):
 
-        minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, maybeLen, unk0, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
+        minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, maybeEndOfData, maybeLenOfData, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
 
         print(f"Box {i} bounds ({minX}, {minY}, {minZ} - {maxX}, {maxY}, {maxZ}) - {vtxCnt} vertices, {stripElemCnt} strip elements, {flags}")
 
-        print(f"Data found at offset {offsetOfData:08x}, maybeLen {maybeLen:08x}")
+        print(f"Data found at offset {offsetOfData:08x}, maybeEnd {maybeEndOfData:08x}, maybeLen {maybeLenOfData:08x}")
 
 
         # "TexList" is the offset of (this?) box within the file, minus 12 bytes.
@@ -167,12 +167,15 @@ map_Kd 32.png
         # Non-drawable ("container") boxes have their offset as 0.
         if offsetOfData == 0:
             print("This Glist box is just a parent for smaller ones, no geometry.")
+
+            # Note that in this case, "maybeLenOfData" is non-zero! Does it have special meaning?
+
             continue
 
+        # Hypothesis: If we have graphics, we have been given(Offset of VIF Stream, End of VIF Stream, Size of VIF Stream)
+        assert offsetOfData + maybeLenOfData == maybeEndOfData, "Not true that we've been given offset, end, len"
 
-        # TODO: Set an upper bound on this, so that if 2 boxes contain the same strip length we don't get the latter too
-        # We could do this with 2 passes over the glist box array, and identifying the start of the next data bank
-        unpacks = vifUnpack(data[offsetOfData:], stripElemCnt)
+        unpacks = vifUnpack(data[offsetOfData:maybeEndOfData], stripElemCnt)
         print(f"Searching found {len(unpacks)} unpacks")
 
 
