@@ -3,6 +3,61 @@ from pprint import pprint
 import struct
 
 
+def vifUnpack(data, matchingCount):
+    # VIF instructions explain how much data to take and how to unpack it.
+    cmds_unpack = { 
+        0x60: ("s", 1, 32),
+        0x61: ("s", 1, 16),
+        0x62: ("s", 1, 8),
+        0x64: ("v", 2, 32), # UV
+        0x65: ("v", 2, 16),
+        0x66: ("v", 2, 8),
+        0x68: ("v", 3, 32), # XYZ
+        0x69: ("v", 3, 16),
+        0x6A: ("v", 3, 8),
+        0x6C: ("v", 4, 32),
+        0x6D: ("v", 4, 16),
+        0x6E: ("v", 4, 8), # RGBA, unknown
+        0x6F: ("v", 4, 5) 
+    }
+
+    cmds = {
+        0x00: "NOP",
+        #... 
+    }
+
+    unpacks = []
+
+    # HACK: Let's just skip through the data until we find unpack messages with the count matching the expected count
+    for offset in range(0, len(data), 4): # Command is always 4-byte aligned
+
+        # VIF CMD: (IMMEDIATE: 16, NUM: 8, CMD: 8)
+        imm, num, cmd = struct.unpack("<HBB", data[offset:offset+4])
+
+        if num != matchingCount:
+            continue
+
+        if cmd not in cmds_unpack.keys():
+            continue
+
+        # We've got what looks like it could be a VIF unpack command of the expected length!
+        unpack_type = cmds_unpack[cmd]
+        print(f"Potentially found VIF Unpack command at {offset:08x} with {num} elements of {unpack_type[0]}{unpack_type[1]}-{unpack_type[2]}")
+
+        size = unpack_type[1] * unpack_type[2]//8 * num
+        print(f"Data size is therefore {size}")
+        unpack_raw_data = data[offset + 4: offset + 4 + size]
+
+        # FIXME: We can offset by SIZE as we know a VIF Command can't appear within the data block
+        # This would eliminate most false positives?
+
+        unpacks.append([unpack_type, unpack_raw_data])
+
+    print("Finished searching for VIF unpacks")
+    return unpacks
+
+
+
 def interpret_mesh(data):
     # Assume 3x uint32 header
     # Field 0 identifies the number of bytes beyond the header
@@ -90,11 +145,12 @@ map_Kd 32.png
 
     for i, box in enumerate(util.chunks(glist_box, 0x38)):
 
-        minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, maybeTexList, unk0, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
+        minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, maybeLen, unk0, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
 
         print(f"Box {i} bounds ({minX}, {minY}, {minZ} - {maxX}, {maxY}, {maxZ}) - {vtxCnt} vertices, {stripElemCnt} strip elements, {flags}")
 
-        print(f"Data found at offset {offsetOfData:08x}, tex {maybeTexList:08x}")
+        print(f"Data found at offset {offsetOfData:08x}, maybeLen {maybeLen:08x}")
+
 
         # "TexList" is the offset of (this?) box within the file, minus 12 bytes.
 
@@ -102,26 +158,40 @@ map_Kd 32.png
         # Therefore, we can guess that:
         # UV data follows at (0x0B8 - 0x010) = 0xA8 bytes from the start
 
-        off = offsetOfData + 0xA8
-        sz = stripElemCnt * 8 # 2x floats
-        print(f"UV data at offset {off:08x}, size {sz}")
-        uvData = data[off:off+sz] ### data[0x0b8:0x0b8+(stripElemCnt*8)]
+        # This does NOT always work. It's fine for small and non-morphed stuff, but morphable stuff can also have matrix data embedded?
+        # Do we need to actually decode the VIF instructions or can we just do basic matching?
+        
+        ## Note that not all glist boxes actually contain geometry.
+        # In a non-trivial model, the parent box contains smaller boxes, which contain yet smaller ones
+        # Potentially, only the leaves of this tree need to contain anything drawable.
+        # Non-drawable ("container") boxes have their offset as 0.
+        if offsetOfData == 0:
+            print("This Glist box is just a parent for smaller ones, no geometry.")
+            continue
 
-        off = off + sz + 4 + 4 # padding of 4 bytes + instruction of 4 bytes (maybe quadword align? Confirm with more data)
-        sz = stripElemCnt * 12 # 3x floats
-        print(f"XYZ data at offset {off:08x}, size {sz}")
-        xyzData = data[off:off+sz] ### data[0x190:0x190+(stripElemCnt*12)]
 
-        off = off + sz + 0 + 4 # No padding, just the instruction
-        sz = stripElemCnt * 4 # 3x V4-8
-        print(f"Unknown data at offset {off:08x}, size {sz}")
-        unkData = data[off:off+sz]
+        # TODO: Set an upper bound on this, so that if 2 boxes contain the same strip length we don't get the latter too
+        # We could do this with 2 passes over the glist box array, and identifying the start of the next data bank
+        unpacks = vifUnpack(data[offsetOfData:], stripElemCnt)
+        print(f"Searching found {len(unpacks)} unpacks")
 
-        off = off + sz + 0 + 4 # No padding, just the instruction
-        sz = stripElemCnt * 4 # 3x V4-8
-        clrData = data[off:off+sz]
-        print(f"Colour data at offset {off:08x}, size {sz}")
-        assert clrData[0:4] == bytes([0xFF, 0xFF, 0xFF, 0x80]), f"Bad colour data, got {clrData[0:4]} at {off:08x}"
+
+        assert unpacks[0][0] == ("v", 2, 32), "Bad data for UV"
+        uvData = unpacks[0][1]
+
+        assert unpacks[1][0] == ("v", 3, 32), "Bad data for XYZ"
+        xyzData = unpacks[1][1]
+
+        assert unpacks[2][0] == ("v", 4, 8), "Bad data for unknown type"
+        unkData = unpacks[2][1]
+
+        assert unpacks[3][0] == ("v", 4, 8), "Bad data for colour"
+        clrData = unpacks[3][1]
+
+        # Looks like meshes just embed a generic grey or white as the colour for all vertices?
+        # This could potentially help us align ourselves too? Not consistent, maybe from the modelling tool?
+        # FF FF FF 80 (eg casings) or 7F 7F 7F 80 (truck) 
+        assert clrData[0:4] in [bytes([0xFF, 0xFF, 0xFF, 0x80]), bytes([0x7F, 0x7F, 0x7F, 0x80])], f"Bad colour data, got {clrData[0:4]} at {off:08x}"
 
 
         # These XYZ points form two hexagons separated by some distance - a crude cylinder??
@@ -137,6 +207,10 @@ map_Kd 32.png
         # This is MOSTLY workable however:
         # - There's an overlapping / z-fighting effect on the top. One (pair of?) tris is correctly textured, one is not.
         # - There are two glitched polygons internally
+
+        # Is this because of the chunk at the beginning that we ignore - does it configure a skip/resume list / encode strip lengths?
+        # Manual inspection determines that:
+        # ??? tris are at fault
 
 
         xyzs = []
