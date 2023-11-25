@@ -32,18 +32,16 @@ def interpret_mesh(data):
     # triangles (short/u8?)
     # weights (???)
 
-    # Look at mesh_25_45 from Aims20.
-    # First value which makes sense as a float might be 184 (0xB0) - after this,
-    # most/all looks like floats until around 3E0ish - around 816 bytes / 204 floats / 68 vertices?.
-    # There's some repetition (1.0f every 4 floats, repeated 9x).
-
-
     # NOTE: parsemap_handle_block_id has dict_uv, dict_xyz, dict_rgba, dict_norm, dict_comlist, morph and entity params
     # These might explain the purpose of the data...
 
     # Look at Shell_Magnum300 
     # Header (12 bytes)
     # ???
+
+    # VIFCMD? values (E1 02 01 6C): Unpack 0x01 of V4-32
+    # Single value (0x00008005) - ???
+    # Various VIF instructions setting up registers/passing data through GIF
     # VIFCMD? values (A8 03 1A 64): unpack 0x1A of V2-32
     # Floating block 0x0b8 to about 0x188 (52 floats) - UV
     # ??? (03 01 00 01)
@@ -61,12 +59,53 @@ def interpret_mesh(data):
     # 0x00: float[3] min
     # 0x0c: float[3] max
     # 0x18: i32 childA (or FFFFFFFF)
-    # 0x1c: i32 childB (or FFFFFFFF)
-    # 0x20: char* maybe dmaDataPtr?
+    # 0x1c: i32 childB (or 00000000)
+    # 0x20: Offset of the geometry, with respect to 2 bytes into the file
     # 0x24: i32 textureListPtr
     # .....?
     # 0x30: i32 vertexCnt within this box
     # 0x34: i32 render flags
+
+    # FIXME: How do we get here?
+    glist_box = data[0x3CC:]
+
+    for i, box in enumerate(util.chunks(glist_box, 0x38)):
+        if len(box) < 0x38:
+            break # skip the residual data/padding at end
+        minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, maybeTexList, unk0, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
+
+        print(f"Box {i} bounds ({minX}, {minY}, {minZ} - {maxX}, {maxY}, {maxZ}) - {vtxCnt} vertices, {stripElemCnt} strip elements, {flags}")
+
+        print(f"Data found at offset {offsetOfData:08x}, tex {maybeTexList:08x}")
+
+        # Could be texList, could be halting offset in stream?? Let's assume the latter for now
+
+        # Let's also assume that "configure the VIF" stuff is identical size and unimportant(ish)
+        # Therefore, we can guess that:
+        # UV data follows at (0x0B8 - 0x010) = 0xA8 bytes from the start
+        boxData = data[offsetOfData + 0xA8: offsetOfData + maybeTexList + 3]
+
+        off = 0
+        sz = stripElemCnt * 8 # 2x floats
+        print(f"UV data at offset {off:08x}, size {sz}")
+        uvData = boxData[off:off+sz] ### data[0x0b8:0x0b8+(stripElemCnt*8)]
+
+        off = off + sz + 4 + 4 # padding of 4 bytes + instruction of 4 bytes (maybe quadword align? Confirm with more data)
+        sz = stripElemCnt * 12 # 3x floats
+        print(f"XYZ data at offset {off:08x}, size {sz}")
+        xyzData = boxData[off:off+sz] ### data[0x190:0x190+(stripElemCnt*12)]
+
+        off = off + sz + 0 + 4 # No padding, just the instruction
+        sz = stripElemCnt * 4 # 3x V4-8
+        print(f"Unknown data at offset {off:08x}, size {sz}")
+        unkData = boxData[off:off+sz]
+
+        off = off + sz + 0 + 4 # No padding, just the instruction
+        sz = stripElemCnt * 4 # 3x V4-8
+        clrData = boxData[off:off+sz]
+        print(f"Colour data at offset {off:08x}, size {sz}")
+        assert clrData[0:4] == bytes([0xFF, 0xFF, 0xFF, 0x80]), f"Bad colour data, got {clrData[0:4]} at {off:08x}"
+
 
 
     # These XYZ points form two hexagons separated by some distance - a crude cylinder??
@@ -88,17 +127,17 @@ def interpret_mesh(data):
     uvs = []
     rgbas = []
 
-    for d in util.chunks(data[0x190:0x190+(26*12)], 12):
+    for d in util.chunks(xyzData, 12):
         xyz = struct.unpack("<fff", d)
         xyzs.append(xyz)
     
-    for d in util.chunks(data[0x0b8:0x0b8+(26*8)], 8):
+    for d in util.chunks(uvData, 8):
         uv = struct.unpack("<ff", d)
         uvs.append(uv)
 
-    for d in util.chunks(data[0x338:0x338+(26*4)], 4):
-        rgba = struct.unpack("<cccc", d)
-        rgbas.append(rgba)
+    # for d in util.chunks(data[0x338:0x338+(stripElemCnt*4)], 4):
+    #     rgba = struct.unpack("<cccc", d)
+    #     rgbas.append(rgba)
 
 
     # Make a fake "triangle index" list
