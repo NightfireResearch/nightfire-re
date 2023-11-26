@@ -221,18 +221,11 @@ def interpret_mesh(data, name):
 
         print("Unpacking...")
 
-        unpacksAll = vifUnpack(data[offsetOfData:offsetOfData + maybeLenOfData], stripElemCnt)
+        unpacks = vifUnpack(data[offsetOfData:offsetOfData + maybeLenOfData], stripElemCnt)
 
-        # FIXME: Use textures
-        unpacks = [x[1:] for x in unpacksAll if x[0]=="data"]
-        texs = [x[1:] for x in unpacksAll if x[0]=="texture"]
-
-        print(f"Searching found {len(unpacks)} unpacks")
-
-        assert unpacks[2][0] == ("v", 2, 32), "Bad data for UV"
-        assert unpacks[3][0] == ("v", 3, 32), "Bad data for XYZ"
-        assert unpacks[4][0] == ("v", 4, 8), "Bad data for unknown"
-        assert unpacks[5][0] == ("v", 4, 8), "Bad data for colour"
+        # We must iterate over all unpacks. Start with texture ID 0
+        currentTexture = 0
+        unpackAt = 0
 
         numSubBlocks = (len(unpacks) - 1) // 5
         objVtxCnt = 0
@@ -240,17 +233,45 @@ def interpret_mesh(data, name):
 
             f.write("mtllib test.mtl\n")
 
-            for i in range(numSubBlocks):
+            while unpackAt <= len(unpacks)-4: # Can't go too close to the end
+
+                # We expect to be given one of:
+                # - Texture Change block
+                # - 1-element block of config/unknown data 
+                # - Sequences of UV, XYZ, Triangles and Colours
+
+                # print(f"AT INDEX {unpackAt}, unpack is:")
+                # pprint(unpacks[unpackAt])
+
+                if unpacks[unpackAt][0] == "texture":
+                    currentTexture = unpacks[unpackAt][1]
+                    print(f"TEXTURE CHANGE TO {currentTexture}")
+                    unpackAt+=1
+                    continue
+
+                if len(unpacks[unpackAt][2]) == 16:
+                    unpackAt+=1
+                    continue
+
+                i = unpackAt
+                unpackAt += 4
+
+                uvData = unpacks[i][2]
+                xyzData = unpacks[i+1][2]
+                triData = unpacks[i+2][2]
+                clrData = unpacks[i+3][2]
+
+                assert unpacks[i][1] == ("v", 2, 32), "Bad data for UV"
+                assert unpacks[i+1][1] == ("v", 3, 32), "Bad data for XYZ"
+                assert unpacks[i+2][1] == ("v", 4, 8), "Bad data for unknown"
+                assert unpacks[i+3][1] == ("v", 4, 8), "Bad data for colour"
+
                 
-                uvData = unpacks[5*i+2][1]
-                xyzData = unpacks[5*i+3][1]
-                triData = unpacks[5*i+4][1]
-                clrData = unpacks[5*i+5][1]
 
                 (xyzs, uvs, clrs, tris) = toBlock(xyzData, uvData, clrData, triData)
 
                 # FIXME: Iterate properly and find the correct texture!
-                f.write(f"usemtl material{texs[0][0]}\n")
+                f.write(f"usemtl material{currentTexture}\n")
 
                 # OBJ file references vertex by index in file, it has no concept of sub-blocks and no way to reset the index
                 for xyz in xyzs:
