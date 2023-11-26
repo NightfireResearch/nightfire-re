@@ -110,7 +110,7 @@ def handler_tex_header(path, idx, data, identifier, ident):
     global imageStats
     global texBlockNum
     entryNum = 0
-    for entry in list(util.chunks(data, 0xc)):
+    for idx,entry in enumerate(list(util.chunks(data, 0xc))):
         flags, unk0, w, h, animFrames, divisor, hashcode = struct.unpack("<BBHHBBI", entry)
 
         # It looks like we loop over this number??
@@ -125,7 +125,7 @@ def handler_tex_header(path, idx, data, identifier, ident):
 
         #print(f"Texture {len(imageStats)} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
 
-        imageStats.append((w+1,h+1,flags & 1, f"{ident}_{texBlockNum}_{entryNum}",hashcode,animFrames,))
+        imageStats.append((w+1,h+1,flags & 1, f"{ident}_{texBlockNum}_{entryNum}",hashcode,animFrames,idx,))
         entryNum += 1
     texBlockNum += 1
 
@@ -148,15 +148,15 @@ def handler_tex_palette(path, idx, data, identifier, ident):
 
     # Pop the first entry out of the "imageStats" list (ie data from 0x10 block)
     imgId = len(imageStats)
-    w,h,palD,name,hashcode,animFrames = imageStats[0]
+    w,h,palD,name,hashcode,animFrames,indexInHdr = imageStats[0]
     imageStats = imageStats[1:]
 
     if hashcode != 0xFFFFFFFF:
         filename = f"level_unpack/global_assets/{hashcode:08x}"
     elif ident in external_knowledge.packed_names.keys():
-        filename = f"level_unpack/{external_knowledge.packed_names[ident]}/{imgId}"
+        filename = f"level_unpack/{external_knowledge.packed_names[ident]}/{indexInHdr}"
     else:
-        filename = f"{path}/{ident}_{texBlockNum}_{imgId}"
+        filename = f"{path}/{ident}_{texBlockNum}_{indexInHdr}"
     
     util.framesToFile(util.depalettize(lastImageData, lastPalette, w, h,animFrames), filename)
 
