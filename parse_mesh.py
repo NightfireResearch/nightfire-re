@@ -236,7 +236,9 @@ def interpret_mesh(data, name):
 
         numSubBlocks = (len(unpacks) - 1) // 5
         objVtxCnt = 0
-        with open(f"{name}.obj", "w") as f:
+        with open(f"3dmodel/{name}.obj", "w") as f:
+
+            f.write("mtllib test.mtl\n")
 
             for i in range(numSubBlocks):
                 
@@ -247,7 +249,8 @@ def interpret_mesh(data, name):
 
                 (xyzs, uvs, clrs, tris) = toBlock(xyzData, uvData, clrData, triData)
 
-                f.write(f"usemtl material{texs[0]}\n")
+                # FIXME: Iterate properly and find the correct texture!
+                f.write(f"usemtl material{texs[0][0]}\n")
 
                 # OBJ file references vertex by index in file, it has no concept of sub-blocks and no way to reset the index
                 for xyz in xyzs:
@@ -324,7 +327,7 @@ def toBlock(xyzData, uvData, clrData, triData):
 if __name__=="__main__":
 
 
-    with open("test.mtl", "w") as f:
+    with open("3dmodel/test.mtl", "w") as f:
         for n in range(20):
             f.write(f"""
 newmtl material{n}
@@ -351,7 +354,7 @@ map_Kd material{n}.png
         if ".png" in filename:
             # name will be 0.png or similar
             # Reorder as required???
-            shutil.copyfile(directory +"/"+filename, "material"+filename)
+            shutil.copyfile(directory +"/"+filename, "3dmodel/material"+filename)
 
     #with open("level_unpack/environment/229-OBJECT_SHELL_5_56NATO_02000447.bin", "rb") as f:
     #with open("level_unpack/vehicles/truck/69-OBJECT_wine_truck_020003be.bin", "rb") as f:
