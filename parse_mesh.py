@@ -5,6 +5,9 @@ import struct
 
 def vifUnpack(data, matchingCount):
     # VIF instructions explain how much data to take and how to unpack it.
+    # To do this perfectly, we'd need to emulate the VIF as well as anything the VIF could interact with
+    # Let's just make some assumptions, look at the unpacks, and maybe attempt to infer the rest
+
     cmds_unpack = { 
         0x60: ("s", 1, 32),
         0x61: ("s", 1, 16),
@@ -26,32 +29,67 @@ def vifUnpack(data, matchingCount):
         #... 
     }
 
+    offsetAt = 0x00
     unpacks = []
 
-    # HACK: Let's just skip through the data until we find unpack messages with the count matching the expected count
-    for offset in range(0, len(data), 4): # Command is always 4-byte aligned
+    while offsetAt < len(data):
+        imm, num, cmd = struct.unpack("<HBB", data[offsetAt:offsetAt+4])
 
-        # VIF CMD: (IMMEDIATE: 16, NUM: 8, CMD: 8)
-        imm, num, cmd = struct.unpack("<HBB", data[offset:offset+4])
+        if cmd in cmds_unpack.keys():
 
-        if num != matchingCount:
-            continue
+            if num==0:
+                # Seems to be some kind of termination signal? Usually files end (NUM=0, CMD=0x60, then 3x u32=0, then 0x30 00 00 00)
+                break
 
-        if cmd not in cmds_unpack.keys():
-            continue
+            unpack_type = cmds_unpack[cmd]
 
-        # We've got what looks like it could be a VIF unpack command of the expected length!
-        unpack_type = cmds_unpack[cmd]
-        print(f"Potentially found VIF Unpack command at {offset:08x} with {num} elements of {unpack_type[0]}{unpack_type[1]}-{unpack_type[2]}")
+            print(f"Potentially found VIF Unpack command at {offsetAt:08x} with {num} elements of {unpack_type[0]}{unpack_type[1]}-{unpack_type[2]}")
+            size = unpack_type[1] * unpack_type[2]//8 * num
+            print(f"Data size is therefore {size}")
+            unpack_raw_data = data[offsetAt + 4: offsetAt + 4 + size]
 
-        size = unpack_type[1] * unpack_type[2]//8 * num
-        print(f"Data size is therefore {size}")
-        unpack_raw_data = data[offset + 4: offset + 4 + size]
+            unpacks.append([unpack_type, unpack_raw_data])
 
-        # FIXME: We can offset by SIZE as we know a VIF Command can't appear within the data block
-        # This would eliminate most false positives?
+            offsetAt += 4 + size
 
-        unpacks.append([unpack_type, unpack_raw_data])
+        elif cmd == 0x01: # STCYCL
+            print(f"STCYCL {imm:04x}")
+            offsetAt += 4
+
+        elif cmd == 0x17: # MSCNT - start executing microprogram on the VU
+            print("MSCNT")
+            offsetAt += 4
+
+        elif cmd == 0x10: # FLUSHE - await completion of microprogram
+            print("FLUSHE")
+            offsetAt += 4
+
+        elif cmd == 0x50: # DIRECT (VIF1) - "Transfers IMMEDIATE quadwords to the GIF through PATH2. If PATH2 cannot take control of the GIF, the VIF stalls until PATH2 is activated."
+            print(f"DIRECT_VIF1 {imm:04x}: ...")
+            for i,directData in enumerate(util.chunks(data[offsetAt+4:offsetAt+4+imm*16], 16)):
+                s = ' '.join('{:02x}'.format(x) for x in directData)
+                print(f"{i:02x}: {s}")
+            offsetAt += 4 + imm*16 # FIXME: I don't understand this instruction, but it solves the latter issue of weird non-zero imm/num in NOP so I think this is conceptually right
+
+        elif cmd == 0x30: # STROW
+            strow = list(struct.unpack("<4I", data[offsetAt+4: offsetAt+20]))
+            print(f"STROW {strow[0]:08x}  {strow[1]:08x}  {strow[2]:08x}  {strow[3]:08x} ")
+            offsetAt += 4 + 16
+
+        elif cmd == 0x31: # STCOL
+            stcol = list(struct.unpack("<4I", data[offsetAt+4: offsetAt+20]))
+            print(f"STCOL {stcol[0]:08x}  {stcol[1]:08x}  {stcol[2]:08x}  {stcol[3]:08x} ")
+            offsetAt += 4 + 16
+
+        elif cmd==0x00: # NOP
+            assert imm==0, f"NOP with non-zero immediate at {offsetAt:08x}"
+            assert num==0, f"NOP with non-zero num at {offsetAt:08x}"
+            offsetAt += 4
+
+        else:
+            print(f"Warning: Unhandled operation in VIF stream 0x{cmd:02x}")
+            offsetAt += 4
+    
 
     print("Finished searching for VIF unpacks")
     return unpacks
@@ -139,9 +177,16 @@ map_Kd 32.png
     # It's not a const offset, as the number of boxes varies.
     # Note that the 3rd int from the end of the file is very close to 0x3CC.
     # Let's assume there's a "footer" struct encompassing all the leftover data beyond the glist_box data
-    unk0, unk1, unk2, boxlist_start, unk3, unk4 = struct.unpack("<6I", data[-24:])
+    unk0, unk1, boxlist_num, boxlist_start, unk3, unk4 = struct.unpack("<6I", data[-24:])
 
     glist_box = data[boxlist_start-4:-24]
+
+    assert len(glist_box) == 0x38 * boxlist_num, "Incorrectly assumed that footer number is the number of boxes"
+    assert unk0 == 0
+    assert unk1 == 0
+    assert unk3 == 0
+    assert unk4 == 0
+
 
     for i, box in enumerate(util.chunks(glist_box, 0x38)):
 
@@ -154,13 +199,6 @@ map_Kd 32.png
 
         # "TexList" is the offset of (this?) box within the file, minus 12 bytes.
 
-        # Let's also assume that "configure the VIF" stuff is identical size and unimportant(ish)
-        # Therefore, we can guess that:
-        # UV data follows at (0x0B8 - 0x010) = 0xA8 bytes from the start
-
-        # This does NOT always work. It's fine for small and non-morphed stuff, but morphable stuff can also have matrix data embedded?
-        # Do we need to actually decode the VIF instructions or can we just do basic matching?
-        
         ## Note that not all glist boxes actually contain geometry.
         # In a non-trivial model, the parent box contains smaller boxes, which contain yet smaller ones
         # Potentially, only the leaves of this tree need to contain anything drawable.
@@ -175,21 +213,51 @@ map_Kd 32.png
         # Hypothesis: If we have graphics, we have been given(Offset of VIF Stream, End of VIF Stream, Size of VIF Stream)
         assert offsetOfData + maybeLenOfData == maybeEndOfData, "Not true that we've been given offset, end, len"
 
-        unpacks = vifUnpack(data[offsetOfData:maybeEndOfData], stripElemCnt)
+        # "endOfData" is also the start of a list, which is 0xFFFFFFFF terminated.
+        # The list items *could* be an offset within the vif stream, for each strip perhaps??
+        listElems = []
+
+        listIdx = maybeEndOfData
+        while True:
+            value, = struct.unpack("<I", data[listIdx:listIdx+4])
+            if value == 0xFFFFFFFF:
+                break
+            print(f"Element: {value:08x}")
+            listElems.append(value)
+            listIdx += 4
+
+        print(f"Found a list of {len(listElems)} associated with the following - not sure what they mean yet.")
+
+        print("Unpacking...")
+
+        unpacks = vifUnpack(data[offsetOfData:offsetOfData + maybeLenOfData], stripElemCnt)
         print(f"Searching found {len(unpacks)} unpacks")
 
+        # assert unpacks[0][0] == ("v", 4, 32), "Bad unknown chunk 0"
+        # print("Chunk 0 is:")
+        # for d in util.chunks(unpacks[0][1], 16):
+        #     floats = list(struct.unpack("<4f", d))
+        #     print(floats)
 
-        assert unpacks[0][0] == ("v", 2, 32), "Bad data for UV"
-        uvData = unpacks[0][1]
+        # Unclear what this does. The first byte varies, the rest is the same constant values?
+        assert unpacks[1][0] == ("v", 4, 32), "Bad unknown chunk 1"
+        print("Chunk 1 is:")
+        for d in util.chunks(unpacks[1][1], 16):
+            for i,directData in enumerate(util.chunks(d, 4)):
+                s = ' '.join('{:02x}'.format(x) for x in directData)
+                print(f"{i:02x}: {s}")
 
-        assert unpacks[1][0] == ("v", 3, 32), "Bad data for XYZ"
-        xyzData = unpacks[1][1]
+        assert unpacks[2][0] == ("v", 2, 32), "Bad data for UV"
+        uvData = unpacks[2][1]
 
-        assert unpacks[2][0] == ("v", 4, 8), "Bad data for unknown type"
-        unkData = unpacks[2][1]
+        assert unpacks[3][0] == ("v", 3, 32), "Bad data for XYZ"
+        xyzData = unpacks[3][1]
 
-        assert unpacks[3][0] == ("v", 4, 8), "Bad data for colour"
-        clrData = unpacks[3][1]
+        assert unpacks[4][0] == ("v", 4, 8), "Bad data for unknown type"
+        unkData = unpacks[4][1]
+
+        assert unpacks[5][0] == ("v", 4, 8), "Bad data for colour"
+        clrData = unpacks[5][1]
 
         # Looks like meshes just embed a generic grey or white as the colour for all vertices?
         # This could potentially help us align ourselves too? Not consistent, maybe from the modelling tool?
@@ -214,6 +282,7 @@ map_Kd 32.png
         # Is this because of the chunk at the beginning that we ignore - does it configure a skip/resume list / encode strip lengths?
         # Manual inspection determines that:
         # ??? tris are at fault
+        # DOES THIS USE THE VERTEX COLOURS TO HIDE THE<?!!?!?!?!??!?!?!
 
 
         xyzs = []
