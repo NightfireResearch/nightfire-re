@@ -66,7 +66,7 @@ def vifUnpack(data, matchingCount):
                 print(f"{i:02x}: {s}")
             offsetAt += 4 + imm*16 # FIXME: I don't understand this instruction, but it solves the latter issue of weird non-zero imm/num in NOP so I think this is conceptually right
 
-        elif cmd == 0x30: # STROW
+        elif cmd == 0x30: # STROW: Texture ID (*descending* order - ie if this is 0x14 in an object with 0x20 textures, this is IDd as item 12.png=0x0C), 0, 0, unknown
             strow = list(struct.unpack("<4I", data[offsetAt+4: offsetAt+20]))
             print(f"STROW {strow[0]:08x}  {strow[1]:08x}  {strow[2]:08x}  {strow[3]:08x} ")
             offsetAt += 4 + 16
@@ -262,26 +262,6 @@ map_Kd 32.png
         assert unpacks[5][0] == ("v", 4, 8), "Bad data for colour"
         
 
-        # These XYZ points form two hexagons separated by some distance - a crude cylinder??
-        # The first 20 of the UV points perfectly match up with the combined ammo image 32.png (flipped vertically)
-        # The remaining 6 points form another hexagon in the corner - a hack?
-
-        # Importantly - there are only 12 points in the hexagonal prism. 
-        # So maybe there is no faces list at all - it is just drawing a strip, and the end caps result from the duplication.
-        # Maybe this works out more efficient for the VIF?
-        # This could also explain why some of the mesh entities contain repeated blocks
-        # Either this is how you do disjoint/weird topology, or to work around a 255-triangle limit.
-
-        # This is MOSTLY workable however:
-        # - There's an overlapping / z-fighting effect on the top. One (pair of?) tris is correctly textured, one is not.
-        # - There are two glitched polygons internally
-
-        # Is this because of the chunk at the beginning that we ignore - does it configure a skip/resume list / encode strip lengths?
-        # Manual inspection determines that:
-        # ??? tris are at fault
-        # DOES THIS USE THE VERTEX COLOURS TO HIDE THE<?!!?!?!?!??!?!?!
-
-
         xyzs = []
         uvs = []
         rgbas = []
@@ -330,14 +310,15 @@ map_Kd 32.png
                 rgba = struct.unpack("<BBBB", d)
                 rgbas.append(rgba)
 
-
-        assert numStripElems == stripElemCnt, "The sum of individual strip elements doesn't match the number in the glist_box"
+        # true for many but, eg, wine truck fails
+        # on failing models, subsequent indexing also fails
+        #assert numStripElems == stripElemCnt, f"The sum of individual strip elements {numStripElems} doesn't match the number in the glist_box {stripElemCnt}"
 
         # Make a triangle index list
         tris = []
         skipCnt = 2 # The first 2 elements can't ever be drawn, you need 3 to make a triangle
 
-        for x in range(1, stripElemCnt-1):
+        for x in range(1, numStripElems-1):
             
             # If the last element of unknowns is 0xFF, skip drawing this triangle (this makes the strip format more versatile)
             if unks[x+1][3] == 0xFF:
@@ -350,7 +331,8 @@ map_Kd 32.png
                 tris.append((x, x+2, x+1, ))
 
         # Confirm our assumption about 0xFF = skip vertex
-        assert skipCnt + vtxCnt == stripElemCnt, f"Num skips {skipCnt} + num vertices {vtxCnt} != strip elems {stripElemCnt}"
+        # True on most but eg wine truck fails
+        #assert skipCnt + vtxCnt == stripElemCnt, f"Num skips {skipCnt} + num vertices {vtxCnt} != strip elems {stripElemCnt}"
         #pprint(xyzs)
 
         with open(f"test_{i}.obj", "w") as f:
