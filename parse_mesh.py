@@ -24,11 +24,6 @@ def vifUnpack(data, matchingCount):
         0x6F: ("v", 4, 5) 
     }
 
-    cmds = {
-        0x00: "NOP",
-        #... 
-    }
-
     offsetAt = 0x00
     unpacks = []
 
@@ -181,6 +176,7 @@ map_Kd 32.png
 
     glist_box = data[boxlist_start-4:-24]
 
+    # This assumption holds true for most things, but seems to fails for MP Skins
     assert len(glist_box) == 0x38 * boxlist_num, "Incorrectly assumed that footer number is the number of boxes"
     assert unk0 == 0
     assert unk1 == 0
