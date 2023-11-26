@@ -226,44 +226,45 @@ map_Kd 32.png
             listElems.append(value)
             listIdx += 4
 
-        print(f"Found a list of {len(listElems)} associated with the following - not sure what they mean yet.")
+        print(f"Found a list of {len(listElems)} associated with the following data - not sure what they mean yet.")
+
+        # Some hypotheses regarding these list elements:
+        # - Linked to texture usage
+        # - Linked to the triangle strips
+        # - ???
 
         print("Unpacking...")
 
         unpacks = vifUnpack(data[offsetOfData:offsetOfData + maybeLenOfData], stripElemCnt)
         print(f"Searching found {len(unpacks)} unpacks")
 
+        # Unclear what this does. All constant?
         # assert unpacks[0][0] == ("v", 4, 32), "Bad unknown chunk 0"
         # print("Chunk 0 is:")
         # for d in util.chunks(unpacks[0][1], 16):
-        #     floats = list(struct.unpack("<4f", d))
-        #     print(floats)
+        #     for i,directData in enumerate(util.chunks(d, 4)):
+        #         s = ' '.join('{:02x}'.format(x) for x in directData)
+        #         print(f"{i:02x}: {s}")
 
         # Unclear what this does. The first byte varies, the rest is the same constant values?
-        assert unpacks[1][0] == ("v", 4, 32), "Bad unknown chunk 1"
-        print("Chunk 1 is:")
-        for d in util.chunks(unpacks[1][1], 16):
-            for i,directData in enumerate(util.chunks(d, 4)):
-                s = ' '.join('{:02x}'.format(x) for x in directData)
-                print(f"{i:02x}: {s}")
+        # assert unpacks[1][0] == ("v", 4, 32), "Bad unknown chunk 1"
+        # print("Chunk 1 is:")
+        # for d in util.chunks(unpacks[1][1], 16):
+        #     for i,directData in enumerate(util.chunks(d, 4)):
+        #         s = ' '.join('{:02x}'.format(x) for x in directData)
+        #         print(f"{i:02x}: {s}")
 
         assert unpacks[2][0] == ("v", 2, 32), "Bad data for UV"
-        uvData = unpacks[2][1]
+        
 
         assert unpacks[3][0] == ("v", 3, 32), "Bad data for XYZ"
-        xyzData = unpacks[3][1]
 
-        assert unpacks[4][0] == ("v", 4, 8), "Bad data for unknown type"
-        unkData = unpacks[4][1]
+
+        assert unpacks[4][0] == ("v", 4, 8), "Bad data for unknown"
+        
 
         assert unpacks[5][0] == ("v", 4, 8), "Bad data for colour"
-        clrData = unpacks[5][1]
-
-        # Looks like meshes just embed a generic grey or white as the colour for all vertices?
-        # This could potentially help us align ourselves too? Not consistent, maybe from the modelling tool?
-        # FF FF FF 80 (eg casings) or 7F 7F 7F 80 (truck) 
-        assert clrData[0:4] in [bytes([0xFF, 0xFF, 0xFF, 0x80]), bytes([0x7F, 0x7F, 0x7F, 0x80])], f"Bad colour data, got {clrData[0:4]} at {off:08x}"
-
+        
 
         # These XYZ points form two hexagons separated by some distance - a crude cylinder??
         # The first 20 of the UV points perfectly match up with the combined ammo image 32.png (flipped vertically)
@@ -288,30 +289,72 @@ map_Kd 32.png
         xyzs = []
         uvs = []
         rgbas = []
+        unks = []
 
-        for d in util.chunks(xyzData, 12):
-            xyz = struct.unpack("<fff", d)
-            xyzs.append(xyz)
-        
-        for d in util.chunks(uvData, 8):
-            uv = struct.unpack("<ff", d)
-            uvs.append(uv)
+        # The data is arranged in VIF Unpack blocks:
+        # Block 0: Constant
+        # Then it's N groups of 5:
+        # SubBlock 0: Constant
+        # SubBlock 1: UV
+        # SubBlock 2: XYZ
+        # SubBlock 3: Unknown
+        # SubBlock 4: Colour
 
-        # for d in util.chunks(data[0x338:0x338+(stripElemCnt*4)], 4):
-        #     rgba = struct.unpack("<cccc", d)
-        #     rgbas.append(rgba)
+        numSubBlocks = (len(unpacks) - 1) // 5
+
+        numStripElems = 0
+
+        for i in range(numSubBlocks):
+
+            uvData = unpacks[5*i+2][1]
+            xyzData = unpacks[5*i+3][1]
+            unkData = unpacks[5*i+4][1]
+            clrData = unpacks[5*i+5][1]
+
+            numStripElems += len(clrData) // 4
+
+            # Looks like meshes just embed a generic grey or white as the colour for all vertices?
+            # This could potentially help us align ourselves too? Not consistent, maybe from the modelling tool?
+            # FF FF FF 80 (eg casings) or 7F 7F 7F 80 (truck) 
+            #assert clrData[0:4] in [bytes([0xFF, 0xFF, 0xFF, 0x80]), bytes([0x7F, 0x7F, 0x7F, 0x80])], f"Bad colour data, got {clrData[0]:02x} {clrData[1]:02x} {clrData[2]:02x} {clrData[3]:02x}"
+
+            for d in util.chunks(xyzData, 12):
+                xyz = struct.unpack("<fff", d)
+                xyzs.append(xyz)
+            
+            for d in util.chunks(uvData, 8):
+                uv = struct.unpack("<ff", d)
+                uvs.append(uv)
+
+            for d in util.chunks(unkData, 4):
+                unk = struct.unpack("<BBBB", d)
+                unks.append(unk)
+
+            for d in util.chunks(clrData, 4):
+                rgba = struct.unpack("<BBBB", d)
+                rgbas.append(rgba)
 
 
-        # Make a fake "triangle index" list
+        assert numStripElems == stripElemCnt, "The sum of individual strip elements doesn't match the number in the glist_box"
+
+        # Make a triangle index list
         tris = []
+        skipCnt = 2 # The first 2 elements can't ever be drawn, you need 3 to make a triangle
 
         for x in range(1, stripElemCnt-1):
+            
+            # If the last element of unknowns is 0xFF, skip drawing this triangle (this makes the strip format more versatile)
+            if unks[x+1][3] == 0xFF:
+                skipCnt += 1
+                continue
+
             if x%2==0:
-                tris.append((x, x+1, x+2, ))
+                tris.append((x, x+1, x+2, )) # 1-indexing in obj format!
             else: # Opposite winding direction
                 tris.append((x, x+2, x+1, ))
 
-
+        # Confirm our assumption about 0xFF = skip vertex
+        assert skipCnt + vtxCnt == stripElemCnt, f"Num skips {skipCnt} + num vertices {vtxCnt} != strip elems {stripElemCnt}"
         #pprint(xyzs)
 
         with open(f"test_{i}.obj", "w") as f:
