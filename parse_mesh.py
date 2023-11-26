@@ -278,7 +278,7 @@ def interpret_mesh(data, name):
                     f.write(f"v {xyz[0]} {xyz[1]} {xyz[2]} 1.0\n") 
 
                 for uv in uvs:
-                    f.write(f"vt {uv[0]} {uv[1]}\n")
+                    f.write(f"vt {uv[0]} {1.0 - uv[1]}\n")
 
                 for tri in tris:
                     a = tri[0] + objVtxCnt # Correction for 1-indexing already handled in toBlock
@@ -349,7 +349,7 @@ if __name__=="__main__":
 
 
     with open("3dmodel/test.mtl", "w") as f:
-        for n in range(20):
+        for n in range(50):
             f.write(f"""
 newmtl material{n}
 Ka 1.000000 1.000000 1.000000
