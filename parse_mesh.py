@@ -221,139 +221,103 @@ def interpret_mesh(data, name):
 
         print("Unpacking...")
 
-        unpacks = vifUnpack(data[offsetOfData:offsetOfData + maybeLenOfData], stripElemCnt)
+        unpacksAll = vifUnpack(data[offsetOfData:offsetOfData + maybeLenOfData], stripElemCnt)
 
         # FIXME: Use textures
-        unpacks = [x[1:] for x in unpacks if x[0]=="data"]
+        unpacks = [x[1:] for x in unpacksAll if x[0]=="data"]
+        texs = [x[1:] for x in unpacksAll if x[0]=="texture"]
 
         print(f"Searching found {len(unpacks)} unpacks")
 
-        # Unclear what this does. All constant?
-        # assert unpacks[0][0] == ("v", 4, 32), "Bad unknown chunk 0"
-        # print("Chunk 0 is:")
-        # for d in util.chunks(unpacks[0][1], 16):
-        #     for i,directData in enumerate(util.chunks(d, 4)):
-        #         s = ' '.join('{:02x}'.format(x) for x in directData)
-        #         print(f"{i:02x}: {s}")
-
-        # Unclear what this does. The first byte varies, the rest is the same constant values?
-        # assert unpacks[1][0] == ("v", 4, 32), "Bad unknown chunk 1"
-        # print("Chunk 1 is:")
-        # for d in util.chunks(unpacks[1][1], 16):
-        #     for i,directData in enumerate(util.chunks(d, 4)):
-        #         s = ' '.join('{:02x}'.format(x) for x in directData)
-        #         print(f"{i:02x}: {s}")
-
         assert unpacks[2][0] == ("v", 2, 32), "Bad data for UV"
-        
-
         assert unpacks[3][0] == ("v", 3, 32), "Bad data for XYZ"
-
-
         assert unpacks[4][0] == ("v", 4, 8), "Bad data for unknown"
-        
-
         assert unpacks[5][0] == ("v", 4, 8), "Bad data for colour"
-        
-
-        xyzs = []
-        uvs = []
-        rgbas = []
-        unks = []
-
-        # The data is arranged in VIF Unpack blocks:
-        # Block 0: Constant
-        # Then it's N groups of 5:
-        # SubBlock 0: Constant
-        # SubBlock 1: UV
-        # SubBlock 2: XYZ
-        # SubBlock 3: Unknown
-        # SubBlock 4: Colour
 
         numSubBlocks = (len(unpacks) - 1) // 5
-
-        numStripElems = 0
-
-        for i in range(numSubBlocks):
-
-            uvData = unpacks[5*i+2][1]
-            xyzData = unpacks[5*i+3][1]
-            unkData = unpacks[5*i+4][1]
-            clrData = unpacks[5*i+5][1]
-
-            numStripElems += len(clrData) // 4
-
-            # Looks like meshes just embed a generic grey or white as the colour for all vertices?
-            # This could potentially help us align ourselves too? Not consistent, maybe from the modelling tool?
-            # FF FF FF 80 (eg casings) or 7F 7F 7F 80 (truck) 
-            #assert clrData[0:4] in [bytes([0xFF, 0xFF, 0xFF, 0x80]), bytes([0x7F, 0x7F, 0x7F, 0x80])], f"Bad colour data, got {clrData[0]:02x} {clrData[1]:02x} {clrData[2]:02x} {clrData[3]:02x}"
-
-            for d in util.chunks(xyzData, 12):
-                xyz = struct.unpack("<fff", d)
-                xyzs.append(xyz)
-            
-            for d in util.chunks(uvData, 8):
-                uv = struct.unpack("<ff", d)
-                uvs.append(uv)
-
-            for d in util.chunks(unkData, 4):
-                unk = struct.unpack("<BBBB", d)
-                unks.append(unk)
-
-            for d in util.chunks(clrData, 4):
-                rgba = struct.unpack("<BBBB", d)
-                rgbas.append(rgba)
-
-        # true for many but, eg, wine truck fails
-        # on failing models, subsequent indexing also fails
-        #assert numStripElems == stripElemCnt, f"The sum of individual strip elements {numStripElems} doesn't match the number in the glist_box {stripElemCnt}"
-
-        # Make a triangle index list
-        tris = []
-        skipCnt = 2 # The first 2 elements can't ever be drawn, you need 3 to make a triangle
-
-        for x in range(1, numStripElems-1):
-            
-            # If the last element of unknowns is 0xFF, skip drawing this triangle (this makes the strip format more versatile)
-            if unks[x+1][3] == 0xFF:
-                skipCnt += 1
-                continue
-
-            if x%2==0:
-                tris.append((x, x+1, x+2, )) # 1-indexing in obj format!
-            else: # Opposite winding direction
-                tris.append((x, x+2, x+1, ))
-
-        # Confirm our assumption about 0xFF = skip vertex
-        # True on most but eg wine truck fails
-        #assert skipCnt + vtxCnt == stripElemCnt, f"Num skips {skipCnt} + num vertices {vtxCnt} != strip elems {stripElemCnt}"
-        #pprint(xyzs)
-
+        objVtxCnt = 0
         with open(f"{name}.obj", "w") as f:
 
-            f.write("mtllib test.mtl\n")
+            for i in range(numSubBlocks):
+                
+                uvData = unpacks[5*i+2][1]
+                xyzData = unpacks[5*i+3][1]
+                triData = unpacks[5*i+4][1]
+                clrData = unpacks[5*i+5][1]
 
-            for xyz in xyzs:
-                f.write(f"v {xyz[0]} {xyz[1]} {xyz[2]} 1.0\n")
+                (xyzs, uvs, clrs, tris) = toBlock(xyzData, uvData, clrData, triData)
 
-            for uv in uvs:
-                f.write(f"vt {uv[0]} {uv[1]}\n")
+                f.write(f"usemtl material{texs[0]}\n")
 
-            f.write("usemtl material1\n")
+                # OBJ file references vertex by index in file, it has no concept of sub-blocks and no way to reset the index
+                for xyz in xyzs:
+                    f.write(f"v {xyz[0]} {xyz[1]} {xyz[2]} 1.0\n") 
 
-            for t in tris:
-                f.write(f"f {t[0]}/{t[0]} {t[1]}/{t[1]} {t[2]}/{t[2]}\n")
+                for uv in uvs:
+                    f.write(f"vt {uv[0]} {uv[1]}\n")
+
+                for tri in tris:
+                    a = tri[0] + objVtxCnt # Correction for 1-indexing already handled in toBlock
+                    b = tri[1] + objVtxCnt
+                    c = tri[2] + objVtxCnt
+                    f.write(f"f {a}/{a} {b}/{b} {c}/{c}\n")
+
+                objVtxCnt += len(xyzs) 
 
 
-    # Looking at the logic, parsemap_block_entity_params is where everything finally gets committed - all previous xyz, rgba, etc get wrapped into one new celglist?
-    # Note - texture deduplication happens in psiCreateMapTextures?
-    # and then psiCreateEntityGfx
-    # It copies a total of 12 4-byte values into a celglist, optionally linking it to a hashcode (the first value copied). (Note - immediately before is 0x30 - the size of the data. Just coincidence?)
 
 
 
-    # Look at Shell_Magnum357
-    # Very similar overall!
+def toBlock(xyzData, uvData, clrData, triData):
+    # Given a texture number, and a block of XYZ, UV, RGBA and Triangle data, convert to geometry block
+
+    numStripElems = len(triData) // 4
+
+    # Looks like meshes just embed a generic grey or white as the colour for all vertices?
+    # This could potentially help us align ourselves too? Not consistent, maybe from the modelling tool?
+    # FF FF FF 80 (eg casings) or 7F 7F 7F 80 (truck) 
+    #assert clrData[0:4] in [bytes([0xFF, 0xFF, 0xFF, 0x80]), bytes([0x7F, 0x7F, 0x7F, 0x80])], f"Bad colour data, got {clrData[0]:02x} {clrData[1]:02x} {clrData[2]:02x} {clrData[3]:02x}"
+
+    xyzs = []
+    uvs = []
+    unks = []
+    rgbas = []
+
+    for d in util.chunks(xyzData, 12):
+        xyz = struct.unpack("<fff", d)
+        xyzs.append(xyz)
+    
+    for d in util.chunks(uvData, 8):
+        uv = struct.unpack("<ff", d)
+        uvs.append(uv)
+
+    for d in util.chunks(triData, 4):
+        unk = struct.unpack("<BBBB", d)
+        unks.append(unk)
+
+    for d in util.chunks(clrData, 4):
+        rgba = struct.unpack("<BBBB", d)
+        rgbas.append(rgba)
+
+    # Make a triangle index list
+    tris = []
+    skipCnt = 2 # The first 2 elements can't ever be drawn, you need 3 to make a triangle
+
+    for x in range(1, numStripElems-1):
+        
+        # If the last element of unknowns is 0xFF, skip drawing this triangle (this makes the strip format more versatile)
+        if unks[x+1][3] == 0xFF:
+            skipCnt += 1
+            continue
+
+        if x%2==0:
+            tris.append((x, x+1, x+2, )) # 1-indexing in obj format!
+        else: # Opposite winding direction
+            tris.append((x, x+2, x+1, ))
+
+    return (xyzs, uvs, rgbas, tris)
+
+
 
 
 
