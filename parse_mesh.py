@@ -1,7 +1,8 @@
 import util
 from pprint import pprint
 import struct
-
+import os
+import shutil
 
 def vifUnpack(data, matchingCount):
     # VIF instructions explain how much data to take and how to unpack it.
@@ -43,7 +44,7 @@ def vifUnpack(data, matchingCount):
             print(f"Data size is therefore {size}")
             unpack_raw_data = data[offsetAt + 4: offsetAt + 4 + size]
 
-            unpacks.append([unpack_type, unpack_raw_data])
+            unpacks.append(["data", unpack_type, unpack_raw_data])
 
             offsetAt += 4 + size
 
@@ -69,6 +70,7 @@ def vifUnpack(data, matchingCount):
         elif cmd == 0x30: # STROW: Texture ID (*descending* order - ie if this is 0x14 in an object with 0x20 textures, this is IDd as item 12.png=0x0C), 0, 0, unknown
             strow = list(struct.unpack("<4I", data[offsetAt+4: offsetAt+20]))
             print(f"STROW {strow[0]:08x}  {strow[1]:08x}  {strow[2]:08x}  {strow[3]:08x} ")
+            unpacks.append(["texture", strow[0]]) 
             offsetAt += 4 + 16
 
         elif cmd == 0x31: # STCOL
@@ -91,7 +93,7 @@ def vifUnpack(data, matchingCount):
 
 
 
-def interpret_mesh(data):
+def interpret_mesh(data, name):
     # Assume 3x uint32 header
     # Field 0 identifies the number of bytes beyond the header
     # Field 1 and 2 are always 0
@@ -155,18 +157,6 @@ def interpret_mesh(data):
     # 0x34: i32 render flags
 
 
-    with open("test.mtl", "w") as f:
-        f.write("""
-newmtl material0
-Ka 1.000000 1.000000 1.000000
-Kd 1.000000 1.000000 1.000000
-Ks 0.000000 0.000000 0.000000
-Tr 0.000000
-illum 1
-Ns 0.000000
-map_Kd 32.png
-
-""")
 
     # How do we get to the list of glist boxes?
     # It's not a const offset, as the number of boxes varies.
@@ -177,7 +167,7 @@ map_Kd 32.png
     glist_box = data[boxlist_start-4:-24]
 
     # This assumption holds true for most things, but seems to fails for MP Skins
-    assert len(glist_box) == 0x38 * boxlist_num, "Incorrectly assumed that footer number is the number of boxes"
+    assert len(glist_box) == 0x38 * boxlist_num, f"Incorrectly assumed that footer number is the number of boxes in {name}"
     assert unk0 == 0
     assert unk1 == 0
     assert unk3 == 0
@@ -232,6 +222,10 @@ map_Kd 32.png
         print("Unpacking...")
 
         unpacks = vifUnpack(data[offsetOfData:offsetOfData + maybeLenOfData], stripElemCnt)
+
+        # FIXME: Use textures
+        unpacks = [x[1:] for x in unpacks if x[0]=="data"]
+
         print(f"Searching found {len(unpacks)} unpacks")
 
         # Unclear what this does. All constant?
@@ -335,7 +329,7 @@ map_Kd 32.png
         #assert skipCnt + vtxCnt == stripElemCnt, f"Num skips {skipCnt} + num vertices {vtxCnt} != strip elems {stripElemCnt}"
         #pprint(xyzs)
 
-        with open(f"test_{i}.obj", "w") as f:
+        with open(f"{name}.obj", "w") as f:
 
             f.write("mtllib test.mtl\n")
 
@@ -345,7 +339,7 @@ map_Kd 32.png
             for uv in uvs:
                 f.write(f"vt {uv[0]} {uv[1]}\n")
 
-            f.write("usemtl material0\n")
+            f.write("usemtl material1\n")
 
             for t in tris:
                 f.write(f"f {t[0]}/{t[0]} {t[1]}/{t[1]} {t[2]}/{t[2]}\n")
@@ -364,8 +358,44 @@ map_Kd 32.png
 
 
 if __name__=="__main__":
-    with open("level_unpack/environment/225-OBJECT_SHELL_300Magnum_02000444.bin", "rb") as f:
-        data = f.read()
-    interpret_mesh(data)
+
+
+    with open("test.mtl", "w") as f:
+        for n in range(20):
+            f.write(f"""
+newmtl material{n}
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Tr 0.000000
+illum 1
+Ns 0.000000
+map_Kd material{n}.png
+
+""")
+
+    #directory = "level_unpack/weapons/Pistol"
+    directory = "level_unpack/gadgets/Glasses"
+    directory = "level_unpack/common_objects"
+
+    for filename in sorted(os.listdir(directory)):
+        if ".bin" in filename:
+            with open(directory + "/" + filename, "rb") as f:
+                data = f.read()
+                interpret_mesh(data, filename)
+
+        if ".png" in filename:
+            # name will be 0.png or similar
+            # Reorder as required???
+            shutil.copyfile(directory +"/"+filename, "material"+filename)
+
+    #with open("level_unpack/environment/229-OBJECT_SHELL_5_56NATO_02000447.bin", "rb") as f:
+    #with open("level_unpack/vehicles/truck/69-OBJECT_wine_truck_020003be.bin", "rb") as f:
+    #with open("level_unpack/weapons/Pistol/10-Grip_020005b6.bin", "rb") as f:
+    #with open("level_unpack/weapons/Pistol/12-Trigger_020005b7.bin", "rb") as f:
+    #with open("level_unpack/0700000c_HT_Level_PowerStationA1/010000e5_mesh_450_4_ffffffff.bin", "rb") as f:
+    #with open("level_unpack/mp_objects/320-PICKUP_RocketLauncher_0200067a.bin", "rb") as f:
+    #    data = f.read()
+    #interpret_mesh(data)
 
 
