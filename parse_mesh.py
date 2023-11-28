@@ -3,6 +3,7 @@ from pprint import pprint
 import struct
 import os
 import shutil
+from pathlib import Path
 
 def vifUnpack(data, matchingCount):
     # VIF instructions explain how much data to take and how to unpack it.
@@ -31,6 +32,7 @@ def vifUnpack(data, matchingCount):
     while offsetAt < len(data):
         imm, num, cmd = struct.unpack("<HBB", data[offsetAt:offsetAt+4])
 
+        # Refer to the VIF documentation - https://psi-rockin.github.io/ps2tek/
         if cmd in cmds_unpack.keys():
 
             if num==0:
@@ -98,7 +100,7 @@ def interpret_mesh(data, name):
     # Field 0 identifies the number of bytes beyond the header
     # Field 1 and 2 are always 0
     (size, z0, z1) = struct.unpack("<III", data[0:12])
-    assert len(data) == size+12, "Expected to be given data length in header"
+    assert len(data) == size+12, f"Expected to be given data length in header of {name}"
     assert z0==0, "Expected header field 2 to be zero"
     assert z1==0, "Expected header field 3 to be zero"
 
@@ -166,8 +168,14 @@ def interpret_mesh(data, name):
 
     glist_box = data[boxlist_start-4:-24]
 
-    # This assumption holds true for most things, but seems to fails for MP Skins
-    assert len(glist_box) == 0x38 * boxlist_num, f"Incorrectly assumed that footer number is the number of boxes in {name}"
+    print(f"Footer numbers: {unk0}, {unk1}, {boxlist_num}, {boxlist_start:08x}, {unk3}, {unk4}")
+
+    if len(glist_box) == 0:
+        print(f"WARNING: NO BOXES IN {name}")
+        return
+
+    # This assumption holds true for most things, but seems to fail for MP Skins
+    assert len(glist_box) == 0x38 * boxlist_num, f"Incorrectly assumed that footer number is the number of boxes in {name}.\nGlist box from offset implies ({len(glist_box)}) bytes, but boxlist_num ({boxlist_num}) would need {0x38 * boxlist_num} bytes"
     assert unk0 == 0
     assert unk1 == 0
     assert unk3 == 0
@@ -271,7 +279,7 @@ def interpret_mesh(data, name):
                 (xyzs, uvs, clrs, tris) = toBlock(xyzData, uvData, clrData, triData)
 
                 # FIXME: Iterate properly and find the correct texture!
-                f.write(f"usemtl material{currentTexture}\n")
+                f.write(f"g block_{i}\nusemtl material{currentTexture}\n")
 
                 # OBJ file references vertex by index in file, it has no concept of sub-blocks and no way to reset the index
                 for xyz in xyzs:
@@ -347,6 +355,7 @@ def toBlock(xyzData, uvData, clrData, triData):
 
 if __name__=="__main__":
 
+    Path("3dmodel").mkdir(parents=True, exist_ok=True)
 
     with open("3dmodel/test.mtl", "w") as f:
         for n in range(50):
@@ -362,12 +371,17 @@ map_Kd material{n}.png
 
 """)
 
+    #directory = "level_unpack/environment/"
     #directory = "level_unpack/weapons/Pistol"
     directory = "level_unpack/gadgets/Glasses"
-    directory = "level_unpack/common_objects"
+    directory = "level_unpack/vehicles/limo"
+    #directory = "level_unpack/common_objects"
+    #directory = "level_unpack/weapons/OddjobHat"
+    #directory="level_unpack/0700000d_HT_Level_PowerStationA2"
+
 
     for filename in sorted(os.listdir(directory)):
-        if ".bin" in filename:
+        if ".ps2gfx" in filename:
             with open(directory + "/" + filename, "rb") as f:
                 data = f.read()
                 interpret_mesh(data, filename)

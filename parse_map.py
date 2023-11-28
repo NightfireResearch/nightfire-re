@@ -82,10 +82,10 @@ def handler_entity_params(path, idx, data, identifier, ident):
     assert curGfx != None, "Entity found without previous ps2gfx block"
 
     if ident in external_knowledge.packed_names.keys():
-        geom_fn = f"level_unpack/{external_knowledge.packed_names[ident]}/{idx}-{name}_{hashcode:08x}.bin"
+        geom_fn = f"level_unpack/{external_knowledge.packed_names[ident]}/{idx}-{name}_{hashcode:08x}.ps2gfx"
         param_fn = f"level_unpack/{external_knowledge.packed_names[ident]}/{idx}-{name}_{hashcode:08x}.params"
     else:
-        geom_fn = f"{path}/{ident}_mesh_{idx}_{identifier}_{hashcode:08x}.bin"
+        geom_fn = f"{path}/{ident}_mesh_{idx}_{identifier}_{hashcode:08x}.ps2gfx"
         param_fn = f"{path}/{ident}_mesh_{idx}_{identifier}_{hashcode:08x}.params"
 
     with open(geom_fn, "wb") as f:

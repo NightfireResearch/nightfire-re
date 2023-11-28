@@ -4,6 +4,7 @@
 import struct
 import util
 import os
+from pathlib import Path
 
 ###### SUMMARY OF FILE CONTENTS AND IMPORTANT AUDIO INFORMATION
 
@@ -82,7 +83,7 @@ import os
 
 
 
-os.system("mkdir -p audio/")
+Path("audio").mkdir(parents=True, exist_ok=True)
 
 def rawDataToWav(data, freq, wavFilePath):
 
