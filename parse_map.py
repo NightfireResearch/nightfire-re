@@ -85,8 +85,8 @@ def handler_entity_params(path, idx, data, identifier, ident):
         geom_fn = f"level_unpack/{external_knowledge.packed_names[ident]}/{idx}-{name}_{hashcode:08x}.ps2gfx"
         param_fn = f"level_unpack/{external_knowledge.packed_names[ident]}/{idx}-{name}_{hashcode:08x}.params"
     else:
-        geom_fn = f"{path}/{ident}_mesh_{idx}_{identifier}_{hashcode:08x}.ps2gfx"
-        param_fn = f"{path}/{ident}_mesh_{idx}_{identifier}_{hashcode:08x}.params"
+        geom_fn = f"{path}/{ident}_{idx}_{hashcode:08x}.ps2gfx"
+        param_fn = f"{path}/{ident}_{idx}_{hashcode:08x}.params"
 
     with open(geom_fn, "wb") as f:
         f.write(curGfx)
@@ -156,7 +156,7 @@ def handler_tex_palette(path, idx, data, identifier, ident):
     elif ident in external_knowledge.packed_names.keys():
         filename = f"level_unpack/{external_knowledge.packed_names[ident]}/{indexInHdr}"
     else:
-        filename = f"{path}/{ident}_{texBlockNum}_{indexInHdr}"
+        filename = f"{path}/{ident}_{indexInHdr}"
     
     util.framesToFile(util.depalettize(lastImageData, lastPalette, w, h,animFrames), filename)
 

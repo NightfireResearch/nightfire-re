@@ -95,7 +95,7 @@ def vifUnpack(data, matchingCount):
 
 
 
-def interpret_mesh(data, name):
+def interpret_mesh(data, name, material_file):
     # Assume 3x uint32 header
     # Field 0 identifies the number of bytes beyond the header
     # Field 1 and 2 are always 0
@@ -239,7 +239,7 @@ def interpret_mesh(data, name):
         objVtxCnt = 0
         with open(f"3dmodel/{name}.obj", "w") as f:
 
-            f.write("mtllib test.mtl\n")
+            f.write(f"mtllib {material_file}\n")
 
             while unpackAt <= len(unpacks)-4: # Can't go too close to the end
 
@@ -367,7 +367,7 @@ Ks 0.000000 0.000000 0.000000
 Tr 0.000000
 illum 1
 Ns 0.000000
-map_Kd material{n}.png
+map_Kd {n}.png
 
 """)
 
@@ -377,19 +377,44 @@ map_Kd material{n}.png
     directory = "level_unpack/vehicles/limo"
     #directory = "level_unpack/common_objects"
     #directory = "level_unpack/weapons/OddjobHat"
-    #directory="level_unpack/0700000d_HT_Level_PowerStationA2"
-
+    #directory="level_unpack/07000024_HT_Level_SkyRail"
+    directory = "level_unpack/07000005_HT_Level_CastleExterior"
+    directory = "level_unpack/07000025_HT_Level_SubPen"
+    directory="level_unpack/07000012_HT_Level_Tower2B"
+    directory="level_unpack/07000009_HT_Level_TowerA"
 
     for filename in sorted(os.listdir(directory)):
+
+        # If the filename starts with 8 hex characters, it's likely a fragment of the level
+        material_file = "test.mtl"
+        container_hashcode = filename.split("_")[0] if len(filename.split("_")[0]) == 8 else ""
+        if container_hashcode:
+            # In this case, we need to export a material per bit
+            fn_base = filename.split(".")[0]
+            material_file = f"mtl_{fn_base}.mtl"
+            with open(f"3dmodel/{material_file}", "w") as f:
+                for n in range(500):
+                    f.write(f"""
+newmtl material{n}
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Tr 0.000000
+illum 1
+Ns 0.000000
+map_Kd {container_hashcode}_{n}.png
+
+""")
+
         if ".ps2gfx" in filename:
             with open(directory + "/" + filename, "rb") as f:
                 data = f.read()
-                interpret_mesh(data, filename)
+                interpret_mesh(data, filename, material_file)
 
         if ".png" in filename:
-            # name will be 0.png or similar
-            # Reorder as required???
-            shutil.copyfile(directory +"/"+filename, "3dmodel/material"+filename)
+            # For known hashcodes of models, name will be "{idx}.png"
+            # For others (eg level geometry), name is "{container_hashcode:08x}_{idx}.png"
+            shutil.copyfile(directory +"/"+filename, "3dmodel/"+filename)
 
     #with open("level_unpack/environment/229-OBJECT_SHELL_5_56NATO_02000447.bin", "rb") as f:
     #with open("level_unpack/vehicles/truck/69-OBJECT_wine_truck_020003be.bin", "rb") as f:
