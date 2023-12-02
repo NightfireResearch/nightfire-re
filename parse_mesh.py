@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 
-def interpret_mesh(data, name, material_file):
+def interpret_ps2gfx(data, name, material_file):
     # Assume 3x uint32 header
     # Field 0 identifies the number of bytes beyond the header
     # Field 1 and 2 are always 0
@@ -15,61 +15,6 @@ def interpret_mesh(data, name, material_file):
     assert len(data) == size+12, f"Expected to be given data length in header of {name}"
     assert z0==0, "Expected header field 2 to be zero"
     assert z1==0, "Expected header field 3 to be zero"
-
-    # It's a celglist struct? So likely a load of uint32, followed by data (floats?)
-
-    # From a diff between two meshes, we see that most fields are identical.
-    # Differences are:
-    # 0x40: ???
-    # 0x4c: ??? - maybe a hexcode??
-    # 0xa4: ???
-
-
-    # We might expect to see:
-    # Flags (type of geometry)
-    # Lengths (num vertices, num faces)
-    # Information about what skeleton / grouping (unless this is in a higher level file?)
-    # Information about what textures to use
-    # Bounding box parameters?
-
-    # A sequence of float (xyz), float (uv)
-    # triangles (short/u8?)
-    # weights (???)
-
-    # NOTE: parsemap_handle_block_id has dict_uv, dict_xyz, dict_rgba, dict_norm, dict_comlist, morph and entity params
-    # These might explain the purpose of the data...
-
-    # Look at Shell_Magnum300 
-    # Header (12 bytes)
-    # ???
-
-    # VIFCMD? values (E1 02 01 6C): Unpack 0x01 of V4-32
-    # Single value (0x00008005) - ???
-    # Various VIF instructions setting up registers/passing data through GIF
-    # VIFCMD? values (A8 03 1A 64): unpack 0x1A of V2-32
-    # Floating block 0x0b8 to about 0x188 (52 floats) - UV
-    # ??? (03 01 00 01)
-    # VIFCMD? values (E2 02 1A 68): unpack 0x1A of V3-32
-    # Floating block 0x190 to about 0x2c8 (78 floats) - XYZ
-    # VIFCMD? values (E4 02 1A 6E) - 0x1A of V4-8
-    # ???????? values
-    # VIFCMD? values (E3 42 1A 6E) - unpack 0x1A of V4-8
-    # FFFFFF80 (26 RGBA8888) - Vertex colours (all white with alpha)?
-    # ???????? (124 bytes) - Entity params / bounding box 6 floats / vertex count as u32: 26 / ?? count as u32: 20 (usable UV points?) 
-    # Is this the data actually handled by parsemap_block_entity_params? Or is that the other?
-
-
-    # The end could well be the GLIST_BOX handled by RecurseAndDrawBoxes:
-    # 0x00: float[3] min
-    # 0x0c: float[3] max
-    # 0x18: i32 childA (or FFFFFFFF)
-    # 0x1c: i32 childB (or 00000000)
-    # 0x20: Offset of the geometry, with respect to 2 bytes into the file
-    # 0x24: i32 textureListPtr
-    # .....?
-    # 0x30: i32 vertexCnt within this box
-    # 0x34: i32 render flags
-
 
 
     # How do we get to the list of glist boxes?
@@ -321,7 +266,7 @@ map_Kd {container_hashcode}_{n}.png
         if ".ps2gfx" in filename:
             with open(directory + "/" + filename, "rb") as f:
                 data = f.read()
-                interpret_mesh(data, filename, material_file)
+                interpret_ps2gfx(data, filename, material_file)
 
         if ".png" in filename:
             # For known hashcodes of models, name will be "{idx}.png"

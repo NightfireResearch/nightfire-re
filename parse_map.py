@@ -272,6 +272,8 @@ def handler_collision2e(path, idx, data, identifier, ident):
     # 528 bytes of short values starting at 0x48C - this is 88 triangle indices?
     # 66 bytes of 0x40
     # FF FF
+
+    # See parse_collision.py
     pass
 
 
