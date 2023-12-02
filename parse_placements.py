@@ -1,4 +1,7 @@
-# Parse static data according to parsemap_block_map_data_static
+# Parse placement/object data according to parsemap_block_map_data_static and parsemap_create_dynamic_objects
+# This appears to be handled in two passes for some reason - maybe cross-linking needed somehow?
+
+# FIXME in Ghidra there are two parts - TARGET_PLACEMENT and serialisedSomethingOrAnother
 
 # ImHex reference:
 """
@@ -9,7 +12,7 @@ struct Entry {
 u16 index;
 u16 unk0;
 u32 gfxHashcode;
-u32 maybeFlags;
+u32 ObjectPlacementType;
 float transform[3];
 float rotate[3];
 u8 unk2[12];
@@ -24,7 +27,7 @@ Entry entries[while($ < std::mem::size())] @ 0x00;
 """
 
 import struct
-
+import external_knowledge
 
 def toBlocks(data):
 
@@ -32,7 +35,7 @@ def toBlocks(data):
     blocks = []
 
     while(offset < len(data)):
-        index, unk0, gfxHashcode, maybeFlags = struct.unpack("<HHII", data[offset:offset+12])
+        index, unk0, gfxHashcode, placementType = struct.unpack("<HHII", data[offset:offset+12])
         transform = struct.unpack("<fff", data[offset+12:offset+24])
         rotation = struct.unpack("<fff", data[offset+24:offset+36])
 
@@ -63,8 +66,18 @@ def toBlocks(data):
 
         # In some cases a block can both have an index and a hashcode - not sure what to do here?
         #, assert not (gfxHashcode != 0xFFFFFFFF and index != 0xFFFF), f"Two conflicting identifiers (index: {index}, hashcode: {gfxHashcode:08x})"
+        
+        # Determine the placement type so we can handle the extra data correctly
+        if(placementType & 0xa000) == 0: # As in parsemap_block_map_data_dynamic
+            # Would call parsemap_create_dynamic_objects, which will switch on this type
+            # This is how we determine how to handle how to treat extraData
+            typeName = external_knowledge.placementTypes[placementType]
+        else:
+            typeName = f"Geometry_{placementType:08x}" # Unclear what the data means in this scenario, it's non-zero
 
-        print(f"Placement of {gfxHashcode:08x} / index {index} at ({transform[0]}, {transform[1]}, {transform[2]}), extra data: {numExtraBytes} bytes")
+        print(f"Placement of {typeName} - {gfxHashcode:08x} / index {index} at ({transform[0]}, {transform[1]}, {transform[2]}), extra data: {numExtraBytes} bytes")
+
+        
 
         blocks.append(block)
         offset += 0x4c + numExtraBytes
