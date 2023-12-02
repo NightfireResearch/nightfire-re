@@ -1,7 +1,7 @@
 # Parse placement/object data according to parsemap_block_map_data_static and parsemap_create_dynamic_objects
 # This appears to be handled in two passes for some reason - maybe cross-linking needed somehow?
 
-# FIXME in Ghidra there are two parts - TARGET_PLACEMENT and serialisedSomethingOrAnother
+# This is a TARGET_PLACEMENT in code
 
 # ImHex reference:
 """
@@ -65,14 +65,23 @@ def toBlocks(data):
         assert (gfxHashcode != 0xFFFFFFFF or index != 0xFFFF), "Both index and hashcode are invalid identifiers"
 
         # In some cases a block can both have an index and a hashcode - not sure what to do here?
-        #, assert not (gfxHashcode != 0xFFFFFFFF and index != 0xFFFF), f"Two conflicting identifiers (index: {index}, hashcode: {gfxHashcode:08x})"
+        # assert not (gfxHashcode != 0xFFFFFFFF and index != 0xFFFF), f"Two conflicting identifiers (index: {index}, hashcode: {gfxHashcode:08x})"
         
         # Determine the placement type so we can handle the extra data correctly
-        if(placementType & 0xa000) == 0: # As in parsemap_block_map_data_dynamic
+        if(placementType & 0xa000) == 0: # As in parsemap_block_map_data_dynamic, this indicates a dynamic object
+
             # Would call parsemap_create_dynamic_objects, which will switch on this type
             # This is how we determine how to handle how to treat extraData
             typeName = external_knowledge.placementTypes[placementType]
-        else:
+
+        elif(placementType & 0x8000) != 0: # As in parsemap_block_map_data_static, build and alloc a new cel
+
+            # PlacementType then used by parseentity_fixup_entity?
+            typeName = f"Cel_{placementType:08x}" # More details?
+
+        else: # Just a graphics object?
+
+            # PlacementType then used by parseentity_fixup_entity?
             typeName = f"Geometry_{placementType:08x}" # Unclear what the data means in this scenario, it's non-zero
 
         print(f"Placement of {typeName} - {gfxHashcode:08x} / index {index} at ({transform[0]}, {transform[1]}, {transform[2]}), extra data: {numExtraBytes} bytes")
