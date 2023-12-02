@@ -72,7 +72,7 @@ def toBlocks(data):
 
             # Would call parsemap_create_dynamic_objects, which will switch on this type
             # This is how we determine how to handle how to treat extraData
-            typeName = external_knowledge.placementTypes[placementType]
+            typeName = external_knowledge.placementTypes.get(placementType, f"UNKNOWN_DYNAMIC_{placementType:08x}")
 
         elif(placementType & 0x8000) != 0: # As in parsemap_block_map_data_static, build and alloc a new cel
 
