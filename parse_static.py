@@ -1,9 +1,9 @@
 # Parse static data according to parsemap_block_map_data_static
 
+# ImHex reference:
 """
-// Note that this is off by 4 bytes
-// because we drop the unused "file size bytes" whereas the code just adds 4
 #include <std/sys.pat>
+#include <std/mem.pat>
 
 struct Entry {
 u16 index;
@@ -19,11 +19,10 @@ u32 numExtraData;
 if (numExtraData)
     u8 extras[8*numExtraData];
 };
-//std::assert(sizeof(Entry)==0x4c, "Entry size wrong"); // WTIHOUT EXTRAS WE ARE OK
 
-Entry entries[5] @ 0x00;
-//Entry entries[header.numEntities] @ $;
+Entry entries[while($ < std::mem::size())] @ 0x00;
 """
+
 import struct
 
 
