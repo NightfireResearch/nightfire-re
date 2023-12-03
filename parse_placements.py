@@ -66,6 +66,7 @@ def toBlocks(data):
 
 
         block = {
+            'type': 'placement',
             'index': index,
             'gfxHashcode': gfxHashcode,
             'transform': transform,

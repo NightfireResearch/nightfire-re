@@ -6,6 +6,7 @@ from pprint import pprint
 from pathlib import Path
 import external_knowledge
 import parse_mesh
+import parse_placements
 # Follow the structure of parsemap_handle_block_id to decode all the blocks/chunks/whatever of each map
 
 # Within, eg, "HT_Level_SkyRail.bin" there are a number of sub-blocks.
@@ -275,6 +276,7 @@ handlers = {
     0x12: handler_tex_palette,
     0x16: handler_tex_data,
     0x1c: handler_blank_discard,
+    0x1a: parse_placements.toBlocks,
     0x26: handler_lightambient,
     0x2d: handler_ps2gfx,
     0x27: handler_lod,
