@@ -28,23 +28,28 @@ import external_knowledge
 # * Collision data
 # * Portal data
 
-lastPalette = None
-lastImageData = None
-curGfx = None
-imageStats = []
-texBlockNum = 0
-level_name = ""
+
+#### 
+# Let's restructure! We now understand that each level consists of a number of sub-resources, let's say `01xxxxxx` files are Archives.
+# Each Archive consists of a logical object or small collection of objects, eg:
+# - The level itself
+# - A PP7 (Gold)
+# - Multiplayer special objects
+# - Groups of textures
+# Some key resources can be identified by hashcode for use within the code, eg helicopter blades, textures.
+# Within each Archive might be a Placement file, which identifies a group of resources.
+
+# So let's treat this in Python as:
+# Archives can be unpacked to a set of:
+# - Up to 1 header
+# - Up to 1 texture header
+# - A set of textures/palettes
+# - Up to 1 placement file
+# - A set of geometry objects (with matching parameters including name)
+# Within each archive, the index is important - if a resource is not referenced by hashcode, it may need index.
 
 
-
-allNames = []
-
-
-
-
-def handler_entity_params(path, idx, data, identifier, ident):
-    global framelists
-    #pprint(data)
+def handler_entity_params(data):
 
     # Possibly a struct, handled by parsemap_block_entity_params
     # These are stored within the current cel/glist, so likely represent some stats about the
@@ -70,45 +75,21 @@ def handler_entity_params(path, idx, data, identifier, ident):
 
     # TODO: Something useful with this data?
 
-    # Is this how we link textures to entities? A single entity (eg a skin) can have multiple/range?
-
-    print(f"Entity: {name} owned by {ident}_{idx} - {path}")
-
-    allNames.append(name + "   --->>>   " + str(ident))
+    #print(f"Entity: {name} owned by {ident}_{idx} - {path}")
 
     name = name.replace("/", "__").replace("\\", "__")
 
-    global curGfx
-    assert curGfx != None, "Entity found without previous ps2gfx block"
+    return [{'type': 'entity_params', 'name': name, 'hashcode': hashcode, 'data': data}]
 
-    if ident in external_knowledge.packed_names.keys():
-        geom_fn = f"level_unpack/{external_knowledge.packed_names[ident]}/{idx}-{name}_{hashcode:08x}.ps2gfx"
-        param_fn = f"level_unpack/{external_knowledge.packed_names[ident]}/{idx}-{name}_{hashcode:08x}.params"
-    else:
-        geom_fn = f"{path}/{ident}_{idx}_{hashcode:08x}.ps2gfx"
-        param_fn = f"{path}/{ident}_{idx}_{hashcode:08x}.params"
-
-    with open(geom_fn, "wb") as f:
-        f.write(curGfx)
-
-    with open(param_fn, "wb") as f:
-        f.write(data)
-
-
-
-    curGfx = None
-
-    pass
-
-def handler_map_header(path, idx, data, identifier, ident):
+def handler_map_header(data):
     _, entityCnt, pathCnt, texCnt, = struct.unpack("<IIII", data[0:16])
-    print(f"Map header: Allocates header (m_pmap) and sets up counts. maybeEntity: {entityCnt}, maybePath: {pathCnt}, maybeTex: {texCnt}")
+    #print(f"Map header: Allocates header (m_pmap) and sets up counts. maybeEntity: {entityCnt}, maybePath: {pathCnt}, maybeTex: {texCnt}")
 
-def handler_tex_header(path, idx, data, identifier, ident):
-    global lastPalette
-    global lastImageData
-    global imageStats
-    global texBlockNum
+    return [{'type': 'map_header', 'entityCnt': entityCnt, 'pathCnt': pathCnt, 'texCnt': texCnt}]
+
+def handler_tex_header(data):
+
+    texEntries = []
     entryNum = 0
     for idx,entry in enumerate(list(util.chunks(data, 0xc))):
         flags, unk0, w, h, animFrames, divisor, hashcode = struct.unpack("<BBHHBBI", entry)
@@ -125,16 +106,13 @@ def handler_tex_header(path, idx, data, identifier, ident):
 
         #print(f"Texture {len(imageStats)} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
 
-        imageStats.append((w+1,h+1,flags & 1, f"{ident}_{texBlockNum}_{entryNum}",hashcode,animFrames,idx,))
-        entryNum += 1
-    texBlockNum += 1
+        texEntries.append({'type': 'tex_header_entry', 'width': w+1, 'height': h+1, 'hashcode': hashcode, 'animFrames': animFrames})
 
-def handler_tex_palette(path, idx, data, identifier, ident):
-    global lastPalette
-    global lastImageData
-    global imageStats
-    global texBlockNum
-    global framelists
+    return texEntries
+    
+
+def handler_tex_palette(data):
+
     # This type of palette is swizzled (for performance?)
     if len(data) == 1024:
         data = util.manipulatePalette20(data)
@@ -142,36 +120,19 @@ def handler_tex_palette(path, idx, data, identifier, ident):
 
     # Each colour within the palette is represented as 4 bytes, order RGBA (PS2 scaling for A)
     pBytes = list(util.chunks(data, 4))
-    lastPalette = []
+    palette = []
     for b in pBytes:
-        lastPalette.append((int(b[0]), int(b[1]), int(b[2]), util.alphaScale(b[3])))
+        palette.append((int(b[0]), int(b[1]), int(b[2]), util.alphaScale(b[3])))
 
-    # Pop the first entry out of the "imageStats" list (ie data from 0x10 block)
-    imgId = len(imageStats)
-    w,h,palD,name,hashcode,animFrames,indexInHdr = imageStats[0]
-    imageStats = imageStats[1:]
+    return [{'type': 'tex_palette', 'colours': palette}]
 
-    if hashcode != 0xFFFFFFFF:
-        filename = f"level_unpack/global_assets/{hashcode:08x}"
-    elif ident in external_knowledge.packed_names.keys():
-        filename = f"level_unpack/{external_knowledge.packed_names[ident]}/{indexInHdr}"
-    else:
-        filename = f"{path}/{ident}_{indexInHdr}"
-    
-    util.framesToFile(util.depalettize(lastImageData, lastPalette, w, h,animFrames), filename)
+def handler_tex_data(data):
+    return [{'type': 'tex_data', 'data': data}]
 
-def handler_tex_data(path, idx, data, identifier, ident):
-    global lastImageData
-    lastImageData = data
+def handler_ps2gfx(data):
+    return [{'type': 'ps2gfx', 'data': data}]
 
-def handler_ps2gfx(path, idx, data, identifier, ident):
-
-    # We don't have the entity name yet, let's wait until we get the name...
-    global curGfx
-    assert curGfx == None, "Last graphics object was not consumed by a subsequent entity_params block"
-    curGfx = data
-
-def handler_lightambient(path, idx, data, identifier, ident):
+def handler_lightambient(data):
     # First 4 bytes: Num lights
     # Then n * 32 bytes: Config for each light
     (n,) = struct.unpack("<I", data[0:4])
@@ -186,9 +147,10 @@ def handler_lightambient(path, idx, data, identifier, ident):
         (posX, posY, posZ, radius, unk0, r, g, b) = struct.unpack("<ffffffff", light)
 
         print(f"Light {i} data: ({posX}, {posY}, {posZ}), {radius} - colour {r}, {g}, {b}, unk {unk0}")
-    pass
+    
+    return []
 
-def handler_lod(path, idx, data, identifier, ident):
+def handler_lod(data):
     # N entries of format (0xFFFFFFFF, 99999.0f)?
     # Override the LOD for a given object (hashcode/0xFFFFFFFF) to the given distance?
 
@@ -202,8 +164,9 @@ def handler_lod(path, idx, data, identifier, ident):
         pass
 
     # TODO: What is LOD data used for?
+    return []
 
-def handler_aipath(path, idx, data, identifier, ident):
+def handler_aipath(data):
 
     # Header: version?, number of paths?
     (version, numPaths) = struct.unpack("<II", data[0:8])
@@ -240,9 +203,9 @@ def handler_aipath(path, idx, data, identifier, ident):
     #       ??: 
     #       ??: Idx from (short?)
     #       ??: Idx to (short?)
-    pass
+    return []
 
-def handler_sound(path, idx, data, identifier, ident):
+def handler_sound(data):
 
     numSfx = struct.unpack("<I", data[0:4])[0]
 
@@ -262,33 +225,16 @@ def handler_sound(path, idx, data, identifier, ident):
 
         pass
 
-def handler_collision2e(path, idx, data, identifier, ident):
+    return []
 
-    # Example - let's look at block 924 of HendersonA
-
-    # Consists of:
-    # ??
-    # ??
-    # 528 bytes of short values starting at 0x48C - this is 88 triangle indices?
-    # 66 bytes of 0x40
-    # FF FF
+def handler_collision2e(data):
 
     # See parse_collision.py
-    pass
+    return []
 
-
-def handler_default(path, idx, data, identifier, ident):
-
-    print(f"Unknown block type {identifier:02x}, dumping...")
-
-    typename = typelookup.get(identifier, f"unknown{identifier:02x}")
-
-    with open(f"{path}/_{typename}_{idx}.bin", "wb") as f:
-        f.write(data)
-
-def handler_blank_discard(path, idx, data, identifier, ident):
+def handler_blank_discard(data):
     assert len(data)==0, "Handling a discard block but there is data"
-    return
+    return []
 
 typelookup = {
     0x00: "dictxyz",
@@ -330,21 +276,19 @@ handlers = {
 
 }
 
-def handle_block(path, idx, data, identifier, ident):
+def handle_block(data, identifier):
     # See parsemap_handle_block_id
-
-    if identifier not in [0x05]: # Quick hack for just studying one block type
-        pass # Run the entire map data
-        #return # Just study one block type
 
     # Strip the identifier/size off the block data
     data = data[4:]
 
-    #print(f"Got a subblock of length {len(data)} with identifier {identifier:x}")
+    # If we understand the format, handle it
+    if identifier in handlers.keys():
+        return handlers[identifier](data)
 
-    handler = handlers.get(identifier, handler_default)
-
-    handler(path, idx, data, identifier, ident)
+    # Otherwise, dump the data for studying
+    typename = typelookup.get(identifier, f"unknown{identifier:02x}")
+    return [{'type': typename, 'data': data}]
 
 
 
@@ -355,13 +299,6 @@ def extract_leveldir(name):
     target_dir = f"files_bin_unpack/{level_name}.bin_extract/"
     ordered_dir=sorted(os.listdir(target_dir)) # Go through in the order set by the bin file
 
-    path = f"level_unpack/{level_name}"
-    
-    Path("level_unpack/global_assets").mkdir(parents=True, exist_ok=True)
-    Path("level_unpack/skins").mkdir(parents=True, exist_ok=True)
-
-    for v in external_knowledge.packed_names.values():
-        Path(f"level_unpack/{v}").mkdir(parents=True, exist_ok=True)
 
     for filename in ordered_dir:
 
@@ -370,18 +307,23 @@ def extract_leveldir(name):
         # The x01 is also the largest file (level geometry? textures?) and also seems to trigger Anim_PostLoadInit
         # Similar structure seen in all the other level files checked.
 
-        if filename.split(".")[1] not in ["x00", "x01", "x02", "x0b"]:
+        archive_hashcode = filename.split(".")[0]
+        archive_extension = filename.split(".")[1]
+        if archive_extension not in ["x00", "x01", "x02", "x0b"]:
             #print(f"File {filename} is not map data (maybe anim or something), continuing...")
             continue
-        
-        # Make sure the directory exists, but only create it if we have map data to put inside
-        Path(path).mkdir(parents=True, exist_ok=True)
 
-        ident = filename.split(".")[0].split("_")[1]
+        # As a general pattern it looks like:
+        # x00: Emplacements, MP objects, weapons (3rd person / drops?)
+        # x01: Level
+        # x02: Skins
+        # x0b: Weapons (1st person?)
+
+        ident = filename.split(".")[0]
         #print(f"Extracting resources from {ident} in {level_name}")
 
         # Follow logic of parsemap_parsemap
-        print(f"Looking at map data {filename}...")
+        #print(f"Looking at archive data {archive_hashcode}...")
 
         with open(target_dir + filename, "rb") as f:
             data = f.read()
@@ -398,6 +340,8 @@ def extract_leveldir(name):
         FileBlockSize = [0] * 0x31
 
         idx = 0
+        results = []
+
         while not finished:
 
             BinFileHeader, = struct.unpack("<I", data[pBinFileHeader:pBinFileHeader+4])
@@ -411,7 +355,7 @@ def extract_leveldir(name):
 
             if bh_identifier == 0x1d:
                 finished = True
-                print("Got a terminator signal")
+                #print("Got a terminator signal")
                 continue
 
             if bh_identifier == 0x1a:
@@ -430,8 +374,9 @@ def extract_leveldir(name):
             FileBlockSize[bh_identifier] += bh_size
             
             # Sub-block found - ID, size
-            handle_block(path, idx, data[pFileNextBlock:pFileNextBlock+bh_size], bh_identifier, ident)
+            result = handle_block(data[pFileNextBlock:pFileNextBlock+bh_size], bh_identifier)
 
+            results.extend(result)
 
             # Advance to next entry
             pBinFileHeader += 4
@@ -439,31 +384,41 @@ def extract_leveldir(name):
 
             pass
 
-        # x02 could be Player Skins? The test scene with all characters has about 45 characters, and 48 skins. So including player arms, about right?
-        # SkyRail has 35, SubPen 34, FortKnox 34, MissileSilo 34, SnowBlind 34, Ravine 34. So ~32 skins, Bond, Tank and Heli?
+        archivepath = external_knowledge.archive_names.get(archive_hashcode, f"{level_name}/unknown_{archive_hashcode}")
+        savepath = f"level_unpack/{archivepath}"
+        Path(savepath).mkdir(parents=True, exist_ok=True)
+        print(f"ARCHIVE {archive_hashcode} ({archivepath}) DECODED - RESULT: {len(results)} blocks")
+
+        # Split by expected types
+        tex_datas = [x for x in results if x['type'] == "tex_data"]
+        tex_palettes = [x for x in results if x['type'] == "tex_palette"]
+        tex_header_entries = [x for x in results if x['type'] == "tex_header_entry"]
+        map_headers = [x for x in results if x['type'] == "map_header"]
+        entity_params = [x for x in results if x['type'] == "entity_params"]
+        ps2gfxs = [x for x in results if x['type'] == "ps2gfx"]
+
+        # Confirm some assumptions about the data
+        assert len(map_headers) == 1, "Expected only one map header per archive"
+        assert len(entity_params) == len(ps2gfxs), "Expected exactly one entity params per ps2 graphics object"
+        assert len(tex_palettes) == len(tex_datas), "Expected exactly one palette per texture data"
+        assert len(tex_header_entries) == len(tex_datas), "Expected exactly one header entry per texture data"
+
+        # Each texture is assembled and outputted by index, combining the information from the bitmap, header and the palette
+
+        for index, (header_item, data_item, palette_item) in enumerate(zip(tex_header_entries, tex_datas, tex_palettes)):
+            w = header_item['width']
+            h = header_item['height']
+            animFrames = header_item['animFrames']
+            util.framesToFile(util.depalettize(data_item['data'], palette_item['colours'], w, h,animFrames), f"{savepath}/{index}")
+
+
+        # Debug - dump ps2gfx and entity params to a file temporarily
 
 
 
-        # Does this also contain detail about the anonymous textures? Eg in Henderson A, we see 0061_0100002e references lots of the "anonymous" textures
-        # like bullet hit graphics, watch laser, casings, and environmental effects like lightning and footprints.
-        # By eye it looks like actual bitmapped data is present in this file.
-
-        # Go through and handle each subblock according to parsemap_handle_block_id
-
-        # 1a: Marker that indicates the start of Dynamic Objects (ladders, barrels, spawn points, spotlights - stuff like that)
-        # 1c: Trigger Memory Discard
-        # 1d: End Loading level data
-
-        # x07: Script (ie Keyframed Animation)
 
 
 
-
-
-
-        # parsemap_block_particles_ goes to Emitter_LoadDefs which stores the data at the specified hashcode.
-# This is then used by Emitter_Update / Emitter_Draw
-# There appear to be multiple types
 
 
 
@@ -477,8 +432,4 @@ if __name__ == "__main__":
     for l in levels:
         extract_leveldir(l)
 
-
-    with open("all_entity_names.txt", "w") as f:
-        for n in allNames:
-            f.write(f"{n}\n")
 

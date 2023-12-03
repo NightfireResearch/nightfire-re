@@ -43,7 +43,7 @@ hashcode_name_mapping = {
     "07000090": "HT_Level_MovieMap" 
 }
 
-packed_names = {
+archive_names = {
 
  # MP skins - all entities starting "Mp_", "MP_", and some manually-added extras
  '0100012a': 'skins/MP_Renard',
@@ -231,6 +231,9 @@ packed_names = {
  '010000de': "vehicles/limo",
  '01000147': "emplacements",
  '01000166': "markers",
+ '010001d8': "font",
+ '010000a2': "ui/pause",
+ '01000070': "ui/overlay",
 
 }
 
