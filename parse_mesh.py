@@ -23,8 +23,6 @@ def interpret_ps2gfx(data, name, material_file):
     # Let's assume there's a "footer" struct encompassing all the leftover data beyond the glist_box data
     unk0, unk1, boxlist_num, boxlist_start, unk3, unk4 = struct.unpack("<6I", data[-24:])
 
-    glist_box = data[-24-boxlist_num*0x38:-24]
-
     print(f"Footer numbers: {unk0}, {unk1}, {boxlist_num}, {boxlist_start:08x}, {unk3}, {unk4}")
 
     if boxlist_num == 0:
@@ -43,7 +41,9 @@ def interpret_ps2gfx(data, name, material_file):
     assert unk1 == 0
     assert unk4 == 0
 
+    glist_box = data[-24-boxlist_num*0x38:-24]
 
+    fragnum = 0
     for i, box in enumerate(util.chunks(glist_box, 0x38)):
 
         minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, maybeEndOfData, maybeLenOfData, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
@@ -99,7 +99,8 @@ def interpret_ps2gfx(data, name, material_file):
 
         numSubBlocks = (len(unpacks) - 1) // 5
         objVtxCnt = 0
-        with open(f"{name}.obj", "w") as f:
+        with open(f"{name}_frag{fragnum}.obj", "w") as f:
+            fragnum+=1
 
             f.write(f"mtllib {material_file}\n")
 
@@ -156,7 +157,8 @@ def interpret_ps2gfx(data, name, material_file):
                     c = tri[2] + objVtxCnt
                     f.write(f"f {a}/{a} {b}/{b} {c}/{c}\n")
 
-                objVtxCnt += len(xyzs) 
+                objVtxCnt += len(xyzs)
+                print(f"Block has found {len(xyzs)} points")
 
 
 
