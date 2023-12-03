@@ -28,6 +28,18 @@ Entry entries[while($ < std::mem::size())] @ 0x00;
 
 import struct
 import external_knowledge
+from pprint import pprint
+
+
+def defaultHandler(data, placementType):
+    print(f"Handler for placement type {placementType} unknown, data:")
+    pprint(data)
+
+# Match to the switch statement in parsemap_create_dynamic_objects
+extraHandlers = {
+
+}
+
 
 def toBlocks(data):
 
@@ -66,7 +78,10 @@ def toBlocks(data):
 
         # In some cases a block can both have an index and a hashcode - not sure what to do here?
         # assert not (gfxHashcode != 0xFFFFFFFF and index != 0xFFFF), f"Two conflicting identifiers (index: {index}, hashcode: {gfxHashcode:08x})"
-        
+                
+        # PlacementType then used by parseentity_fixup_entity?
+        typeName = f"Geometry_{placementType:08x}"
+
         # Determine the placement type so we can handle the extra data correctly
         if(placementType & 0xa000) == 0: # As in parsemap_block_map_data_dynamic, this indicates a dynamic object
 
@@ -74,19 +89,19 @@ def toBlocks(data):
             # This is how we determine how to handle how to treat extraData
             typeName = external_knowledge.placementTypes.get(placementType, f"UNKNOWN_DYNAMIC_{placementType:08x}")
 
-        elif(placementType & 0x8000) != 0: # As in parsemap_block_map_data_static, build and alloc a new cel
+        if(placementType & 0x8000) != 0: # As in parsemap_block_map_data_static, build and alloc a new cel
 
             # PlacementType then used by parseentity_fixup_entity?
             typeName = f"Cel_{placementType:08x}" # More details?
 
-        else: # Just a graphics object?
-
-            # PlacementType then used by parseentity_fixup_entity?
-            typeName = f"Geometry_{placementType:08x}" # Unclear what the data means in this scenario, it's non-zero
 
         print(f"Placement of {typeName} - {gfxHashcode:08x} / index {index} at ({transform[0]}, {transform[1]}, {transform[2]}), extra data: {numExtraBytes} bytes")
 
-        
+        extraHandler = extraHandlers.get(placementType, defaultHandler)
+
+        if len(extraData) != 0:
+            #extraHandler(extraData, placementType)
+            pass
 
         blocks.append(block)
         offset += 0x4c + numExtraBytes
