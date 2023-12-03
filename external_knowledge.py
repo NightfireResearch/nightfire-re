@@ -101,7 +101,7 @@ archive_names = {
  '0100007a': "skins/Henderson_Grunt2",
  '010000c9': "skins/HendersonA_Kiko",
  '01000079': "skins/HendersonA_Civilian1",
- '01000075': "Skins/HendersonA_BondBlueSuit",
+ '01000075': "skins/HendersonA_BondBlueSuit",
  '01000096': "skins/Henderson_GruntWithBandana",
  '01000145': "skins/HendersonB_Mayhew",
  '010000ac': "skins/HendersonC_Civilian",
