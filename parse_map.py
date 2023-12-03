@@ -294,8 +294,7 @@ def handle_block(data, identifier):
 
 
 def extract_leveldir(name):
-    global level_name
-    level_name = name
+
     target_dir = f"files_bin_unpack/{level_name}.bin_extract/"
     ordered_dir=sorted(os.listdir(target_dir)) # Go through in the order set by the bin file
 
