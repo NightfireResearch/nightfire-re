@@ -43,67 +43,68 @@ def interpret_ps2gfx(data, name, material_file):
 
     glist_box = data[-24-boxlist_num*0x38:-24]
 
-    fragnum = 0
-    for i, box in enumerate(util.chunks(glist_box, 0x38)):
+    with open(f"{name}.obj", "w") as f:
 
-        minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, maybeEndOfData, maybeLenOfData, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
-
-        print(f"Box {i} bounds ({minX}, {minY}, {minZ} - {maxX}, {maxY}, {maxZ}) - {vtxCnt} vertices, {stripElemCnt} strip elements, {flags}")
-
-        print(f"Data found at offset {offsetOfData:08x}, maybeEnd {maybeEndOfData:08x}, maybeLen {maybeLenOfData:08x}")
-
-
-        # "TexList" is the offset of (this?) box within the file, minus 12 bytes.
-
-        ## Note that not all glist boxes actually contain geometry.
-        # In a non-trivial model, the parent box contains smaller boxes, which contain yet smaller ones
-        # Potentially, only the leaves of this tree need to contain anything drawable.
-        # Non-drawable ("container") boxes have their offset as 0.
-        if offsetOfData == 0:
-            print("This Glist box is just a parent for smaller ones, no geometry.")
-
-            # Note that in this case, "maybeLenOfData" is non-zero! Does it have special meaning?
-
-            continue
-
-        # Hypothesis: If we have graphics, we have been given(Offset of VIF Stream, End of VIF Stream, Size of VIF Stream)
-        assert offsetOfData + maybeLenOfData == maybeEndOfData, "Not true that we've been given offset, end, len"
-
-        # "endOfData" is also the start of a list, which is 0xFFFFFFFF terminated.
-        # The list items *could* be an offset within the vif stream, for each strip perhaps??
-        listElems = []
-
-        listIdx = maybeEndOfData
-        while True:
-            value, = struct.unpack("<I", data[listIdx:listIdx+4])
-            if value == 0xFFFFFFFF:
-                break
-            print(f"Element: {value:08x}")
-            listElems.append(value)
-            listIdx += 4
-
-        print(f"Found a list of {len(listElems)} associated with the following data - not sure what they mean yet.")
-
-        # Some hypotheses regarding these list elements:
-        # - Linked to texture usage
-        # - Linked to the triangle strips
-        # - ???
-
-        print("Unpacking...")
-
-        unpacks = util.vifUnpack(data[offsetOfData:offsetOfData + maybeLenOfData])
-
-        # We must iterate over all unpacks. Start with texture ID 0
-        currentTexture = 0
-        unpackAt = 0
-
-        numSubBlocks = (len(unpacks) - 1) // 5
         objVtxCnt = 0
-        with open(f"{name}_frag{fragnum}.obj", "w") as f:
-            fragnum+=1
 
-            f.write(f"mtllib {material_file}\n")
+        f.write(f"mtllib {material_file}\n")
 
+        
+        for i, box in enumerate(util.chunks(glist_box, 0x38)):
+
+            minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, maybeEndOfData, maybeLenOfData, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
+
+            print(f"Box {i} bounds ({minX}, {minY}, {minZ} - {maxX}, {maxY}, {maxZ}) - {vtxCnt} vertices, {stripElemCnt} strip elements, {flags}")
+
+            print(f"Data found at offset {offsetOfData:08x}, maybeEnd {maybeEndOfData:08x}, maybeLen {maybeLenOfData:08x}")
+
+
+            # "TexList" is the offset of (this?) box within the file, minus 12 bytes.
+
+            ## Note that not all glist boxes actually contain geometry.
+            # In a non-trivial model, the parent box contains smaller boxes, which contain yet smaller ones
+            # Potentially, only the leaves of this tree need to contain anything drawable.
+            # Non-drawable ("container") boxes have their offset as 0.
+            if offsetOfData == 0:
+                print("This Glist box is just a parent for smaller ones, no geometry.")
+
+                # Note that in this case, "maybeLenOfData" is non-zero! Does it have special meaning?
+
+                continue
+
+            # Hypothesis: If we have graphics, we have been given(Offset of VIF Stream, End of VIF Stream, Size of VIF Stream)
+            assert offsetOfData + maybeLenOfData == maybeEndOfData, "Not true that we've been given offset, end, len"
+
+            # "endOfData" is also the start of a list, which is 0xFFFFFFFF terminated.
+            # The list items *could* be an offset within the vif stream, for each strip perhaps??
+            listElems = []
+
+            listIdx = maybeEndOfData
+            while True:
+                value, = struct.unpack("<I", data[listIdx:listIdx+4])
+                if value == 0xFFFFFFFF:
+                    break
+                print(f"Element: {value:08x}")
+                listElems.append(value)
+                listIdx += 4
+
+            print(f"Found a list of {len(listElems)} associated with the following data - not sure what they mean yet.")
+
+            # Some hypotheses regarding these list elements:
+            # - Linked to texture usage
+            # - Linked to the triangle strips
+            # - ???
+
+            print("Unpacking...")
+
+            unpacks = util.vifUnpack(data[offsetOfData:offsetOfData + maybeLenOfData])
+
+            # We must iterate over all unpacks. Start with texture ID 0
+            currentTexture = 0
+            unpackAt = 0
+
+            numSubBlocks = (len(unpacks) - 1) // 5
+            
             while unpackAt <= len(unpacks)-4: # Can't go too close to the end
 
                 # We expect to be given one of:
