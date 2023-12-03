@@ -94,7 +94,7 @@ def interpret_ps2gfx(data, name, material_file):
 
         numSubBlocks = (len(unpacks) - 1) // 5
         objVtxCnt = 0
-        with open(f"3dmodel/{name}.obj", "w") as f:
+        with open(f"{name}.obj", "w") as f:
 
             f.write(f"mtllib {material_file}\n")
 
@@ -206,6 +206,21 @@ def toBlock(xyzData, uvData, clrData, triData):
 
     return (xyzs, uvs, rgbas, tris)
 
+
+def generate_materials(filename):
+    with open(filename, "w") as f:
+        for n in range(500):
+            f.write(f"""
+newmtl material{n}
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Tr 0.000000
+illum 1
+Ns 0.000000
+map_Kd {n}.png
+
+""")
 
 
 

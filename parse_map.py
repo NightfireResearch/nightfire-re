@@ -5,7 +5,7 @@ from math import isqrt
 from pprint import pprint
 from pathlib import Path
 import external_knowledge
-
+import parse_mesh
 # Follow the structure of parsemap_handle_block_id to decode all the blocks/chunks/whatever of each map
 
 # Within, eg, "HT_Level_SkyRail.bin" there are a number of sub-blocks.
@@ -413,6 +413,11 @@ def extract_leveldir(name):
 
 
         # Debug - dump ps2gfx and entity params to a file temporarily
+        for g, ep in zip(ps2gfxs, entity_params):
+
+            fn = f"{ep['hashcode']:08x}_{ep['name']}"
+            parse_mesh.interpret_ps2gfx(g['data'], f"{savepath}/{fn}", "mtls.mtl")
+            parse_mesh.generate_materials(f"{savepath}/mtls.mtl")
 
 
 
