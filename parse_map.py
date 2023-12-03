@@ -415,9 +415,14 @@ def extract_leveldir(name):
         # Debug - dump ps2gfx and entity params to a file temporarily
         for g, ep in zip(ps2gfxs, entity_params):
 
-            fn = f"{ep['hashcode']:08x}_{ep['name']}"
-            parse_mesh.interpret_ps2gfx(g['data'], f"{savepath}/{fn}", "mtls.mtl")
-            parse_mesh.generate_materials(f"{savepath}/mtls.mtl")
+            try:
+
+                fn = f"{ep['hashcode']:08x}_{ep['name']}"
+                parse_mesh.interpret_ps2gfx(g['data'], f"{savepath}/{fn}", "mtls.mtl")
+                parse_mesh.generate_materials(f"{savepath}/mtls.mtl")
+
+            except:
+                print("BAD DATA WHILST HANDLING MESH! SKIPPING")
 
 
 

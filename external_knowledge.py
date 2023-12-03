@@ -198,6 +198,7 @@ archive_names = {
  '01000204': "weapons/OddjobHat",
  '010001a0': "weapons/Launcher1",
  '010001a5': "weapons/BeamLaser",
+ '010000eb': "weapons/unknown_launcher",
 
  '01000160': "gadgets/QWorm",
  '01000101': "gadgets/Grapple",
