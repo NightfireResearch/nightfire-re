@@ -408,20 +408,20 @@ def extract_leveldir(level_name):
             w = header_item['width']
             h = header_item['height']
             animFrames = header_item['animFrames']
-            util.framesToFile(util.depalettize(data_item['data'], palette_item['colours'], w, h,animFrames), f"{savepath}/{index}")
+            hashcode = header_item['hashcode']
+
+            saveto = f"{savepath}/{index}" if hashcode==0xffffffff else f"{savepath}/{hashcode:08x}"
+            util.framesToFile(util.depalettize(data_item['data'], palette_item['colours'], w, h,animFrames), saveto)
 
 
         # Debug - dump ps2gfx and entity params to a file temporarily
+        # Eventually we should take a placement list, and place the objects according to this.
         for g, ep in zip(ps2gfxs, entity_params):
 
-            try:
+            fn = f"{ep['hashcode']:08x}_{ep['name']}"
+            parse_mesh.generate_materials(f"{savepath}/mtls.mtl")
+            parse_mesh.interpret_ps2gfx(g['data'], f"{savepath}/{fn}", "mtls.mtl")
 
-                fn = f"{ep['hashcode']:08x}_{ep['name']}"
-                parse_mesh.interpret_ps2gfx(g['data'], f"{savepath}/{fn}", "mtls.mtl")
-                parse_mesh.generate_materials(f"{savepath}/mtls.mtl")
-
-            except:
-                print("BAD DATA WHILST HANDLING MESH! SKIPPING")
 
 
 

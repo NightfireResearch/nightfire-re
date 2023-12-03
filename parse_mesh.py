@@ -23,19 +23,24 @@ def interpret_ps2gfx(data, name, material_file):
     # Let's assume there's a "footer" struct encompassing all the leftover data beyond the glist_box data
     unk0, unk1, boxlist_num, boxlist_start, unk3, unk4 = struct.unpack("<6I", data[-24:])
 
-    glist_box = data[boxlist_start-4:-24]
+    glist_box = data[-24-boxlist_num*0x38:-24]
 
     print(f"Footer numbers: {unk0}, {unk1}, {boxlist_num}, {boxlist_start:08x}, {unk3}, {unk4}")
 
-    if len(glist_box) == 0:
+    if boxlist_num == 0:
         print(f"WARNING: NO BOXES IN {name}")
         return
 
-    # This assumption holds true for most things, but seems to fail for MP Skins
-    assert len(glist_box) == 0x38 * boxlist_num, f"Incorrectly assumed that footer number is the number of boxes in {name}.\nGlist box from offset implies ({len(glist_box)}) bytes, but boxlist_num ({boxlist_num}) would need {0x38 * boxlist_num} bytes"
+    if boxlist_start==0:
+        print("WARNING: NO BOXLIST")
+        return
+
+    if unk3 != 0:
+        print("CANNOT HANDLE SKELETAL ANIMATION OR MORPHS YET")
+        return
+
     assert unk0 == 0
     assert unk1 == 0
-    assert unk3 == 0
     assert unk4 == 0
 
 
