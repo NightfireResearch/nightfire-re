@@ -185,13 +185,15 @@ def handler_aipath(data):
     nameBytes,maybeFlags, numA, unk1 = struct.unpack("<128sI32xII12x", data[8:8+184])
 
     name = nameBytes.split(b"\x00")[0].decode("ascii")
-    print(f"Found a path called {name}")
+    #print(f"Found a path called {name}")
 
     if(maybeFlags & 1 == 0):
-        print("Handle according to the first half - paths/routes?")
+        #print("Handle according to the first half - paths/routes?")
+        pass
 
     else:
-        print("Handle according to the second half - bounds?")
+        #print("Handle according to the second half - bounds?")
+        pass
 
     # For each Path: 
     #   Name, padded to 128 bytes?
@@ -390,7 +392,7 @@ def extract_leveldir(level_name):
         archivepath = external_knowledge.archive_names.get(archive_hashcode, f"{level_name}/unknown_{archive_hashcode}")
         savepath = f"level_unpack/{archivepath}"
         Path(savepath).mkdir(parents=True, exist_ok=True)
-        print(f"ARCHIVE {archive_hashcode} ({archivepath}) DECODED - RESULT: {len(results)} blocks")
+        #print(f"ARCHIVE {archive_hashcode} ({archivepath}) DECODED - RESULT: {len(results)} blocks")
 
         # Split by expected types
         tex_datas = [x for x in results if x['type'] == "tex_data"]
