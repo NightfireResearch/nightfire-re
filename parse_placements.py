@@ -114,9 +114,13 @@ def toBlocks(data):
 
 if __name__=="__main__":
 
-    #filename = "level_unpack/0700000a_HT_Level_TowerB/_staticdata_41.bin"
-    filename = "level_unpack/0700000a_HT_Level_TowerB/_staticdata_2351.bin" # The big one containing most level fragments?
-
+    filename = "level_unpack/0700000a_HT_Level_TowerB/_staticdata_2351.bin" # The level itself?
+    filename = "level_unpack/0700000a_HT_Level_TowerB/_staticdata_22.bin" # PDA!
+    filename = "level_unpack/0700000a_HT_Level_TowerB/_staticdata_23.bin" # Bond Generic Tactical Gear
+    filename = "level_unpack/0700000a_HT_Level_TowerB/_staticdata_24.bin" # Shaver1
+    filename = "level_unpack/0700000a_HT_Level_TowerB/_staticdata_25.bin" # CivilianSecurityGuard1
+    filename = "level_unpack/0700000a_HT_Level_TowerB/_staticdata_26.bin" # PP7 (Gold)
+    
     print(f"Loading blocks from static placement file {filename}")
 
     with open(filename, "rb") as f:
