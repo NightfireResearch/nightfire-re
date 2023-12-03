@@ -136,9 +136,11 @@ def handler_lightambient(data):
     # First 4 bytes: Num lights
     # Then n * 32 bytes: Config for each light
     (n,) = struct.unpack("<I", data[0:4])
-    print(f"Found {n} lights")
+    #print(f"Found {n} lights")
 
     lights = util.chunks(data[4:], 32)
+
+    lightambients = []
 
     for i, light in enumerate(lights):
 
@@ -146,9 +148,11 @@ def handler_lightambient(data):
         # could be posx, posy, posz, radius, unknown4, r, g, b
         (posX, posY, posZ, radius, unk0, r, g, b) = struct.unpack("<ffffffff", light)
 
-        print(f"Light {i} data: ({posX}, {posY}, {posZ}), {radius} - colour {r}, {g}, {b}, unk {unk0}")
+        #print(f"Light {i} data: ({posX}, {posY}, {posZ}), {radius} - colour {r}, {g}, {b}, unk {unk0}")
+
+        lightambients.append({'type': 'lightambient'}) # todo: the rest
     
-    return []
+    return lightambients
 
 def handler_lod(data):
     # N entries of format (0xFFFFFFFF, 99999.0f)?
