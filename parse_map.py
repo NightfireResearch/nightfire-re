@@ -9,32 +9,11 @@ import parse_mesh
 import parse_placements
 # Follow the structure of parsemap_handle_block_id to decode all the blocks/chunks/whatever of each map
 
-# Within, eg, "HT_Level_SkyRail.bin" there are a number of sub-blocks.
-# These sub-blocks are each used to represent one hashcoded resource. The level may contain many of these
-# and a single resource could possibly be used in multiple levels?
-# Some of these are already known types (Scripts, Animation, Skeleton, Woman etc). We don't care about those.
-# We only care about the Map types here (0x00, 0x01, 0x02). 
-# Within the "map" type there are a few sub-blocks.
-
-
-# Currently not understood:
-# * Mesh / UV format (see parse_mesh.py for work in progress)
-# * Palette header
-# * How to link meshes to textures (palette header?)
-# * Some mesh parameters / bounding box details
-# * Some entity parameters
-# * Some texture details:
-#   * divisor by 60
-#   * some textures where data doesn't match expected size 
-# * Collision data
-# * Portal data
-
-
-#### 
-# Let's restructure! We now understand that each level consists of a number of sub-resources, let's say `01xxxxxx` files are Archives.
-# Each Archive consists of a logical object or small collection of objects, eg:
+# We now understand that each level consists of a number of sub-resources, let's say `01xxxxxx` files are Archives.
+# Each Archive consists of a logical object or collection of objects, eg:
 # - The level itself
-# - A PP7 (Gold)
+# - A moving object within the level (eg lift, vehicle)
+# - Weapon
 # - Multiplayer special objects
 # - Groups of textures
 # Some key resources can be identified by hashcode for use within the code, eg helicopter blades, textures.

@@ -135,7 +135,7 @@ def interpret_ps2gfx(data, name, material_file):
 
                 assert unpacks[i][1] == ("v", 2, 32), "Bad data for UV"
                 assert unpacks[i+1][1] == ("v", 3, 32), "Bad data for XYZ"
-                assert unpacks[i+2][1] == ("v", 4, 8), "Bad data for unknown"
+                assert unpacks[i+2][1] == ("v", 4, 8), "Bad data for tris"
                 assert unpacks[i+3][1] == ("v", 4, 8), "Bad data for colour"
 
                 
