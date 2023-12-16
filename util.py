@@ -7,6 +7,9 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
+def align(offset, wordSize):
+    return ((offset + wordSize - 1) // wordSize) * wordSize
+
 
 # PS2 alpha is in range 0-2 (0x80 = full alpha)
 def alphaScale(b):

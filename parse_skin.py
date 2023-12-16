@@ -1,5 +1,5 @@
 import struct
-
+import util
 
 def load_skin(data, boneNums):
 
@@ -26,12 +26,26 @@ def load_skin(data, boneNums):
 	# The code then goes on to skip 1 byte(?) for each bone in the skeleton...
 	# Which means we need to handle in 2 passes - once to get the bone counts, then again to handle the skins.
 	# Note that skeletonNum == 0 does NOT mean no skeleton, it means the skeleton at index 0
+	# It's not immediately apparent if this data is used elsewhere.
+
+	offset += boneNums[skeletonNum]
  
 	# We then have a quantity of "dataA" (whose size is 1 byte each)
+	# Not sure what this represents.
+	dataA = data[offset:offset+numDataA]
+
+	offset += numDataA
 
 	# We word-align...
+	offset = util.align(offset, 4)
 
 	# Glist Hashcode list, with same number of entries as above?
+	glistHashcodeList = list(util.chunks(data[offset:offset+4*numDataA], 4))
+	if len(glistHashcodeList):
+		print(f"We reference {numDataA} hashcodes: ")
+		for hc in glistHashcodeList:
+			hcc = struct.unpack("<I", hc)[0]
+			print(f"{hcc:08x}")
 
 	# Word align again...
 
