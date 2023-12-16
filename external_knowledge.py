@@ -40,7 +40,8 @@ hashcode_name_mapping = {
     "07000046": "HT_Level_TestRoom2",
     "07000049": "HT_Level_AllCharacters2",
     "07000048": "HT_Level_Menu_Pre",
-    "07000090": "HT_Level_MovieMap" 
+    "07000090": "HT_Level_MovieMap",
+    "07000500": "LevelLoadingScreens" 
 }
 
 archive_names = {
@@ -138,11 +139,12 @@ archive_names = {
 
 
  # Manual naming - might not match internal name
- '0100008b': "weapons/SniperGreen",
- '01000187': "weapons/SniperGreen2",
- '01000213': "weapons/SniperWhite",
- '01000215': "weapons/SniperWhite2",
- '010001cd': "weapons/SniperWhite3",
+ '0100008b': "weapons/Sniper_Green_3rd",
+ '01000187': "weapons/Sniper_Green",
+ '0100018c': "weapons/Sniper_Green2",
+ '01000213': "weapons/SG5_Commando_White",
+ '01000215': "weapons/SG5_Commando_White_3rd",
+ '010001cd': "weapons/Sniper_White_3rd",
  '010000e1': "weapons/SnipersMixed",
  '0100018d': "weapons/Tripbomb",
  '0100018f': "weapons/Tripbomb_3rd",
@@ -163,6 +165,7 @@ archive_names = {
  '01000171': "weapons/GunSamuri", # As spelled in entity list 
  '01000199': "weapons/SatchelCharge",
  '0100019f': "weapons/SatchelCharge2",
+ '0100021a': "weapons/SatchelChargeDigits",
  '010001c4': "weapons/GoldenGun",
  '010001b9': "weapons/Grenade_Launcher",
  '010001cc': "weapons/Grenade_Launcher_3rd",
@@ -176,21 +179,21 @@ archive_names = {
  '010001a9': "weapons/Aims20_3rd", # Referred to as HK OICW in entity list
  '0100020e': "weapons/Torpedo_3rd",
  '010000cc': "weapons/unknown_010000cc",
- '010001cb': "weapons/unknown_010001cb",
+ '010001cb': "weapons/Deagle_3rd",
  '010000cd': "weapons/unknown_010000cd",
- '010001cf': "weapons/unknown_010001cf",
- '010001d4': "weapons/unknown_010001d4",
- '010001f4': "weapons/unknown_010001f4",
+ '010001cf': "weapons/GoldenGun_3rd",
+ '010001d4': "weapons/PPK_3rd",
+ '010001f4': "weapons/PPKS_3rd",
  '010001f5': "weapons/unknown_010001f5",
  '0100006b': "weapons/unknown_0100006b",
  '0100006d': "weapons/unknown_0100006d",
- '0100006e': "weapons/unknown_0100006e",
+ '0100006e': "weapons/SG5_Commando_Black",
  '0100008a': "weapons/unknown_0100008a",
- '0100008c': "weapons/unknown_0100008c",
- '0100008d': "weapons/unknown_0100008d",
+ '0100008c': "weapons/SMG_3rd",
+ '0100008d': "weapons/SG5_Commando_Black_3rd",
  '0100015d': "weapons/unknown_0100015d",
- '01000144': "weapons/unknown_01000144",
- '010000bc': "weapons/unknown_010000bc",
+ '01000144': "weapons/SPAS12_3rd",
+ '010000bc': "weapons/MP5K_3rd",
  '01000174': "weapons/unknown_01000174",
  '010001ac': "weapons/unknown_010001ac",
  '01000073': "weapons/MuzzleFlash_Ruger",
@@ -199,6 +202,8 @@ archive_names = {
  '010001a0': "weapons/Launcher1",
  '010001a5': "weapons/BeamLaser",
  '010000eb': "weapons/unknown_launcher",
+ '010000ba': "NinjaSword_3rd",
+ '010000bb': "NinjaGrenade_3rd",
 
  '01000160': "gadgets/QWorm",
  '01000101': "gadgets/Grapple",
@@ -230,11 +235,15 @@ archive_names = {
  '010000db': "vehicles/truck_corona_aibox",
  '01000168': "vehicles/forklift",
  '010000de': "vehicles/limo",
+ '0100015f': "vehicles/van_phoenix",
  '01000147': "emplacements",
  '01000166': "markers",
  '010001d8': "font",
  '010000a2': "ui/pause",
  '01000070': "ui/overlay",
+ '010001b5': "ui/weapon_sniperscope_overlay",
+ '010001df': "ui/gadget_camera_overlay",
+ '01000209': "ui/mission_spacestation_overlay",
 
 }
 
