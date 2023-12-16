@@ -14,7 +14,7 @@ def load_skin(data, boneNums):
 	#assert scaleY==1.0, f"Expected scale=1, got {scaleY}"
 	#assert scaleZ==1.0, f"Expected scale=1, got {scaleZ}"
 
-	print(f"Skin {hashcode:08x} has numSleevesOrGlists {numSleevesOrGlists}, {numDiscreteObjs}, {unk0}, {dt9b}, {skeletonNum}")
+	print(f"Skin {hashcode:08x} has numSleevesOrGlists: {numSleevesOrGlists}, discreteObjs: {numDiscreteObjs}, unk0: {unk0}, dt9: {dt9b}, skeletonNum: {skeletonNum}")
 
 	assert numSleevesOrGlists < 2, "Expected < 2"
 	assert unk0 in [0, 22], "Expected 0 or 22 for unknown field"
