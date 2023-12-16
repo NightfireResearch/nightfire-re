@@ -18,7 +18,6 @@ def load_skin(data, boneNums):
 
 	assert numSleevesOrGlists < 2, "Expected < 2"
 	assert unk0 in [0, 22], "Expected 0 or 22 for unknown field"
-	assert skeletonNum <= 44, "Skeleton number out of range"
 	assert skeletonNum in boneNums.keys(), "Skeleton details not known"
 
 	print(f"This skeleton has {boneNums[skeletonNum]} bones")
@@ -31,21 +30,23 @@ def load_skin(data, boneNums):
 	offset += boneNums[skeletonNum]
  
 	# We then have a quantity of "dataA" (whose size is 1 byte each)
-	# Not sure what this represents.
+	# Maybe the bone to which a subsequent Glist Hashcode is linked?
 	dataA = data[offset:offset+numDataA]
+	for a in dataA:
+		assert a < boneNums[skeletonNum], "Data A was assumed to be the link between attached graphics body and bone, but value is out of range!"
 
 	offset += numDataA
 
 	# We word-align...
 	offset = util.align(offset, 4)
 
-	# Glist Hashcode list, with same number of entries as above?
+	# Glist Hashcode list, with same number of entries as numDataA above?
 	glistHashcodeList = list(util.chunks(data[offset:offset+4*numDataA], 4))
 	if len(glistHashcodeList):
 		print(f"We reference {numDataA} hashcodes: ")
-		for hc in glistHashcodeList:
+		for i, hc in enumerate(glistHashcodeList):
 			hcc = struct.unpack("<I", hc)[0]
-			print(f"{hcc:08x}")
+			print(f"{hcc:08x} possibly linked to bone {dataA[i]}")
 
 	# Word align again...
 
