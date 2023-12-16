@@ -6,7 +6,7 @@ def load_skin(data, boneNums):
 	# Follows AnimProcessSkinData
 	offset = 0
 
-	hashcode, scaleX, scaleY, scaleZ, numSleevesOrGlists, numDataA, unk0, dt9b, skeletonNum = struct.unpack("<IfffBBBBB", data[0:21])
+	hashcode, scaleX, scaleY, scaleZ, numSleevesOrGlists, numDiscreteObjs, unk0, dt9b, skeletonNum = struct.unpack("<IfffBBBBB", data[0:21])
 	offset += 21
 
 	# Mostly true but 05000026.x03 is scaled by 1.1x
@@ -14,7 +14,7 @@ def load_skin(data, boneNums):
 	#assert scaleY==1.0, f"Expected scale=1, got {scaleY}"
 	#assert scaleZ==1.0, f"Expected scale=1, got {scaleZ}"
 
-	print(f"Skin {hashcode:08x} has numSleevesOrGlists {numSleevesOrGlists}, {numDataA}, {unk0}, {dt9b}, {skeletonNum}")
+	print(f"Skin {hashcode:08x} has numSleevesOrGlists {numSleevesOrGlists}, {numDiscreteObjs}, {unk0}, {dt9b}, {skeletonNum}")
 
 	assert numSleevesOrGlists < 2, "Expected < 2"
 	assert unk0 in [0, 22], "Expected 0 or 22 for unknown field"
@@ -22,33 +22,34 @@ def load_skin(data, boneNums):
 
 	print(f"This skeleton has {boneNums[skeletonNum]} bones")
 
-	# The code then goes on to skip 1 byte(?) for each bone in the skeleton...
+	# The code then goes on to skip 1 byte for each bone in the skeleton...
 	# Which means we need to handle in 2 passes - once to get the bone counts, then again to handle the skins.
 	# Note that skeletonNum == 0 does NOT mean no skeleton, it means the skeleton at index 0
 	# It's not immediately apparent if this data is used elsewhere.
 
 	offset += boneNums[skeletonNum]
  
-	# We then have a quantity of "dataA" (whose size is 1 byte each)
-	# Maybe the bone to which a subsequent Glist Hashcode is linked?
-	dataA = data[offset:offset+numDataA]
-	for a in dataA:
-		assert a < boneNums[skeletonNum], "Data A was assumed to be the link between attached graphics body and bone, but value is out of range!"
+	# We then have a quantity of "discreteObjLinks" (whose size is 1 byte each)
+	# The bone to which a subsequent Glist Hashcode is linked?
+	discreteObjLinks = data[offset:offset+numDiscreteObjs]
+	for a in discreteObjLinks:
+		assert a < boneNums[skeletonNum], "Was assumed to be the link between attached graphics body and bone, but value is out of range!"
 
-	offset += numDataA
+	offset += numDiscreteObjs
 
 	# We word-align...
 	offset = util.align(offset, 4)
 
-	# Glist Hashcode list, with same number of entries as numDataA above?
-	glistHashcodeList = list(util.chunks(data[offset:offset+4*numDataA], 4))
+	# Glist Hashcode list, with same number of entries as numDiscreteObjs above?
+	glistHashcodeList = list(util.chunks(data[offset:offset+4*numDiscreteObjs], 4))
 	if len(glistHashcodeList):
-		print(f"We reference {numDataA} hashcodes: ")
+		print(f"We reference {numDiscreteObjs} hashcodes: ")
 		for i, hc in enumerate(glistHashcodeList):
 			hcc = struct.unpack("<I", hc)[0]
-			print(f"{hcc:08x} possibly linked to bone {dataA[i]}")
+			print(f"{hcc:08x} possibly linked to bone {discreteObjLinks[i]}")
 
-	# Word align again...
+	# Word align again... Not necessary since hashcodes are already 4 byte aligned
+	offset = util.align(offset, 4)
 
 	# Sleeve entities?
 
