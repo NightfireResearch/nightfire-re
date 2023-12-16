@@ -6,7 +6,7 @@ def load_skin(data, boneNums):
 	# Follows AnimProcessSkinData
 	offset = 0
 
-	hashcode, scaleX, scaleY, scaleZ, numSleevesOrGlists, numDiscreteObjs, unk0, dt9b, skeletonNum = struct.unpack("<IfffBBBBB", data[0:21])
+	hashcode, scaleX, scaleY, scaleZ, numSleevesOrGlists, numDiscreteObjs, unk0, dt36b, skeletonNum = struct.unpack("<IfffBBBBB", data[0:21])
 	offset += 21
 
 	# Mostly true but 05000026.x03 is scaled by 1.1x
@@ -14,7 +14,7 @@ def load_skin(data, boneNums):
 	#assert scaleY==1.0, f"Expected scale=1, got {scaleY}"
 	#assert scaleZ==1.0, f"Expected scale=1, got {scaleZ}"
 
-	print(f"Skin {hashcode:08x} has numSleevesOrGlists: {numSleevesOrGlists}, discreteObjs: {numDiscreteObjs}, unk0: {unk0}, dt9: {dt9b}, skeletonNum: {skeletonNum}")
+	print(f"Skin {hashcode:08x} has numSleevesOrGlists: {numSleevesOrGlists}, discreteObjs: {numDiscreteObjs}, unk0: {unk0}, dt36: {dt36b}, skeletonNum: {skeletonNum}")
 
 	assert numSleevesOrGlists < 2, "Expected < 2"
 	assert unk0 in [0, 22], "Expected 0 or 22 for unknown field"
@@ -54,8 +54,18 @@ def load_skin(data, boneNums):
 	# Sleeve entities?
 
 	# Matrixes from quats/transforms...
+	# This consists of (numBones) entries of:
+	# 0x00-0x0C: vec3 (unpadded) transform
+	# 0x0C-0x1C: quat4 orientation
+	# This is applied to the bone matrix buffer immediately - the "neutral" position?
 
-	# We then have another quantity of "dt9b" (skipped over)
+	# We then have another quantity of "dt36b" (skipped over)
+	# This consists of (dt36b) entries of:
+	# 0x00-0x04: u32 ???
+	# 0x04-0x08: u32 Bone matrix number to concatenate, or some negative value if unused
+	# 0x08-0x14: vec3 (unpadded)
+	# 0x14-0x24: quat4 (combines with Vec3 above in Quat_QuatTransToMat)
+	# Total 0x24 = 36 bytes
 
 
 
