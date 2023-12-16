@@ -4,6 +4,7 @@
 import struct
 import util
 import os
+import shutil
 from pathlib import Path
 
 ###### SUMMARY OF FILE CONTENTS AND IMPORTANT AUDIO INFORMATION
@@ -187,7 +188,7 @@ def extract_bank(bank):
             # Converted via indexOfStream = -1 - *(int *)&DAT_70000184->mfxId; in SFXInitialiseStreamUpdate
             if shdIndex < 0:
                 print(f"SFX {sfxNum} is streamed (stream index {-shdIndex-1}), copying")
-                os.system(f"cp audio/_streams_{-shdIndex-1}.wav {outName}")
+                shutil.copy(f"audio/_streams_{-shdIndex-1}.wav", f"{outName}")
                 continue
 
             # Look up the value from the table of contents
