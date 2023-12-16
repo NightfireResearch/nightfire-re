@@ -21,26 +21,35 @@ def interpret_ps2gfx(data, name, material_file):
     # It's not a const offset, as the number of boxes varies.
     # Note that the 3rd int from the end of the file is very close to 0x3CC.
     # Let's assume there's a "footer" struct encompassing all the leftover data beyond the glist_box data
+    # This is equivalent to an offset of (size - 12)
     unk0, unk1, boxlist_num, boxlist_start, unk3, unk4 = struct.unpack("<6I", data[-24:])
 
+    print(f"Handling file {name}")
     print(f"Footer numbers: {unk0}, {unk1}, {boxlist_num}, {boxlist_start:08x}, {unk3}, {unk4}")
 
     if boxlist_num == 0:
         print(f"WARNING: NO BOXES IN {name}")
+        assert False
         return
 
     if boxlist_start==0:
         print("WARNING: NO BOXLIST")
+        assert False
         return
 
     if unk3 != 0:
         print("CANNOT HANDLE SKELETAL ANIMATION OR MORPHS YET")
+        with open(f"{name}.ps2gfx", "wb") as f:
+            f.write(data)
+        assert False
         return
 
     assert unk0 == 0
     assert unk1 == 0
     assert unk4 == 0
 
+    # We assume that the Glist Box entry is immediately before the footer
+    # This assumption holds nicely for solid objects, but fails for animated ones?
     glist_box = data[-24-boxlist_num*0x38:-24]
 
     with open(f"{name}.obj", "w") as f:
