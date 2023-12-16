@@ -83,7 +83,7 @@ def handler_tex_header(data):
 
         #print(f"Texture {len(imageStats)} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
 
-        texEntries.append({'type': 'tex_header_entry', 'width': w+1, 'height': h+1, 'hashcode': hashcode, 'animFrames': animFrames})
+        texEntries.append({'save_file': True, 'data': entry, 'type': 'tex_header_entry', 'width': w+1, 'height': h+1, 'hashcode': hashcode, 'animFrames': animFrames})
 
     return texEntries
     
@@ -219,6 +219,56 @@ def handler_blank_discard(data):
     assert len(data)==0, "Handling a discard block but there is data"
     return []
 
+def handler_palette_header(data):
+    # Consists of N entries (N = the number of textures), each 8 bytes:
+    # AA BB CC DD HH HH HH HH 
+    # AA is always 0x0F or 0xFF
+    # BB, CC, DD seem randomish, sometimes all zero
+    # HH is either the hashcode of the texture (if known) or FFFFFFFF
+
+    # TODO: Determine the meaning of these fields
+    headers = util.chunks(data, 8)
+
+    for h in headers:
+        a, b, c, d, hc = struct.unpack("<BBBBI", h)
+
+        assert a in [0x0F, 0xFF], "Assumed always 0x0F or 0xFF"
+        assert (hc == 0xFFFFFFFF) or ((hc & 0xFF000000) == 0x03000000), "Found something that doesn't seem to be a hashcode in palette header"
+
+    return []
+
+def handler_hashlist(data):
+
+    # Hashlists just consist of a list of resources that are used within the current level
+    # If the thing isn't a level, the block can still exist but has zero entries
+    if len(data) == 0:
+        return []
+
+    hashcode_data = util.chunks(data, 4)
+
+    hashcodes = []
+    for x in hashcode_data:
+        s=struct.unpack("<I", x)[0]
+        hashcodes.append(f"{s:08x}")
+
+    print(f"Hashlist consists of {len(data)/4} resources:\n" + "\n".join(hashcodes))
+
+    return [{'save_file': True, 'type': f"hashlist", 'data': data}]
+
+
+def handler_staticdata(data):
+
+    # Consists of 76 bytes per graphical entity:
+    # ???
+    # The hashcode of the mesh
+    # ???
+    # Some floats (scale?)
+    # ???
+
+    # TODO: RE, implement, add this
+    pass
+
+
 typelookup = {
     0x00: "dictxyz",
     0x01: "dictuv",
@@ -248,6 +298,7 @@ handlers = {
     0x04: handler_entity_params,
     0x05: handler_aipath,
     0x0e: handler_map_header,
+    0x0f: handler_palette_header,
     0x10: handler_tex_header,
     0x12: handler_tex_palette,
     0x16: handler_tex_data,
@@ -257,6 +308,7 @@ handlers = {
     0x2d: handler_ps2gfx,
     0x27: handler_lod,
     #0x28: handler_sound,
+    0x2c: handler_hashlist,
 
 }
 
@@ -272,7 +324,7 @@ def handle_block(data, identifier):
 
     # Otherwise, dump the data for studying
     typename = typelookup.get(identifier, f"unknown{identifier:02x}")
-    return [{'type': typename, 'data': data}]
+    return [{'save_file': True, 'type': typename, 'data': data}]
 
 
 
@@ -379,6 +431,7 @@ def extract_leveldir(level_name):
         map_headers = [x for x in results if x['type'] == "map_header"]
         entity_params = [x for x in results if x['type'] == "entity_params"]
         ps2gfxs = [x for x in results if x['type'] == "ps2gfx"]
+        save_file = [x for x in results if "save_file" in x.keys()]
 
         # Confirm some assumptions about the data
         assert len(map_headers) == 1, "Expected only one map header per archive"
@@ -406,6 +459,10 @@ def extract_leveldir(level_name):
             parse_mesh.generate_materials(f"{savepath}/mtls.mtl")
             parse_mesh.interpret_ps2gfx(g['data'], f"{savepath}/{fn}", "mtls.mtl")
 
+        # Debug - dump all partially-understood files
+        for i, u in enumerate(save_file):
+            with open(f"{savepath}/{i:04}_{u['type']}.bin", "wb") as f:
+                f.write(u['data'])
 
 
 
