@@ -29,19 +29,20 @@ def interpret_ps2gfx(data, name, material_file):
 
     if boxlist_num == 0:
         print(f"WARNING: NO BOXES IN {name}")
-        assert False
+        with open(f"{name}_no_boxes.ps2gfx", "wb") as f:
+            f.write(data)
         return
 
     if boxlist_start==0:
         print("WARNING: NO BOXLIST")
-        assert False
+        with open(f"{name}_no_boxlist.ps2gfx", "wb") as f:
+            f.write(data)
         return
 
     if unk3 != 0:
         print("CANNOT HANDLE SKELETAL ANIMATION OR MORPHS YET")
-        with open(f"{name}.ps2gfx", "wb") as f:
+        with open(f"{name}_with_unk3.ps2gfx", "wb") as f:
             f.write(data)
-        assert False
         return
 
     assert unk0 == 0
