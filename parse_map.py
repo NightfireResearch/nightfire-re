@@ -74,10 +74,7 @@ def handler_tex_header(data):
     for idx,entry in enumerate(list(util.chunks(data, 0xc))):
         flags, unk0, w, h, animFrames, divisor, hashcode = struct.unpack("<BBHHBBI", entry)
 
-        # It looks like we loop over this number??
-        # Is this the number of bitmaps repeating / using said palette perhaps?
-
-        # TODO: How do we link a palette and image data to each entry?
+        assert flags in [0x00, 0x01, 0x10, 0x11, 0x18, 0x19], f"Bad flag type {flags:02x}"
 
         # Not sure what this does, but we do (60 / divisor) in psiCreateMapTextures
         # Maybe related to scaling?
