@@ -17,8 +17,12 @@ def dedupe(filename, data):
         seenFiles[filename] = data
         return False
 
-def extract_anims(level_name):
 
+boneNums = {}
+
+def extract_anims(level_name, onlySkels):
+
+    global boneNums
 
     target_dir = f"files_bin_unpack/{level_name}.bin_extract/"
     ordered_dir=sorted(os.listdir(target_dir)) # Go through in the order set by the bin file
@@ -28,6 +32,9 @@ def extract_anims(level_name):
         archive_hashcode = filename.split(".")[0]
         archive_extension = filename.split(".")[1]
         if archive_extension not in ["x03", "x04", "x05", "x06"]: # Animation-related formats only
+            continue
+
+        if(onlySkels and not "SKEL" in filename):
             continue
 
         ident = filename.split(".")[0]
@@ -43,13 +50,14 @@ def extract_anims(level_name):
             pass
 
         if archive_hashcode.startswith("05"): # Skin
-            parse_skin.load_skin(data)
+            parse_skin.load_skin(data, boneNums)
 
         if archive_hashcode.startswith("06"): # Script
             pass
 
         if archive_hashcode.startswith("SKEL"): # Skeleton
-            parse_skeleton.load_skeleton(data)
+            skelNum, numBones = parse_skeleton.load_skeleton(data)  
+            boneNums[skelNum] = numBones
 
 
 
@@ -61,6 +69,7 @@ if __name__ == "__main__":
     levels = [x.replace(".bin_extract", "") for x in fnames if ".bin_extract" in x]
 
     for l in levels:
-        extract_anims(l)
+        extract_anims(l, True) # Gather skeleton data in first pass
+        extract_anims(l, False) # Handle skins (which require skeleton data) in second pass
 
 

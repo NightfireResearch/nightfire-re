@@ -41,6 +41,8 @@ def load_skeleton(data):
 
 	print(f"Skeleton {skelNum:04} has numBones:{numBones}, unaccounted for: {remainingBytes}")
 
+	return (skelNum, numBones)
+
 
 
 if __name__=="__main__":
