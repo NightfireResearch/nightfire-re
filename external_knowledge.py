@@ -76,12 +76,14 @@ archive_names = {
  '0100020b': 'skins/Mp_bond_spacesuit',
  '010001ab': "skins/Elektra_pants",
 
- '01000202': "skins/Bond_hands_femwhite",
- '01000201': "skins/Bond_hands_femblack",
- '010001fd': "skins/Bond_hands_malewhite",
- '01000200': "skins/Bond_hands_maleblack",
-
+ '01000202': "sleeves/Bond_hands_femwhite",
+ '01000201': "sleeves/Bond_hands_femblack",
+ '010001fd': "sleeves/Bond_hands_malewhite",
+ '01000200': "sleeves/Bond_hands_maleblack",
  '010001e8': "sleeves/spacesuit_gloves",
+ '010001f8': "sleeves/Watch_BlackGloves",
+ '010001e0': "sleeves/Watch_BareHands",
+ '01000074': "sleeves/Watch3_MP",
 
  # Named skins from SP
  '01000180': "skins/Hazmat_heavy_1",
@@ -223,9 +225,6 @@ archive_names = {
  '0100019d': "gadgets/Shaver1",
  '0100020c': "gadgets/Shaver2",
  '010001b1': "gadgets/Shaver3",
- '010001f8': "gadgets/Watch_BlackGloves",
- '010001e0': "gadgets/Watch_BareHands",
- '01000074': "gadgets/Watch3_MP",
  '01000071': "gadgets/Watch_Movables",
  '01000162': "gadgets/QPen",
  '01000161': "gadgets/PDA",
