@@ -4,8 +4,8 @@ import util
 
 import parse_skin
 import parse_skeleton
+import external_knowledge
 
-from pprint import pprint
 
 seenFiles = {}
 def dedupe(filename, data):
@@ -21,7 +21,7 @@ def dedupe(filename, data):
 
 boneNums = {}
 
-def extract_anims(level_name, onlySkels):
+def extract_anims(level_name):
 
     global boneNums
 
@@ -33,9 +33,6 @@ def extract_anims(level_name, onlySkels):
         archive_hashcode = filename.split(".")[0]
         archive_extension = filename.split(".")[1]
         if archive_extension not in ["x03", "x04", "x05", "x06"]: # Animation-related formats only
-            continue
-
-        if(onlySkels and not "SKEL" in filename):
             continue
 
         ident = filename.split(".")[0]
@@ -51,7 +48,9 @@ def extract_anims(level_name, onlySkels):
             pass
 
         if archive_hashcode.startswith("05"): # Skin
-            parse_skin.load_skin(data, boneNums)
+            # The game needs all skeletons loaded before handling skins, so that the number of bones is known.
+            # We cheated and pre-computed this and saved a lookup table in external_knowledge
+            parse_skin.load_skin(data) 
 
         if archive_hashcode.startswith("06"): # Script
             pass
@@ -70,7 +69,9 @@ if __name__ == "__main__":
     levels = [x.replace(".bin_extract", "") for x in fnames if ".bin_extract" in x]
 
     for l in levels:
-        extract_anims(l, True) # Gather skeleton data in first pass
-        extract_anims(l, False) # Handle skins (which require skeleton data) in second pass
+        extract_anims(l)
 
+    # Verify that bone nums match external_knowledge
+    for k in external_knowledge.boneNums.keys():
+        assert boneNums[k] == external_knowledge.boneNums[k], "Did not match bone numbers vs external_knowledge.boneNums"
 

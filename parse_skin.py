@@ -54,28 +54,29 @@ def load_skin(data):
 	# Word align again... Not necessary since hashcodes are already 4 byte aligned
 	offset = util.align(offset, 4)
 
-	# Rigged Body list
-	# This could contain:
-	# - A hashcode of a mesh which can be attached to this skin
-	# - A specific value, which instead means we get the graphics body from the Sleeve List (a fixed list of 8 hashcodes)
-	for i in range(numRiggedBodies):
-		hc = struct.unpack("<I", data[offset+i*4:offset+i*4+4])[0]
-		isSleeve = (hc & 0x00001000) != 0
-		print(f"Rigged Body {i}: {hc:08x}. Is a sleeve: {isSleeve}")
-	offset += 4 * numRiggedBodies
+	if numRiggedBodies > 0:
+		# Rigged Body list
+		# This could contain:
+		# - A hashcode of a mesh which can be attached to this skin
+		# - A specific value, which instead means we get the graphics body from the Sleeve List (a fixed list of 8 hashcodes)
+		for i in range(numRiggedBodies):
+			hc = struct.unpack("<I", data[offset+i*4:offset+i*4+4])[0]
+			isSleeve = (hc & 0x00001000) != 0
+			print(f"Rigged Body {i}: {hc:08x}. Is a sleeve: {isSleeve}")
+		offset += 4 * numRiggedBodies
 
-	# Matrixes from quats/transforms...
-	# This consists of (numBones) entries of:
-	# 0x00-0x0C: vec3 (unpadded) transform
-	# 0x0C-0x1C: quat4 orientation
-	# This is applied to the bone matrix buffer immediately - the "neutral" position?
-	for i in range(boneNums[skeletonNum]):
-		offStart = offset + i * 28
-		offEnd = offset + i * 28 + 28
-		x,y,z,a,b,c,d = struct.unpack("<fffffff", data[offStart:offEnd])
-		print(f"Initialisation of bone {i}: v=({x}, {y}, {z}), q=({a}, {b}, {c}, {d})")
+		# Matrixes from quats/transforms...
+		# This consists of (numBones) entries of:
+		# 0x00-0x0C: vec3 (unpadded) transform
+		# 0x0C-0x1C: quat4 orientation
+		# This is applied to the bone matrix buffer immediately - the "neutral" position?
+		for i in range(boneNums[skeletonNum]):
+			offStart = offset + i * 28
+			offEnd = offset + i * 28 + 28
+			x,y,z,a,b,c,d = struct.unpack("<fffffff", data[offStart:offEnd])
+			print(f"Initialisation of bone {i}: v=({x}, {y}, {z}), q=({a}, {b}, {c}, {d})")
 
-	offset += boneNums[skeletonNum] * 28
+		offset += boneNums[skeletonNum] * 28
 
 	# We then have another quantity of "dt36b" (skipped over)
 	# This consists of (dt36b) entries of:
