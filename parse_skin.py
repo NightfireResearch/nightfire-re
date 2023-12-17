@@ -102,9 +102,22 @@ def load_skin(data):
 
 if __name__=="__main__":
 
+	# 05000091 is Golden Gun - a test for animation of rigid components
+	filename = "files_bin_unpack/0700004b_HT_Level_Ravine.bin_extract/05000091.x03"
+	
+	with open(filename, "rb") as f:
+		data = f.read()
+		print("Interpreting skin data for a collection of rigid units...")
+		load_skin(data)
+	
+	# We know from the weapon data table that Golden Gun has the following animation sequences available:
+	# 06000870	060009ec	060009ed	06000873	06000871	06000872
+	# TODO: Validate this / see how the sequence data relates to the rest
+
+
 	filename = f"files_bin_unpack/07000007_HT_Level_CastleIndoors1.bin_extract/05000007.x03"
 
 	with open(filename, "rb") as f:
 		data = f.read()
-
-	load_skin(data)
+		print("Interpreting skin data for a rigged body...")
+		load_skin(data)
