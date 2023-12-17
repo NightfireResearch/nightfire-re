@@ -6,7 +6,7 @@ def load_skin(data, boneNums):
 	# Follows AnimProcessSkinData
 	offset = 0
 
-	hashcode, scaleX, scaleY, scaleZ, numSleevesOrGlists, numDiscreteObjs, unk0, dt36b, skeletonNum = struct.unpack("<IfffBBBBB", data[0:21])
+	hashcode, scaleX, scaleY, scaleZ, numRiggedBodies, numDiscreteObjs, unk0, dt36b, skeletonNum = struct.unpack("<IfffBBBBB", data[0:21])
 	offset += 21
 
 	# Mostly true but 05000026.x03 is scaled by 1.1x
@@ -14,9 +14,9 @@ def load_skin(data, boneNums):
 	#assert scaleY==1.0, f"Expected scale=1, got {scaleY}"
 	#assert scaleZ==1.0, f"Expected scale=1, got {scaleZ}"
 
-	print(f"Skin {hashcode:08x} has numSleevesOrGlists: {numSleevesOrGlists}, discreteObjs: {numDiscreteObjs}, unk0: {unk0}, dt36: {dt36b}, skeletonNum: {skeletonNum}")
+	print(f"Skin {hashcode:08x} has numRiggedBodies: {numRiggedBodies}, discreteObjs: {numDiscreteObjs}, unk0: {unk0}, dt36: {dt36b}, skeletonNum: {skeletonNum}")
 
-	assert numSleevesOrGlists < 2, "Expected < 2"
+	assert numRiggedBodies < 2, "Expected < 2"
 	assert unk0 in [0, 22], "Expected 0 or 22 for unknown field"
 	assert skeletonNum in boneNums.keys(), "Skeleton details not known"
 
@@ -51,13 +51,28 @@ def load_skin(data, boneNums):
 	# Word align again... Not necessary since hashcodes are already 4 byte aligned
 	offset = util.align(offset, 4)
 
-	# Sleeve entities?
+	# Rigged Body list
+	# This could contain:
+	# - A hashcode of a mesh which can be attached to this skin
+	# - A specific value, which instead means we get the graphics body from the Sleeve List (a fixed list of 8 hashcodes)
+	for i in range(numRiggedBodies):
+		hc = struct.unpack("<I", data[offset+i*4:offset+i*4+4])[0]
+		isSleeve = (hc & 0x00001000) != 0
+		print(f"Rigged Body {i}: {hc:08x}. Is a sleeve: {isSleeve}")
+	offset += 4 * numRiggedBodies
 
 	# Matrixes from quats/transforms...
 	# This consists of (numBones) entries of:
 	# 0x00-0x0C: vec3 (unpadded) transform
 	# 0x0C-0x1C: quat4 orientation
 	# This is applied to the bone matrix buffer immediately - the "neutral" position?
+	for i in range(boneNums[skeletonNum]):
+		offStart = offset + i * 28
+		offEnd = offset + i * 28 + 28
+		x,y,z,a,b,c,d = struct.unpack("<fffffff", data[offStart:offEnd])
+		print(f"Initialisation of bone {i}: v=({x}, {y}, {z}), q=({a}, {b}, {c}, {d})")
+
+	offset += boneNums[skeletonNum] * 28
 
 	# We then have another quantity of "dt36b" (skipped over)
 	# This consists of (dt36b) entries of:
