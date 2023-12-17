@@ -85,6 +85,7 @@ def load_skin(data):
 	# 0x08-0x14: vec3 (unpadded)
 	# 0x14-0x24: quat4 (combines with Vec3 above in Quat_QuatTransToMat)
 	# Total 0x24 = 36 bytes
+	# This is actually used in AnimObjectDraw (right before call to psiDrawObjectMatrix)
 	for i in range(dt36b):
 		offStart = offset + i * 36
 		offEnd = offset + i * 36 + 36
