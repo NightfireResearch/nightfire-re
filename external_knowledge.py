@@ -75,10 +75,13 @@ archive_names = {
  '01000208': 'skins/MP_Zorin',
  '0100020b': 'skins/Mp_bond_spacesuit',
  '010001ab': "skins/Elektra_pants",
+
  '01000202': "skins/Bond_hands_femwhite",
  '01000201': "skins/Bond_hands_femblack",
  '010001fd': "skins/Bond_hands_malewhite",
  '01000200': "skins/Bond_hands_maleblack",
+
+ '010001e8': "sleeves/spacesuit_gloves",
 
  # Named skins from SP
  '01000180': "skins/Hazmat_heavy_1",
@@ -335,6 +338,65 @@ placementTypes = {
     0xfd: "Place_CamSubject",
     0xfe: "Place_Mine",
 }
+
+# From SleeveEnts.SleeveTable at 002c7cd8 in RAM
+# These are the hashcodes to:
+# - Watch (gloved hands)
+# - Watch (bare hands)
+# - Watch (bare hands, MP?)
+# - Spacesuit hands
+# - Generic, white male hands
+# - Generic, black male hands
+# - Generic, white female hands
+# - Generic, black female hands
+
+sleeves = ["020009d0", "02000900", "020001f7", "02000929", "020009e6", "020009ff", "02000a14", "02000a13"]
+
+boneNums = {0: 73,
+ 1: 73,
+ 2: 45,
+ 3: 42,
+ 4: 42,
+ 5: 38,
+ 6: 6,
+ 7: 6,
+ 8: 73,
+ 9: 38,
+ 10: 42,
+ 11: 9,
+ 12: 73,
+ 13: 44,
+ 14: 42,
+ 15: 41,
+ 16: 43,
+ 17: 41,
+ 18: 43,
+ 19: 11,
+ 20: 43,
+ 21: 43,
+ 22: 45,
+ 23: 46,
+ 24: 41,
+ 25: 43,
+ 26: 43,
+ 27: 33,
+ 28: 42,
+ 29: 41,
+ 30: 44,
+ 31: 5,
+ 32: 5,
+ 33: 39,
+ 34: 40,
+ 35: 45,
+ 36: 62,
+ 37: 42,
+ 38: 47,
+ 39: 44,
+ 40: 46,
+ 41: 46,
+ 42: 71,
+ 43: 41,
+ 44: 39}
 
 
 # From manual inspection of the files

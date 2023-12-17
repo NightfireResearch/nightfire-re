@@ -5,6 +5,7 @@ import util
 import parse_skin
 import parse_skeleton
 
+from pprint import pprint
 
 seenFiles = {}
 def dedupe(filename, data):

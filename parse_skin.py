@@ -1,7 +1,10 @@
 import struct
 import util
+import external_knowledge
 
-def load_skin(data, boneNums):
+def load_skin(data):
+
+	boneNums = external_knowledge.boneNums
 
 	# Follows AnimProcessSkinData
 	offset = 0
