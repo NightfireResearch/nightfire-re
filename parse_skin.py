@@ -28,8 +28,13 @@ def load_skin(data):
 	# The code then goes on to skip 1 byte for each bone in the skeleton...
 	# Which means we need to handle in 2 passes - once to get the bone counts, then again to handle the skins.
 	# Note that skeletonNum == 0 does NOT mean no skeleton, it means the skeleton at index 0
-	# It's not immediately apparent if this data is used elsewhere.
+	
 
+	# This data seems to represent the parenting / hierarchy of the skeleton (as shown in AnimGetBoneWorldTrans)
+	# The high bit seems to always be set, and the root takes the value 0xFF.
+	# This appears to match with the code in psiBuildMatrixPalette
+	for i in range(boneNums[skeletonNum]):
+		print(f"Bone {i} has parent {data[offset+i] & 0x7f}")
 	offset += boneNums[skeletonNum]
  
 	# We then have a quantity of "discreteObjLinks" (whose size is 1 byte each)
