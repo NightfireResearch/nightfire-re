@@ -26,10 +26,10 @@ def interpret_ps2gfx(data, name, material_file):
     #
     # Locate the footer
     #
-    boxlist_num, boxlist_start, skininfo1_start, skininfo2_start = struct.unpack("<4I", data[-16:])
+    boxlist_num, boxlist_start, skininfo_start, unk4 = struct.unpack("<4I", data[-16:])
 
     print(f"Handling file {name}")
-    print(f"Footer numbers: {boxlist_num}, {boxlist_start:08x}, {skininfo1_start}, {skininfo2_start}")
+    print(f"Footer numbers: {boxlist_num}, {boxlist_start:08x}, {skininfo_start}, {unk4}")
 
     if boxlist_num == 0:
         print(f"WARNING: NO BOXES IN {name}")
@@ -43,15 +43,27 @@ def interpret_ps2gfx(data, name, material_file):
             f.write(data)
         return
 
-    if skininfo1_start != 0:
+    if skininfo_start != 0:
         print(f"CANNOT HANDLE SKELETAL ANIMATION OR MORPHS YET: {name} may fail")
         with open(f"{name}_with_skin.ps2gfx", "wb") as f:
             f.write(data)
+        
+        # Skininfo is a pointer to another structure, containing yet more offsets?
+        # This is some more interesting data - matrix numbers, some offsets, some floating-point data
+
+        # Matrix (bone) number list is FF-terminated
+
+        # A list of offsets - used in skinning process?
+
+        # A list of floating-point data - ???
+
         return
 
-    assert unk0 == 0
-    assert unk1 == 0
-    assert unk4 == 0
+
+
+    if unk4 != 0:
+        print("unk4 not handled")
+
 
     # We take boxlist position from the footer
     glist_box = data[boxlist_start-4:boxlist_start-4+boxlist_num*0x38]
@@ -65,14 +77,12 @@ def interpret_ps2gfx(data, name, material_file):
         
         for i, box in enumerate(util.chunks(glist_box, 0x38)):
 
-            minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, maybeEndOfData, maybeLenOfData, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
+            minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, texList, maybeLenOfData, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
 
             print(f"Box {i} bounds ({minX}, {minY}, {minZ} - {maxX}, {maxY}, {maxZ}) - {vtxCnt} vertices, {stripElemCnt} strip elements, {flags}")
 
-            print(f"Data found at offset {offsetOfData:08x}, maybeEnd {maybeEndOfData:08x}, maybeLen {maybeLenOfData:08x}")
+            print(f"VIF data found at offset {offsetOfData:08x}, tex list at {texList:08x}, VIF len {maybeLenOfData:08x}")
 
-
-            # "TexList" is the offset of (this?) box within the file, minus 12 bytes.
 
             ## Note that not all glist boxes actually contain geometry.
             # In a non-trivial model, the parent box contains smaller boxes, which contain yet smaller ones
@@ -80,37 +90,25 @@ def interpret_ps2gfx(data, name, material_file):
             # Non-drawable ("container") boxes have their offset as 0.
             if offsetOfData == 0:
                 print("This Glist box is just a parent for smaller ones, no geometry.")
-
                 # Note that in this case, "maybeLenOfData" is non-zero! Does it have special meaning?
-
                 continue
 
-            # Hypothesis: If we have graphics, we have been given(Offset of VIF Stream, End of VIF Stream, Size of VIF Stream)
-            assert offsetOfData + maybeLenOfData == maybeEndOfData, "Not true that we've been given offset, end, len"
-
-            # "endOfData" is also the start of a list, which is 0xFFFFFFFF terminated.
-            # The list items *could* be an offset within the vif stream, for each strip perhaps??
+            # Here is the list of textures referenced by this object
+            # TODO: Is this some index, some hashcode-related thing, something else?
             listElems = []
-
-            listIdx = maybeEndOfData
+            listIdx = texList-4
             while True:
                 value, = struct.unpack("<I", data[listIdx:listIdx+4])
                 if value == 0xFFFFFFFF:
                     break
-                print(f"Element: {value:08x}")
+                print(f"Texture: {value:08x}")
                 listElems.append(value)
                 listIdx += 4
 
-            print(f"Found a list of {len(listElems)} associated with the following data - not sure what they mean yet.")
 
-            # Some hypotheses regarding these list elements:
-            # - Linked to texture usage
-            # - Linked to the triangle strips
-            # - ???
+            print("Unpacking meshes...")
 
-            print("Unpacking...")
-
-            unpacks = util.vifUnpack(data[offsetOfData:offsetOfData + maybeLenOfData])
+            unpacks = util.vifUnpack(data[offsetOfData-4:offsetOfData-4 + maybeLenOfData])
 
             # We must iterate over all unpacks. Start with texture ID 0
             currentTexture = 0
