@@ -53,9 +53,8 @@ def interpret_ps2gfx(data, name, material_file):
     assert unk1 == 0
     assert unk4 == 0
 
-    # We assume that the Glist Box entry is immediately before the footer
-    # This assumption holds nicely for solid objects, but fails for animated ones?
-    glist_box = data[-24-boxlist_num*0x38:-24]
+    # We take boxlist position from the footer
+    glist_box = data[boxlist_start-4:boxlist_start-4+boxlist_num*0x38]
 
     with open(f"{name}.obj", "w") as f:
 
