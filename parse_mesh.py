@@ -16,6 +16,10 @@ def interpret_ps2gfx(data, name, material_file):
     assert z0==0, "Expected header field 2 to be zero"
     assert z1==0, "Expected header field 3 to be zero"
 
+    # Somewhere are a bunch of offsets (relative to start of file) that get rewritten to absolute pointers.
+    # This happens in psiCreateEntityGfx.
+    # Most notably the glist boxes, but some others are rewritten too.
+    # From usages, these are probably related to morphing and/or skinning.
 
     # How do we get to the list of glist boxes?
     # It's not a const offset, as the number of boxes varies.
