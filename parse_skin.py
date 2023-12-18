@@ -51,6 +51,8 @@ def load_skin(data):
 			hcc = struct.unpack("<I", hc)[0]
 			print(f"{hcc:08x} possibly linked to bone {discreteObjLinks[i]}")
 
+	offset += 4 * numDiscreteObjs
+
 	# Word align again... Not necessary since hashcodes are already 4 byte aligned
 	offset = util.align(offset, 4)
 
@@ -61,7 +63,7 @@ def load_skin(data):
 		# - A specific value, which instead means we get the graphics body from the Sleeve List (a fixed list of 8 hashcodes)
 		for i in range(numRiggedBodies):
 			hc = struct.unpack("<I", data[offset+i*4:offset+i*4+4])[0]
-			isSleeve = (hc & 0x00001000) != 0
+			isSleeve = (hc & 0x00100000) != 0
 			print(f"Rigged Body {i}: {hc:08x}. Is a sleeve: {isSleeve}")
 		offset += 4 * numRiggedBodies
 
