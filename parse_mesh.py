@@ -8,28 +8,28 @@ from pathlib import Path
 
 
 def interpret_ps2gfx(data, name, material_file):
-    # Assume 3x uint32 header
-    # Field 0 identifies the number of bytes beyond the header
-    # Field 1 and 2 are always 0
-    (size, z0, z1) = struct.unpack("<III", data[0:12])
-    assert len(data) == size+12, f"Expected to be given data length in header of {name}"
-    assert z0==0, "Expected header field 2 to be zero"
-    assert z1==0, "Expected header field 3 to be zero"
 
     # Somewhere are a bunch of offsets (relative to start of file) that get rewritten to absolute pointers.
     # This happens in psiCreateEntityGfx.
     # Most notably the glist boxes, but some others are rewritten too.
     # From usages, these are probably related to morphing and/or skinning.
 
-    # How do we get to the list of glist boxes?
-    # It's not a const offset, as the number of boxes varies.
-    # Note that the 3rd int from the end of the file is very close to 0x3CC.
-    # Let's assume there's a "footer" struct encompassing all the leftover data beyond the glist_box data
-    # This is equivalent to an offset of (size - 12)
-    unk0, unk1, boxlist_num, boxlist_start, unk3, unk4 = struct.unpack("<6I", data[-24:])
+
+    # Assume 3x uint32 header
+    # Field 0 identifies the offset of the footer (plus 4 bytes)
+    # Field 1 and 2 are always 0
+    (size, z0, z1) = struct.unpack("<III", data[0:12])
+    assert len(data) == size+12, f"Expected to be given data length in header of {name}"
+    assert z0==0, "Expected header field 2 to be zero"
+    assert z1==0, "Expected header field 3 to be zero"
+
+    #
+    # Locate the footer
+    #
+    boxlist_num, boxlist_start, skininfo1_start, skininfo2_start = struct.unpack("<4I", data[-16:])
 
     print(f"Handling file {name}")
-    print(f"Footer numbers: {unk0}, {unk1}, {boxlist_num}, {boxlist_start:08x}, {unk3}, {unk4}")
+    print(f"Footer numbers: {boxlist_num}, {boxlist_start:08x}, {skininfo1_start}, {skininfo2_start}")
 
     if boxlist_num == 0:
         print(f"WARNING: NO BOXES IN {name}")
@@ -43,9 +43,9 @@ def interpret_ps2gfx(data, name, material_file):
             f.write(data)
         return
 
-    if unk3 != 0:
-        print("CANNOT HANDLE SKELETAL ANIMATION OR MORPHS YET")
-        with open(f"{name}_with_unk3.ps2gfx", "wb") as f:
+    if skininfo1_start != 0:
+        print(f"CANNOT HANDLE SKELETAL ANIMATION OR MORPHS YET: {name} may fail")
+        with open(f"{name}_with_skin.ps2gfx", "wb") as f:
             f.write(data)
         return
 
