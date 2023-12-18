@@ -50,6 +50,7 @@ def interpret_ps2gfx(data, name, material_file):
         
         # Skininfo is a pointer to another structure, containing yet more offsets?
         # This is some more interesting data - matrix numbers, some offsets, some floating-point data
+        # See also CacheSkin - that shows that the offsets and the floats(?) are linked?
         floatArr, floatArrLen, offsetArr, boneIdxArr, unknown1, unknown2 = struct.unpack("<IIIIII", data[skininfo_start-4:skininfo_start-4+24])
 
         assert unknown1==0
