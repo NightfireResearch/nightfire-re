@@ -50,13 +50,24 @@ def interpret_ps2gfx(data, name, material_file):
         
         # Skininfo is a pointer to another structure, containing yet more offsets?
         # This is some more interesting data - matrix numbers, some offsets, some floating-point data
+        floatArr, floatArrLen, offsetArr, boneIdxArr, unknown1, unknown2 = struct.unpack("<IIIIII", data[skininfo_start-4:skininfo_start-4+24])
 
-        # Matrix (bone) number list is FF-terminated
+        assert unknown1==0
+        assert unknown2==0
 
-        # A list of offsets - used in skinning process?
+        # Matrix (bone) number list
+        boneRefs = util.ints_until_terminator(data[boneIdxArr-4:], 1, 0xFF)
+        print(f"Bone refs: {boneRefs}")
 
-        # A list of floating-point data - ???
+        # A list of offsets - used in skinning process? FFFFFFFF-terminated
+        offsets = util.ints_until_terminator(data[offsetArr-4:], 4, 0xFFFFFFFF)
+        print(f"Offsets: {offsets}")
 
+        # A list of floating-point data - length known
+        floats = [struct.unpack("<f", x)[0] for x in util.chunks(data[floatArr-4:floatArr-4+floatArrLen], 4)]
+
+        print(f"Found {len(floats)} floats related to the skin")
+        
         return
 
 
@@ -95,15 +106,9 @@ def interpret_ps2gfx(data, name, material_file):
 
             # Here is the list of textures referenced by this object
             # TODO: Is this some index, some hashcode-related thing, something else?
-            listElems = []
-            listIdx = texList-4
-            while True:
-                value, = struct.unpack("<I", data[listIdx:listIdx+4])
-                if value == 0xFFFFFFFF:
-                    break
-                print(f"Texture: {value:08x}")
-                listElems.append(value)
-                listIdx += 4
+            texRefs = util.ints_until_terminator(data[texList-4:], 4, 0xFFFFFFFF)
+            for i, tex in enumerate(texRefs):
+                print(f"Texture {i}: {tex:08x}")
 
 
             print("Unpacking meshes...")

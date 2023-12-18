@@ -2,6 +2,26 @@
 from PIL import Image
 import struct
 
+
+
+def ints_until_terminator(data, n, terminator):
+
+    results = []
+    offset = 0
+
+    structStr = {
+        1: "<B",
+        2: "<H",
+        4: "<I"
+    }
+
+    while True:
+        x = struct.unpack(structStr[n], data[offset:offset+n])[0]
+        if x == terminator:
+            return results
+        results.append(x)
+        offset+=n
+
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
