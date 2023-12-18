@@ -12,6 +12,14 @@ def load_skin(data):
 	hashcode, scaleX, scaleY, scaleZ, numRiggedBodies, numDiscreteObjs, unk0, dt36b, skeletonNum = struct.unpack("<IfffBBBBB", data[0:21])
 	offset += 21
 
+	# Uncomment to debug only on golden gun
+	#if hashcode!=0x05000091:
+	#	return
+
+	# Uncomment to debug only on human
+	#if skeletonNum != 0:
+	#	return
+
 	# Mostly true but 05000026.x03 is scaled by 1.1x
 	#assert scaleX==1.0, f"Expected scale=1, got {scaleX}"
 	#assert scaleY==1.0, f"Expected scale=1, got {scaleY}"
