@@ -8,9 +8,9 @@ u8 numBones;
 };
 
 struct Bone {
-float a;
-float b;
-float c;
+float x;
+float y;
+float z;
 };
 
 
@@ -22,26 +22,36 @@ Bone bones[header.numBones] @ 0x10;
 
 def load_skeleton(data):
 
-
-	# Visually, looks like a 32-byte header, then floats (eg 0x380 bytes = 224 floats = 56 quats? in SKEL0000)
-
+	# 16-byte header
 	# From AnimSkeletonProcess, we can see that one of the first few values, as a ushort, represents the offset of the data in pSkeletons
 	# Presumably this is skelNum
-
 	# Then we absorb a 12-byte structure of some sort (3 loops, each time incrementing pAnimData by 4)
+	# Then we read a value a byte (data[2]) which gives us the number of bones
 
-	# Then we read a value a byte (data[2]) which gives us the number of a further set of 12-byte entries - the floating XYZ data?
+	# skelNum and numBones reads
+	# init loading: 001BDA64, 001BDA7C, 001BDAA0, 001BDE88
+	# repeated while loading: 001BF148, 001BF164, 001C1B48, 001C4070
+	# repeated in level: 001116FC, 001C7D6C, 001C5EC0
+
+	# No reads for unk0?
+	skelNum, numBones, unk0 = struct.unpack("<HBB", data[0:4])
+
+	# unk1, unk2 and unk3 read at 001c61e0 (AnimFrameCopy__FPvP12sAnimSeq_tagPC13sAnimSkin_tagf)
+	unk1, unk2, unk3 = struct.unpack_from("<III", data, offset=4)
+
+	remainingBytes = len(data) - 4 - 12 - (12 * numBones)
+	print(f"Skeleton {skelNum:04} has numBones:{numBones:2}, remaining bytes: {remainingBytes}")
 	
-	# Then we pad to the nearest 16 bytes?
+	# First root/origin bone isn't read by the game
+	# The rest are read at 001c6214, 001C6210, 001C6218 < last 2 for Z-axis?
+	# Bone translation is relative to parent (see parse_skin.py for hierarchy information)
+	boneTranslations = []
+	for i in range(numBones):
+		x, y, z = struct.unpack_from('<fff', data, offset=16 + i * 12)
+		boneTranslations.append((x, y, z))
+		# print("   ", x, y, z)
 
-	skelNum, numBones = struct.unpack("<HB", data[0:3])
-
-	remainingBytes = len(data) - 3 - 12 - (12 * numBones)
-
-
-	print(f"Skeleton {skelNum:04} has numBones:{numBones}, unaccounted for: {remainingBytes}")
-
-	return (skelNum, numBones)
+	return (skelNum, numBones, boneTranslations)
 
 
 
