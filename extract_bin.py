@@ -110,7 +110,7 @@ def extract_all(target_dir):
 			folder = target_dir + "/" + filename + "_extract"
 			if not os.path.exists(folder):
    				os.makedirs(folder)
-			with open(folder + "/" + name + f".x{hh}", "wb") as f:
+			with open(folder + "/" + name + f"_{hh}.bin", "wb") as f:
 				f.write(file_data)
 			i+=1
 			cumulative_offset += size

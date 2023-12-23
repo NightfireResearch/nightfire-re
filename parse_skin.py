@@ -20,7 +20,7 @@ def load_skin(data):
 	#if skeletonNum != 0:
 	#	return
 
-	# Mostly true but 05000026.x03 is scaled by 1.1x
+	# Mostly true but 05000026_03 is scaled by 1.1x
 	#assert scaleX==1.0, f"Expected scale=1, got {scaleX}"
 	#assert scaleY==1.0, f"Expected scale=1, got {scaleY}"
 	#assert scaleZ==1.0, f"Expected scale=1, got {scaleZ}"
@@ -118,7 +118,7 @@ def load_skin(data):
 if __name__=="__main__":
 
 	# 05000091 is Golden Gun - a test for animation of rigid components
-	filename = "files_bin_unpack/0700004b_HT_Level_Ravine.bin_extract/05000091.x03"
+	filename = "files_bin_unpack/0700004b_HT_Level_Ravine.bin_extract/05000091_03.bin"
 	
 	with open(filename, "rb") as f:
 		data = f.read()
@@ -130,7 +130,7 @@ if __name__=="__main__":
 	# TODO: Validate this / see how the sequence data relates to the rest
 
 
-	filename = f"files_bin_unpack/07000007_HT_Level_CastleIndoors1.bin_extract/05000007.x03"
+	filename = f"files_bin_unpack/07000007_HT_Level_CastleIndoors1.bin_extract/05000007_03.bin"
 
 	with open(filename, "rb") as f:
 		data = f.read()
