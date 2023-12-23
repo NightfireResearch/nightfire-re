@@ -30,17 +30,15 @@ def extract_anims(level_name):
 
     for filename in ordered_dir:
 
-        archive_hashcode = filename.split(".")[0]
-        archive_extension = filename.split(".")[1]
-        if archive_extension not in ["x03", "x04", "x05", "x06"]: # Animation-related formats only
+        archive_hashcode = util.split_file_name(filename)[0]
+        archive_extension = util.split_file_name(filename)[1]
+        if archive_extension not in ["03", "04", "05", "06"]: # Animation-related formats only
             continue
-
-        ident = filename.split(".")[0]
 
         with open(target_dir + filename, "rb") as f:
             data = f.read()
 
-        if archive_extension != "x04": # Sequence data can have different content for the same files
+        if archive_extension != "04": # Sequence data can have different content for the same files
             if dedupe(filename, data):
                 continue # Skip to save time
 
@@ -56,7 +54,7 @@ def extract_anims(level_name):
             pass
 
         if archive_hashcode.startswith("SKEL"): # Skeleton
-            skelNum, numBones = parse_skeleton.load_skeleton(data)  
+            skelNum, numBones = parse_skeleton.load_skeleton(data)
             boneNums[skelNum] = numBones
 
 

@@ -342,9 +342,10 @@ def extract_leveldir(level_name):
         # The x01 is also the largest file (level geometry? textures?) and also seems to trigger Anim_PostLoadInit
         # Similar structure seen in all the other level files checked.
 
-        archive_hashcode = filename.split(".")[0]
-        archive_extension = filename.split(".")[1]
-        if archive_extension not in ["x00", "x01", "x02", "x0b"]:
+        archive_hashcode = util.split_file_name(filename)[0]
+        archive_extension = util.split_file_name(filename)[1]
+
+        if archive_extension not in ["00", "01", "02", "0b"]:
             #print(f"File {filename} is not map data (maybe anim or something), continuing...")
             continue
 
@@ -354,8 +355,7 @@ def extract_leveldir(level_name):
         # x02: Skins
         # x0b: Weapons (1st person?)
 
-        ident = filename.split(".")[0]
-        #print(f"Extracting resources from {ident} in {level_name}")
+        #print(f"Extracting resources from {archive_hashcode} in {level_name}")
 
         # Follow logic of parsemap_parsemap
         #print(f"Looking at archive data {archive_hashcode}...")

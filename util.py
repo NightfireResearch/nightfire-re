@@ -4,6 +4,10 @@ import struct
 
 
 
+def split_file_name(name):
+    s = name.split("_")
+    return (s[0], s[1][:2])
+
 def ints_until_terminator(data, n, terminator):
 
     results = []
