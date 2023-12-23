@@ -1,0 +1,74 @@
+"""
+From 0200053e_generic_head_grunt.ps2gfx
+
+struct Header {
+u32 len;
+u32 a;
+u32 b;
+};
+
+struct Footer {
+u32 boxlist_num;
+u32 boxlist_start;
+u32 skininfo;
+u32 unk4;
+};
+
+struct Skininfo {
+u32 c; // offset of (unk2)
+u32 d; // size of float array (unk2)
+u32 e; // Other offset
+u32 boneIdxList_start;
+u32 g;
+u32 h;
+};
+
+
+struct OffsetsList {
+u32 unk333[1784]; // unknown size, FFFFFFFF terminated list
+};
+
+struct BoneIndexList {
+u8 i[44];// unknown size, FF-terminated list
+};
+
+struct glistbox {
+float min[3];
+float max[3];
+u32 childA;
+u32 childB;
+u32 vifOff;
+u32 textureListPtr;
+u32 vifLen;
+u32 stripCnt;
+u32 vtxCnt;
+u32 flags;
+};
+
+struct TextureList {
+u32 texid[11]; //FFFFFFFF-terminated list
+};
+
+
+Header h @ 0x00;
+
+
+Footer footer @ h.len - 4;
+
+glistbox box[footer.boxlist_num] @ footer.boxlist_start - 4;
+
+TextureList tl @ box[0].textureListPtr - 4;
+
+Skininfo skininfo @ footer.skininfo - 4;
+
+struct Unk2 {
+float aaaaaa[(skininfo.d)/4];
+};
+
+Unk2 unk2 @ skininfo.c - 4;
+OffsetsList offsets @ skininfo.e - 4;
+BoneIndexList boneIdx @ skininfo.boneIdxList_start - 4;
+
+u8 vifCmds[(box[0].vifLen)] @ box[0].vifOff - 4;
+
+"""
