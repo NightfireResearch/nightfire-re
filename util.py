@@ -1,12 +1,13 @@
-
-from PIL import Image
+import os
 import struct
+from PIL import Image
 
 
 
 def split_file_name(name):
-    s = name.split("_")
-    return (s[0], s[1][:2])
+    """splits file name and removes ".bin" a_00.bin -> (a, 00)"""
+    base, ext = os.path.splitext(name)
+    return (base[:-3], base[-2:])
 
 def ints_until_terminator(data, n, terminator):
 
