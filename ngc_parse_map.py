@@ -8,44 +8,40 @@ import util
 from PIL import Image
 
 def ngc_parse_map_testing():
+    test_mode = 1 # 0 single file | 1 level folder | 2 all level folders
     in_directory = "ngc_bins"
     out_directory = "ngc_levels"
-
-    test_mode = 1
     extract_assets = True # currently only extracts textures
     # print_info = True
 
-    files_to_parse = []
+    # files_to_parse = []
 
-
-    # Don't add slashes to end of manual paths!
-
-    #level_folder = "07000048_HT_Level_Menu_Pre"
-    level_folder = "07000005_HT_Level_CastleExterior"
+    level_folder = "07000048_HT_Level_Menu_Pre"
 
     if test_mode == 0: #single file
-        temp_name = "010001b3_0b.bin"
-        temp_file_path = in_directory + "/" + level_folder + "/" + temp_name
-        files_to_parse.append(temp_file_path)
+        asset_file = "010001b3_0b.bin"
+        in_file_path = f"{in_directory}/{level_folder}/{asset_file}"
+        out_folder_path = f"{out_directory}/{level_folder}/{asset_file[0:11]}"
+        #files_to_parse.append(in_file_path)
+        ngc_parse_map_file(in_file_path, extract=extract_assets, out_folder_path=out_folder_path)
 
     if test_mode == 1: # entire level folder
-        for file in next(os.walk(in_directory + "/" + level_folder))[2]:
-            if file.startswith("01"):
-                files_to_parse.append(in_directory + "/" + level_folder + "/" + file)
+        for asset_file in next(os.walk(in_directory + "/" + level_folder))[2]:
+            if asset_file.startswith("01"):
+                in_file_path = f"{in_directory}/{level_folder}/{asset_file}"
+                out_folder_path = f"{out_directory}/{level_folder}/{asset_file[0:11]}"
+                #files_to_parse.append(in_file_path)
+                ngc_parse_map_file(in_file_path, extract=extract_assets, out_folder_path=out_folder_path)
 
-    if test_mode == 3:# all level folders NOT TESTED!
-        level_folders = next(os.walk(in_directory))[1]
-        for level_folder in level_folders:
+    if test_mode == 2:# all level folders
+        for level_folder in next(os.walk(in_directory))[1]:
             asset_files = next(os.walk(in_directory + "/" + level_folder))[2]
             for asset_file in asset_files:
                 if file.startswith("01"):
-                    files_to_parse.append(in_directory + "/" + level_folder + "/" + asset_file)
-
-    # run main function
-    for file_path in files_to_parse:
-        _, level_folder, asset_file = file_path.split("/")
-        out_folder = f"{out_directory}/{level_folder}/{asset_file[0:11]}"
-        ngc_parse_map_file(file_path, extract=extract_assets, out_folder_path=out_folder)
+                    in_file_path = f"{in_directory}/{level_folder}/{asset_file}"
+                    out_folder_path = f"{out_directory}/{level_folder}/{asset_file[0:11]}"
+                    # files_to_parse.append(in_file_path)
+                    ngc_parse_map_file(in_file_path, extract=extract_assets, out_folder_path=out_folder_path)
 
 def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
 
