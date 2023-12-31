@@ -2,5 +2,10 @@ audio/
 extract/
 files_bin_unpack/
 level_unpack/
+
+ngc/
+ngc_bins/
+ngc_levels/
+
 __pycache__
 tmpvag.vag
