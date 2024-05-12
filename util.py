@@ -2,12 +2,43 @@ import os
 import struct
 from PIL import Image
 
+class ReadWrite:
+    def __init__(self, buffer, big_endian=False):
+        self.f = buffer # file/buffer
+        self.en = ">" if big_endian else "<" # endianess
 
+        # if str(type(buffer)) == "<class '_io.BufferedReader'>":
+        #     print("test")
+
+    def get_s8(self):
+        """Len: 1 byte. Range: -128 to 127"""
+        return struct.unpack(self.en + "b", self.f.read(1))[0]
+    def get_s16(self):
+        """Len: 2 bytes. Range: -32768 to 32767"""
+        return struct.unpack(self.en + "h", self.f.read(2))[0]
+    def get_s32(self):
+        """Len: 4 bytes. Range: -2147483648 to 2147483647"""
+        return struct.unpack(self.en + "i", self.f.read(4))[0]
+    def get_u8(self):
+        """Len: 1 byte. Range: 0 to 255"""
+        return struct.unpack(self.en + "B", self.f.read(1))[0]
+    def get_u16(self):
+        """Len: 2 bytes. Range: 0 to 65535"""
+        return struct.unpack(self.en + "H", self.f.read(2))[0]
+    def get_u32(self):
+        """Len: 4 bytes. Range: 0 to 4294967295"""
+        return struct.unpack(self.en + "I", self.f.read(4))[0]
 
 def split_file_name(name):
     """splits file name and removes ".bin" a_00.bin -> (a, 00)"""
     base, ext = os.path.splitext(name)
     return (base[:-3], base[-2:])
+
+def get_all_files(directory):
+    return next(os.walk(directory))[2]
+
+def get_all_folders(directory):
+    return next(os.walk(directory))[1]
 
 def ints_until_terminator(data, n, terminator):
 
