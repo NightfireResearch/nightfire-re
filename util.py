@@ -6,9 +6,38 @@ class ReadWrite:
     def __init__(self, buffer, big_endian=False):
         self.f = buffer # file/buffer
         self.en = ">" if big_endian else "<"
+        self.offset = 0
 
         # if str(type(buffer)) == "<class '_io.BufferedReader'>":
         #     print("test")
+
+
+    def bget_s16(self):
+        val = struct.unpack_from(self.en + "h", self.f, offset=self.offset)[0]; self.offset += 2
+        return val
+    def bget_s32(self):
+        val = struct.unpack_from(self.en + "i", self.f, offset=self.offset)[0]; self.offset += 4
+        return val
+
+    def bget_u16(self):
+        val = struct.unpack_from(self.en + "H", self.f, offset=self.offset)[0]; self.offset += 2
+        return val
+    def bget_u32(self):
+        val = struct.unpack_from(self.en + "I", self.f, offset=self.offset)[0]; self.offset += 4
+        return val
+
+    def bget_vec2(self):
+        val = struct.unpack_from(self.en + "ff", self.f, offset=self.offset); self.offset += 8
+        return val
+    def bget_vec3(self):
+        val = struct.unpack_from(self.en + "fff", self.f, offset=self.offset); self.offset += 12
+        return val
+    def bget_vec4(self):
+        val = struct.unpack_from(self.en + "ffff", self.f, offset=self.offset); self.offset += 16
+        return val
+
+
+
 
     def get_s8(self):
         """Len: 1 byte. Range: -128 to 127"""
