@@ -1,8 +1,10 @@
 import os
+import sys
 import math
 import struct as s
 import binascii
 
+sys.path.append("..")
 import util
 
 from PIL import Image
@@ -386,7 +388,7 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
         rw = util.ReadWrite(f)
         rw.big_endian = True
 
-        print("\nEntities", ent_count)
+        print("\nOther + Entities", ent_count)
         print("idx offset name/type")
 
         # vertex count stealship 1st model at 0x526C in 01000207_00.bin? 156
@@ -639,7 +641,6 @@ def gx_rgb5a3_to_rgba(rgb5a3_buffer, width, height):
 
         if is_opaque:
             # 1RRRRRGGGGGBBBBB
-            # gen
             r = (rgb5a3 >> 10) & 0x1F
             g = (rgb5a3 >> 5) & 0x1F
             b =  rgb5a3       & 0x1F
@@ -650,7 +651,6 @@ def gx_rgb5a3_to_rgba(rgb5a3_buffer, width, height):
             a = 255
         else:
             # 0AAARRRRGGGGBBBB
-            # gen
             a = (rgb5a3 >> 12) & 0x0F
             r = (rgb5a3 >> 8) & 0x0F
             g = (rgb5a3 >> 4) & 0x0F

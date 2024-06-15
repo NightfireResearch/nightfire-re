@@ -5,7 +5,7 @@ from PIL import Image
 class ReadWrite:
     def __init__(self, buffer, big_endian=False):
         self.f = buffer # file/buffer
-        self.en = ">" if big_endian else "<" # endianess
+        self.en = ">" if big_endian else "<"
 
         # if str(type(buffer)) == "<class '_io.BufferedReader'>":
         #     print("test")
@@ -25,9 +25,51 @@ class ReadWrite:
     def get_u16(self):
         """Len: 2 bytes. Range: 0 to 65535"""
         return struct.unpack(self.en + "H", self.f.read(2))[0]
+    def get_u24(self):
+        """TODO ---------------------------------"""
+        vals = struct.unpack('BBB', self.f.read(3))
+        return vals[0] | (vals[1] << 8) | (vals[2] << 16) # doesn't support big endian
     def get_u32(self):
         """Len: 4 bytes. Range: 0 to 4294967295"""
         return struct.unpack(self.en + "I", self.f.read(4))[0]
+    def get_float32(self):
+        """Len: 4 bytes. Range: -inf to inf"""
+        return struct.unpack(self.en + "f", self.f.read(4))[0]
+
+    def get_float32s(self, count):
+        return struct.unpack(self.en + "f" * count, self.f.read(4 * count))
+
+    def get_vec2(self):
+        return struct.unpack(self.en + "ff", self.f.read(8))
+    def get_vec3(self):
+        return struct.unpack(self.en + "fff", self.f.read(12))
+    def get_vec4(self):
+        return struct.unpack(self.en + "ffff", self.f.read(16))
+
+    def get_string(self, length):
+        return self.f.read(length).strip(b'\x00').decode('utf-8')
+    def get_string_c(self):
+        string = b''
+        while True:
+            c = self.f.read(1)
+            if c == b'\x00':
+                break
+            string += c
+        return string.decode('utf-8')
+
+
+def tristrip_to_faces(strip, rot=True):
+    face_group = []
+    for i in range(len(strip) - 2):
+        if rot: # clockwise/anticlockwise rotation
+            face = (strip[i+2], strip[i+1], strip[i+0])
+        else:
+            face = (strip[i], strip[i+1], strip[i+2])
+
+        rot = not rot
+        face_group.append(face)
+    return face_group
+
 
 def split_file_name(name):
     """splits file name and removes ".bin" a_00.bin -> (a, 00)"""

@@ -3,9 +3,13 @@ extract/
 files_bin_unpack/
 level_unpack/
 
-ngc/
-ngc_bins/
-ngc_levels/
+ep2.exe
+ngc/ngc_archives/
+ngc/ngc_bins/
+ngc/ngc_levels/
+
+xbx/xbx_bins/
+xbx/xbx_levels/
 
 __pycache__
 tmpvag.vag
