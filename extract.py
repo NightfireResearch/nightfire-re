@@ -84,5 +84,6 @@ def _dump_driving_file(file: str, dump_folder: str):
 	extract_bigf.extract(file, os.path.join(dump_folder, unpack_folder))
 
 def extract_game_files(dump_folder: str):
-	extract_driving(dump_folder)
-	extract_action(dump_folder)
+	#extract_driving(dump_folder)
+	#extract_action(dump_folder)
+	pass
