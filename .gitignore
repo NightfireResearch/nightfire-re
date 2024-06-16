@@ -13,3 +13,6 @@ xbx/xbx_levels/
 
 __pycache__
 tmpvag.vag
+iso_dump_folder/*.iso
+
+*.csv

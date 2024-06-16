@@ -1,103 +1,88 @@
 #!/usr/bin/env python3
 # This script requires an EU PS2 version of the ISO to be extracted to files, within a directory `extract/`.
-import struct
+import glob
+import logging
 import os
-import util
+import struct
+from multiprocessing import Process
+from pathlib import Path
+
 import external_knowledge
-
-###
-### Driving Engine
-###
-print("---- Unpacking Driving engine resources ----")
-
-# Unpack .VIV / .SPE / .MUS archives within DRIVING subdirectory (Driving engine - BIGF)
-# TODO: This
-
 import extract_bigf
-
-extract_bigf.extract("extract/DRIVING/MIS01.mus", "driving_unpack/MIS01")
-
-# Note: VIV is compressed (RefPack), other two types are not compressed
-
-
-# Symbols to Ghidra
-# https://win-archaeology.fandom.com/wiki/.SYM_Format
-# And refer to Ghidra/Features/Python/ghidra_scripts/ImportSymbolsScript.py
-# TODO: This
-
-
-###
-### Action Engine
-###
-print("---- Unpacking Action engine resources ----")
-# In order to understand FILES.BIN, we need to use some knowledge from ACTION.ELF - which contains a FileList, consisting of 118 entries, of structure:
-# char[16] name
-# uint32_t offset_into_bin
-# uint32_t size_within_bin
-# char[8] padding
-
-offset_within_elf = external_knowledge.filetable_offset_in_elf
-length_of_table = external_knowledge.filetable_length
-
-with open("extract/ACTION.ELF", "rb") as f:
-    action_elf = f.read()
-
-filetable_data = action_elf[offset_within_elf : offset_within_elf + 0x20 * length_of_table]
-
-# Split the table up into the 32-byte chunks
-filetable = list(util.chunks(filetable_data, 0x20))
-
-
-# Now we have the table, we can unpack FILES.BIN into the 118 top-level files
-with open("extract/FILES.BIN", "rb") as f:
-    filesbin_data = f.read()
-
-# Extract the contents to a file within the target directory
-target_dir = "files_bin_unpack"
-
-if not os.path.exists(target_dir):
-   	os.makedirs(target_dir)
-
-for fte in filetable:
-
-	# Interpret the struct
-	content = struct.unpack("<16sIIxxxxxxxx", fte)
-	fname = content[0].decode("ascii").split("\x00")[0]
-	offset = content[1]
-	size = content[2]
-
-	# If we know a filename rather than a hashcode, apply it
-	hashcode = fname.replace(".bin", "")
-	if hashcode in external_knowledge.hashcode_name_mapping.keys():
-		fname = hashcode + "_" + external_knowledge.hashcode_name_mapping[hashcode] + ".bin"
-
-	# Dump the relevant region to a file
-	with open(target_dir + "/" + fname, "wb") as f:
-		f.write(filesbin_data[offset : offset+size])
-
-
-
-# Within the unpacked files, use our knowledge of the contents to add metadata and convert to editable/useful file formats wherever possible
-# TODO: This
-
-# Translations
-import extract_dat
-extract_dat.extract_all(target_dir)
-
-# Containers for other, smaller files (let's call this a "levelset"?)
 import extract_bin
-extract_bin.extract_all(target_dir)
+import parse_map
+import util
 
-###
-### Media Playback
-###
-print("---- Unpacking Base / Sound resources ----")
-# Convert audio tracks to .WAV for import/editing
+logger = logging.getLogger()
 
-# Name sound bank files according to the SFX list in PS2/DEBUG.TXT
+def extract_driving(dump_folder: str):
+	logger.info("Unpacking Driving engine resources")
 
-# Stream files LUT
+	driving_folder = os.path.join(dump_folder, "DRIVING")
+	driving_files = glob.glob(driving_folder + "/*.mus") + glob.glob(driving_folder + "/*.viv") + glob.glob(driving_folder + "/*.spe")
 
-# Video repacked in .mp4?
-# Low priority, can just take the XBox videos or use pss unpacker?
+	processes = [Process(target=_dump_driving_file, args=(file, dump_folder), name=Path(file).stem) for file in driving_files]
+	for process in processes:
+		process.start()
+	for process in processes:
+		process.join()
 
+def extract_action(dump_folder: str):
+	logger.info("Unpacking Action engine resources")
+	# In order to understand FILES.BIN, we need to use some knowledge from ACTION.ELF - which contains a FileList, consisting of 118 entries, of structure:
+	# char[16] name
+	# uint32_t offset_into_bin
+	# uint32_t size_within_bin
+	# char[8] padding
+
+	offset_within_elf = external_knowledge.filetable_offset_in_elf
+	length_of_table = external_knowledge.filetable_length
+
+	with open(os.path.join(dump_folder, "ACTION.ELF"), "rb") as f:
+		action_elf = f.read()
+
+	filetable_data = action_elf[offset_within_elf : offset_within_elf + 0x20 * length_of_table]
+
+	# Split the table up into the 32-byte chunks
+	filetable = list(util.chunks(filetable_data, 0x20))
+
+	# Now we have the table, we can unpack FILES.BIN into the 118 top-level files
+	with open(os.path.join(dump_folder, "FILES.BIN"), "rb") as f:
+		filesbin_data = f.read()
+
+	# Extract the contents to a file within the target directory
+	target_dir = os.path.join(dump_folder, "files_bin_unpack")
+
+	if not os.path.exists(target_dir):
+		os.makedirs(target_dir)
+
+	for fte in filetable:
+		# Interpret the struct
+		content = struct.unpack("<16sIIxxxxxxxx", fte)
+		fname = content[0].decode("ascii").split("\x00")[0]
+		offset = content[1]
+		size = content[2]
+
+		# If we know a filename rather than a hashcode, apply it
+		hashcode = fname.replace(".bin", "")
+		if hashcode in external_knowledge.hashcode_name_mapping.keys():
+			fname = hashcode + "_" + external_knowledge.hashcode_name_mapping[hashcode] + ".bin"
+
+		# Dump the relevant region to a file
+		logger.info("Writing out %s", fname)
+		with open(target_dir + "/" + fname, "wb") as f:
+			f.write(filesbin_data[offset : offset+size])
+
+	extract_bin.extract_all(target_dir)
+	parse_map.parse_maps(target_dir)
+
+def _dump_driving_file(file: str, dump_folder: str):
+	file_name_path = Path(file)
+	file_name_isolated = file_name_path.stem
+	file_extension = file_name_path.suffix
+	unpack_folder = "driving_unpack/{}_{}".format(file_name_isolated, file_extension.replace(".", ""))
+	extract_bigf.extract(file, os.path.join(dump_folder, unpack_folder))
+
+def extract_game_files(dump_folder: str):
+	extract_driving(dump_folder)
+	extract_action(dump_folder)

@@ -1,12 +1,18 @@
+import logging
 import os
 import struct
-import util
 from math import isqrt
-from pprint import pprint
 from pathlib import Path
+from pprint import pprint
+
 import external_knowledge
 import parse_mesh
 import parse_placements
+import util
+
+logger = logging.getLogger()
+
+
 # Follow the structure of parsemap_handle_block_id to decode all the blocks/chunks/whatever of each map
 
 # We now understand that each level consists of a number of sub-resources, let's say `01xxxxxx` files are Archives.
@@ -39,7 +45,7 @@ def handler_entity_params(data):
     # 9 float-like things
     # string Name
     params = struct.unpack("<3I9f", data[0:48])
-    
+
     # This is confirmed as the value stored in hashtable - eg RCCarTurret has 0x02000502, which is referenced in Car_InitBits
     # This is NOT the same as the hashcode that contains this entity within the packed level.
     # For example:
@@ -86,7 +92,7 @@ def handler_tex_header(data):
         texEntries.append({'save_file': True, 'data': entry, 'type': 'tex_header_entry', 'width': w+1, 'height': h+1, 'hashcode': hashcode, 'animFrames': animFrames})
 
     return texEntries
-    
+
 
 def handler_tex_palette(data):
 
@@ -128,7 +134,7 @@ def handler_lightambient(data):
         #print(f"Light {i} data: ({posX}, {posY}, {posZ}), {radius} - colour {r}, {g}, {b}, unk {unk0}")
 
         lightambients.append({'type': 'lightambient'}) # todo: the rest
-    
+
     return lightambients
 
 def handler_lod(data):
@@ -172,7 +178,7 @@ def handler_aipath(data):
         #print("Handle according to the second half - bounds?")
         pass
 
-    # For each Path: 
+    # For each Path:
     #   Name, padded to 128 bytes?
     #   Number, padded to 32 bytes?
     #   ??: Number of "Type A"
@@ -183,7 +189,7 @@ def handler_aipath(data):
     #       ??: 1x u32 (index?)
 
     #   "Type B": 20 bytes (SubPen: 655ish entries?)
-    #       ??: 
+    #       ??:
     #       ??: Idx from (short?)
     #       ??: Idx to (short?)
     return []
@@ -221,7 +227,7 @@ def handler_blank_discard(data):
 
 def handler_palette_header(data):
     # Consists of N entries (N = the number of textures), each 8 bytes:
-    # AA BB CC DD HH HH HH HH 
+    # AA BB CC DD HH HH HH HH
     # AA is always 0x0F or 0xFF
     # BB, CC, DD seem randomish, sometimes all zero
     # HH is either the hashcode of the texture (if known) or FFFFFFFF
@@ -407,7 +413,7 @@ def extract_leveldir(level_name):
 
             assert bh_identifier < 0x31, f"Block header had an unexpected identifier {bh_identifier:x}"
             FileBlockSize[bh_identifier] += bh_size
-            
+
             # Sub-block found - ID, size
             result = handle_block(data[pFileNextBlock:pFileNextBlock+bh_size], bh_identifier)
 
@@ -464,22 +470,10 @@ def extract_leveldir(level_name):
             with open(f"{savepath}/{i:04}_{u['type']}.bin", "wb") as f:
                 f.write(u['data'])
 
-
-
-
-
-
-
-
-
-if __name__ == "__main__":
-
-    directory = "files_bin_unpack/"
-    print(f"Extracting all level content from levels in {directory}")
+def parse_maps(directory: str):
+    logger.info("Extracting all level content from levels in %s", directory)
     fnames=sorted(os.listdir(directory))
     levels = [x.replace(".bin_extract", "") for x in fnames if ".bin_extract" in x]
 
     for l in levels:
         extract_leveldir(l)
-
-
