@@ -335,10 +335,11 @@ def handle_block(data, identifier):
 
 
 
-def extract_leveldir(level_name):
-
+def extract_leveldir(directory, level_name):
     target_dir = f"files_bin_unpack/{level_name}.bin_extract/"
     ordered_dir=sorted(os.listdir(target_dir)) # Go through in the order set by the bin file
+
+    for filename in ordered_dir:ordered_dir=sorted(os.listdir(target_dir)) # Go through in the order set by the bin file
 
 
     for filename in ordered_dir:
@@ -426,7 +427,7 @@ def extract_leveldir(level_name):
             pass
 
         archivepath = external_knowledge.archive_names.get(archive_hashcode, f"{level_name}/unknown_{archive_hashcode}")
-        savepath = f"level_unpack/{archivepath}"
+        savepath = os.path.join(directory, f"level_unpack/{archivepath}")
         Path(savepath).mkdir(parents=True, exist_ok=True)
         #print(f"ARCHIVE {archive_hashcode} ({archivepath}) DECODED - RESULT: {len(results)} blocks")
 
@@ -476,4 +477,4 @@ def parse_maps(directory: str):
     levels = [x.replace(".bin_extract", "") for x in fnames if ".bin_extract" in x]
 
     for l in levels:
-        extract_leveldir(l)
+        extract_leveldir(directory, l)
