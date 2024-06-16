@@ -1,90 +1,8 @@
+import hashlib
 import os
 import struct
+
 from PIL import Image
-
-class ReadWrite:
-    def __init__(self, buffer, big_endian=False):
-        self.f = buffer # file/buffer
-        self.en = ">" if big_endian else "<"
-        self.offset = 0
-
-        # if str(type(buffer)) == "<class '_io.BufferedReader'>":
-        #     print("test")
-
-
-    def bget_s16(self):
-        val = struct.unpack_from(self.en + "h", self.f, offset=self.offset)[0]; self.offset += 2
-        return val
-    def bget_s32(self):
-        val = struct.unpack_from(self.en + "i", self.f, offset=self.offset)[0]; self.offset += 4
-        return val
-
-    def bget_u16(self):
-        val = struct.unpack_from(self.en + "H", self.f, offset=self.offset)[0]; self.offset += 2
-        return val
-    def bget_u32(self):
-        val = struct.unpack_from(self.en + "I", self.f, offset=self.offset)[0]; self.offset += 4
-        return val
-
-    def bget_vec2(self):
-        val = struct.unpack_from(self.en + "ff", self.f, offset=self.offset); self.offset += 8
-        return val
-    def bget_vec3(self):
-        val = struct.unpack_from(self.en + "fff", self.f, offset=self.offset); self.offset += 12
-        return val
-    def bget_vec4(self):
-        val = struct.unpack_from(self.en + "ffff", self.f, offset=self.offset); self.offset += 16
-        return val
-
-
-
-
-    def get_s8(self):
-        """Len: 1 byte. Range: -128 to 127"""
-        return struct.unpack(self.en + "b", self.f.read(1))[0]
-    def get_s16(self):
-        """Len: 2 bytes. Range: -32768 to 32767"""
-        return struct.unpack(self.en + "h", self.f.read(2))[0]
-    def get_s32(self):
-        """Len: 4 bytes. Range: -2147483648 to 2147483647"""
-        return struct.unpack(self.en + "i", self.f.read(4))[0]
-    def get_u8(self):
-        """Len: 1 byte. Range: 0 to 255"""
-        return struct.unpack(self.en + "B", self.f.read(1))[0]
-    def get_u16(self):
-        """Len: 2 bytes. Range: 0 to 65535"""
-        return struct.unpack(self.en + "H", self.f.read(2))[0]
-    def get_u24(self):
-        """TODO ---------------------------------"""
-        vals = struct.unpack('BBB', self.f.read(3))
-        return vals[0] | (vals[1] << 8) | (vals[2] << 16) # doesn't support big endian
-    def get_u32(self):
-        """Len: 4 bytes. Range: 0 to 4294967295"""
-        return struct.unpack(self.en + "I", self.f.read(4))[0]
-    def get_float32(self):
-        """Len: 4 bytes. Range: -inf to inf"""
-        return struct.unpack(self.en + "f", self.f.read(4))[0]
-
-    def get_float32s(self, count):
-        return struct.unpack(self.en + "f" * count, self.f.read(4 * count))
-
-    def get_vec2(self):
-        return struct.unpack(self.en + "ff", self.f.read(8))
-    def get_vec3(self):
-        return struct.unpack(self.en + "fff", self.f.read(12))
-    def get_vec4(self):
-        return struct.unpack(self.en + "ffff", self.f.read(16))
-
-    def get_string(self, length):
-        return self.f.read(length).strip(b'\x00').decode('utf-8')
-    def get_string_c(self):
-        string = b''
-        while True:
-            c = self.f.read(1)
-            if c == b'\x00':
-                break
-            string += c
-        return string.decode('utf-8')
 
 
 def tristrip_to_faces(strip, rot=True):
@@ -201,7 +119,7 @@ def depalettize(indexed_data, palette, w, h, animFrames):
         return
 
     frames = []
-    for i in range(animFrames):    
+    for i in range(animFrames):
         frames.append(depalettizeFrame(indexed_data[i*bytes_per_frame:(i+1)*bytes_per_frame], palette, w, h, bpp))
 
     return frames
@@ -223,7 +141,7 @@ def vifUnpack(data):
     # To do this perfectly, we'd need to emulate the VIF as well as anything the VIF could interact with
     # Let's just make some assumptions, look at the unpacks, and maybe attempt to infer the rest
 
-    cmds_unpack = { 
+    cmds_unpack = {
         0x60: ("s", 1, 32),
         0x61: ("s", 1, 16),
         0x62: ("s", 1, 8),
@@ -236,7 +154,7 @@ def vifUnpack(data):
         0x6C: ("v", 4, 32),
         0x6D: ("v", 4, 16),
         0x6E: ("v", 4, 8), # RGBA, unknown
-        0x6F: ("v", 4, 5) 
+        0x6F: ("v", 4, 5)
     }
 
     offsetAt = 0x00
@@ -285,7 +203,7 @@ def vifUnpack(data):
         elif cmd == 0x30: # STROW: Texture ID (*descending* order - ie if this is 0x14 in an object with 0x20 textures, this is IDd as item 12.png=0x0C), 0, 0, unknown
             strow = list(struct.unpack("<4I", data[offsetAt+4: offsetAt+20]))
             #print(f"STROW {strow[0]:08x}  {strow[1]:08x}  {strow[2]:08x}  {strow[3]:08x} ")
-            unpacks.append(["texture", strow[0]]) 
+            unpacks.append(["texture", strow[0]])
             offsetAt += 4 + 16
 
         elif cmd == 0x31: # STCOL
@@ -301,9 +219,41 @@ def vifUnpack(data):
         else:
             print(f"Warning: Unhandled operation in VIF stream 0x{cmd:02x}")
             offsetAt += 4
-    
+
 
     #print("Finished searching for VIF unpacks")
     return unpacks
 
+class Utils:
+    @staticmethod
+    def calc_hash(file):
+        # BUF_SIZE is totally arbitrary, change for your app!
+        BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
 
+        sha1 = hashlib.sha1()
+
+        with open(file, 'rb') as f:
+            while True:
+                data = f.read(BUF_SIZE)
+                if not data:
+                    break
+                sha1.update(data)
+
+        return sha1
+
+
+class Endian:
+    # Swap endianness of a 24-bit value
+    @staticmethod
+    def se24(data):
+        temp_byte = [*data, 0x00]
+        temp_byte.reverse()
+        for i in range(1, len(temp_byte)):
+            temp_byte[i - 1] = temp_byte[i]
+        temp_byte[3] = 0x00
+        return struct.unpack('<I', bytes(temp_byte))[0]
+
+    # Swap endianness of a 32-bit value
+    @staticmethod
+    def se32(num):
+        return struct.unpack('<I', struct.pack('>I', num))[0]

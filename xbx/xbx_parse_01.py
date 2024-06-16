@@ -1,6 +1,6 @@
 import os
-import sys
 import struct as s
+import sys
 from binascii import hexlify
 
 from PIL import Image
@@ -8,6 +8,7 @@ from PIL import Image
 sys.path.append("..")
 import util
 from external_knowledge import placementTypes
+from readwrite import ReadWrite
 
 # Signatures
 # KXT = Xbox Texture
@@ -31,7 +32,7 @@ saved_texture_file_names = []
 def parse():
 
     with open(file_path, 'rb') as f:
-        rw = util.ReadWrite(f)
+        rw = ReadWrite.ReadWrite(f)
         unk = f.read(4)
         unk = f.read(4)                          # x04 "0x0e" handler_map_header?
         file_hash = f.read(4)                    # x08
@@ -119,12 +120,12 @@ def parse():
 
                 print("    ", tex, "    ends:", f.tell())
                 textures.append(tex)
-                
+
                 f.seek(tex_offset + data_size)
 
             # if i == 17:
             #   return
-        
+
 
         #return
 
@@ -231,12 +232,12 @@ def parse():
 
 
                 loop_idx = 0
-                rb = util.ReadWrite(data_buffer)
+                rb = ReadWrite.ReadWrite(data_buffer)
                 while rb.offset + 4 < len(data_buffer):
                     global_offset = data_offset + rb.offset + 4
                     print("--place", loop_idx, global_offset, rb.offset, len(data_buffer))
 
-                    index = rb.bget_s16() # entity graphics index if not -1 
+                    index = rb.bget_s16() # entity graphics index if not -1
                     unk0 = rb.bget_u16()
                     gfx_hashcode = rb.bget_u32() # external if not -1?
                     placement_type = rb.bget_s32()
@@ -322,7 +323,7 @@ def extract_entities(entities, file_path):
         print(file_path, "No entities to extract")
         return None
 
-    out_folder_path = f"xbx_levels/{level_hash}/{file_name}" 
+    out_folder_path = f"xbx_levels/{level_hash}/{file_name}"
 
     print(out_folder_path)
 
@@ -349,7 +350,7 @@ def extract_entities(entities, file_path):
         #tex = textures[texture_index]
         #texture_name = f"tex{texture_index:03d}_{tex.name}"
         #mtl_data += f"\nmap_Kd {texture_name}.dds"
-        
+
         #texture_name = saved_texture_file_names[texture_index]
         #print(texture_name)
 
@@ -366,7 +367,7 @@ def extract_entities(entities, file_path):
     for i, ent in enumerate(entities):
         ent_file_name = f"ent{i:03d}_{ent.name}"
         obj_final_out_path = out_folder_path + "/" + ent_file_name + ".obj"
-        
+
         print(ent.name, ent.num_surfaces)
 
         obj_data = ""
@@ -379,7 +380,7 @@ def extract_entities(entities, file_path):
         obj_data += "\n"
 
         for v in ent.vertices:
-            obj_data += f"v {v[0]} {v[1]} {v[2]}\n" # vertices. 
+            obj_data += f"v {v[0]} {v[1]} {v[2]}\n" # vertices.
         obj_data += "\n"
 
         for vt in ent.tex_coords:
@@ -407,7 +408,7 @@ def extract_entities(entities, file_path):
             # for f in new_faces: # with vtx normals
             #   obj_data += f"f {f[0] + 1}/{f[0] + 1}/{f[0] + 1} {f[1] + 1}/{f[1] + 1}/{f[1] + 1} {f[2] + 1}/{f[2] + 1}/{f[2] + 1}\n"
 
-        
+
         with open(obj_final_out_path, "w") as out_f:
             out_f.write(obj_data)
 
@@ -436,7 +437,7 @@ def extract_textures(textures):
         print(file_path, "No textures to extract")
         return None
 
-    out_folder_path = f"xbx_levels/{level_hash}/{file_name}" 
+    out_folder_path = f"xbx_levels/{level_hash}/{file_name}"
 
     if not os.path.isdir(out_folder_path):
         os.makedirs(out_folder_path)
@@ -462,7 +463,7 @@ def extract_textures(textures):
             dds_buffer += b'\x01\x00\x00\x00' # depth (ignored)
             dds_buffer += b'\x01\x00\x00\x00' #s.pack('<I', tex.mip_count)
             # dds_buffer += b'\x00' * 44
-            dds_buffer += b'\x4E\x46\x00\x00' # "NF" for NightFire 
+            dds_buffer += b'\x4E\x46\x00\x00' # "NF" for NightFire
             dds_buffer += b'\x00' * 40
             dds_buffer += b'\x20\x00\x00\x00'
             dds_buffer += b'\x04\x00\x00\x00'
@@ -471,14 +472,14 @@ def extract_textures(textures):
             else:
                 dds_buffer += b'\x44\x58\x54\x35' # DXT5
             dds_buffer += b'\x00' * 20
-            dds_buffer += b'\x08\x10\x40\x00' if tex.mip_count > 1 else b'\x08\x10\x00\x00' # compressed, alpha, mipmap 
+            dds_buffer += b'\x08\x10\x40\x00' if tex.mip_count > 1 else b'\x08\x10\x00\x00' # compressed, alpha, mipmap
             dds_buffer += b'\x00' * 16
 
             dds_buffer += tex.buffer
 
             with open(final_out_folder_path, 'wb') as f:
                 f.write(dds_buffer)
-        
+
         elif tex.buffer_type == 8 and len(tex.buffer) != 0:
             texture_file_name += ".png"
             final_out_file_path = out_folder_path + "/" + texture_file_name

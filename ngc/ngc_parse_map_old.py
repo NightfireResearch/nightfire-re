@@ -1,13 +1,14 @@
-import os
-import sys
-import math
-import struct as s
 import binascii
+import math
+import os
+import struct as s
+import sys
 
 sys.path.append("..")
-import util
-
 from PIL import Image
+
+import util
+from readwrite import ReadWrite
 
 print_info = False
 
@@ -48,7 +49,7 @@ def ngc_parse_map_testing():
         for level_folder in next(os.walk(in_directory))[1]:
             asset_files = next(os.walk(in_directory + "/" + level_folder))[2]
             for asset_file in asset_files:
-                if file.startswith("01"):
+                if asset_file.startswith("01"):
                     in_file_path = f"{in_directory}/{level_folder}/{asset_file}"
                     out_folder_path = f"{out_directory}/{level_folder}/{asset_file[0:11]}"
                     # files_to_parse.append(in_file_path)
@@ -80,7 +81,7 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
     #folder_path = "ngc_archives_other/extracted/07000999"
 
     print("\n\nEXTRA")
-    
+
     # DISCARD (tristrips/faces, ?)
     discard_file = folder_path + "/" + "GC EXTRA DISCARD_0e.bin"
 
@@ -88,7 +89,7 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
     # return None
 
     with open(discard_file, "rb") as f:
-        rw = util.ReadWrite(f, big_endian=True)
+        rw = ReadWrite.ReadWrite(f, big_endian=True)
         print("DISCARD")
 
         # length of each surface header is 0x14
@@ -118,7 +119,7 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
             strip_sum += num_strips
 
         #print_hex_tell(f)
-        
+
         for ph in surface_headers:
             surface = {
                 "index_counts": [],
@@ -183,15 +184,15 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
 
     static_file = folder_path + "/" + "GC EXTRA STATIC_0d.bin"
     with open(static_file, "rb") as f:
-        rw = util.ReadWrite(f, big_endian=True)
+        rw = ReadWrite.ReadWrite(f, big_endian=True)
         print("STATIC")
-        
+
         f.seek(32)
         vertices = []
         vtx_normals = []
 
         # biggest_vn = 0
-        
+
         for i in range(num_vertices):
             x, y, z = s.unpack('>hhh', f.read(6))
             nx, ny, nz = s.unpack('>hhh', f.read(6))
@@ -383,9 +384,9 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
             if print_info:
                 print(f"{i:3}  {tex_offset:6} {hex_tell(f):6} {tex_name:16} {tex_width:3} {tex_height:3}  {temp_gx_dict[str(tex_gx_type)]:5} {hex(tex_val2):4} {hex(tex_val3):4}")
 
-        
 
-        rw = util.ReadWrite(f)
+
+        rw = ReadWrite.ReadWrite(f)
         rw.big_endian = True
 
         print("\nOther + Entities", ent_count)
@@ -440,7 +441,7 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
                     len_upper = len(mdl_name_upper)
                     len_upper_skip = math.ceil((len_upper + 1) / 4) * 4
                     f.seek(len_upper_skip - len_upper - 1, 1)
-                    
+
 
                     if i == 2:
                         print("STOPPING.")
@@ -470,7 +471,7 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
                     print("DATA TYPE 0x2f. SKIPPING.")
                     f.seek(ent_offset)
                     f.seek(data_len, 1)
-                    
+
 
 
     # Extracting
@@ -485,7 +486,7 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
 
     if not os.path.isdir(out_folder_path):
         os.makedirs(out_folder_path)
-    
+
     if print_info:
         print("\nExtracted textures", len(textures))
     for i, tex in enumerate(textures):
@@ -516,7 +517,7 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
             file_name += ".png"
             final_out_folder_path = out_folder_path + "/" + file_name
             print(i, tex.gx_type, tex.mip_count, tex.name)
-            
+
             if tex.mip_count > 1:
                 first_mip_length = (tex.width * tex.height) * 4
                 new_rgba_list = gx_rgba8_to_rgba(tex.buffer[0:first_mip_length], tex.width, tex.height)
@@ -548,7 +549,7 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
             dds_buffer += b'\x04\x00\x00\x00'
             dds_buffer += b'\x44\x58\x54\x31'#"DXT1".encode('utf-8') # "DXT1"
             dds_buffer += b'\x00' * 20
-            dds_buffer += b'\x08\x10\x40\x00' if tex.mip_count > 1 else b'\x08\x10\x00\x00' # compressed, alpha, mipmap 
+            dds_buffer += b'\x08\x10\x40\x00' if tex.mip_count > 1 else b'\x08\x10\x00\x00' # compressed, alpha, mipmap
             dds_buffer += b'\x00' * 16
 
             dds_buffer += new_dxt1_buffer
@@ -566,16 +567,16 @@ class GCTexture:
     buffer = b''
 
     """ 0x are from other games. found 6, 7 and 8 in nf
-    0x0 = I4 
-    0x1 = I8 
-    0x2 = IA4 
-    0x3 = IA8 
-    0x4 = RGB565 
+    0x0 = I4
+    0x1 = I8
+    0x2 = IA4
+    0x3 = IA8
+    0x4 = RGB565
     6   = RGB5A3  # https://wiki.tockdom.com/wiki/Image_Formats#RGB5A3
     7   = RGBA8   # https://wiki.tockdom.com/wiki/Image_Formats#RGBA32_.28RGBA8.29
-    0x8 = C4 
-    0x9 = C8 
-    0xA = C14X2 
+    0x8 = C4
+    0x9 = C8
+    0xA = C14X2
     8   = CMPR    # https://wiki.tockdom.com/wiki/Image_Formats#CMPR
     """
 
@@ -605,7 +606,7 @@ def gx_rgba8_to_rgba(rgba8_buffer, width, height): # aka rgba32
         for x in range(0, width, 4):
             for y2 in range(4):
                 for x2 in range(4):
-                    idx = (((y + y2) * width) + (x + x2)) * 4 
+                    idx = (((y + y2) * width) + (x + x2)) * 4
                     rgba[idx + 2] = rgba8_buffer[offset + 33]
                     rgba[idx + 1] = rgba8_buffer[offset + 32]
                     rgba[idx + 0] = rgba8_buffer[offset + 1]
@@ -662,7 +663,7 @@ def gx_rgb5a3_to_rgba(rgb5a3_buffer, width, height):
             b = (b * 17)
             # if r != 0:
             #     print(i, "", r,g,b,a)
-                
+
 
         pixels.append((r, g, b, a))
         #print(i, "", r,g,b,a)
@@ -718,7 +719,7 @@ def gx_cmpr_sub_to_dxt(cmpr_sub): # gen
     return dxt
 
 def gx_cmpr_to_dxt1(cmpr_buffer, width, height, mip_count):
-    # a cmpr block is made up of 4 sub blocks (2x2). a sub block 
+    # a cmpr block is made up of 4 sub blocks (2x2). a sub block
 
     new_dxt_buffer = bytearray()
     new_dxt_list = []
