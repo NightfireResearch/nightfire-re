@@ -336,7 +336,11 @@ def handle_block(data, identifier):
 
 
 def extract_leveldir(directory, level_name):
-    target_dir = f"files_bin_unpack/{level_name}.bin_extract/"
+    target_dir = os.path.join(directory, f"files_bin_unpack/{level_name}.bin_extract/")
+
+    if not os.path.exists(target_dir):
+        os.mkdir(target_dir)
+
     ordered_dir=sorted(os.listdir(target_dir)) # Go through in the order set by the bin file
 
     for filename in ordered_dir:ordered_dir=sorted(os.listdir(target_dir)) # Go through in the order set by the bin file
