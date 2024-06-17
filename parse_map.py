@@ -315,6 +315,9 @@ def handler_xboxentity(data):
 
         surfaces.append({'texture':tex_idx, 'indices': surf_indices})
 
+    # Conversion of this data to a usable format (.obj) is handled in xbx/xbx_parse_02.py
+    # In combination with the Placement data, and possibly some Blender scripting, we can place these objects in a .blend file representing the level.
+
     # Return the entity data
     return [{'type': 'xboxentity', 'name': name, 'hashcode': graphics_hashcode, 'num_vertices': num_vertices, 'num_tris': num_tris, 'num_surfaces': num_surfaces, 'num_tris_unk': num_tris_unk, 'unk1': unk1, 'vertex_mode': vertex_mode, 'unk2': unk2, 'unk3': unk3, 'unk4': unk4, 'xyzs': xyzs, 'uvs': uvs, 'surfaces': surfaces}]
 
@@ -337,6 +340,7 @@ def handler_xboxtexture(data):
     print(f"Texture found: signature {signature}: {name}, {width}x{height}, {buffer_type}, {unk2} maybe mipmaps, {unk3}, {unk4}, {unk5}, {unk6}, {unk7}, {unk8}")
 
     # The rest of the data, if present, is the texture data itself as well as mipmaps
+    # Conversion of this data to a usable format is handled in xbx/xbx_parse_02.py
     buffer = data[88:]
 
     return [{'type': 'xboxtexture', 'name': name, 'width': width, 'height': height, 'mip_count': unk2, 'buffer_type': buffer_type, 'buffer': buffer}]
