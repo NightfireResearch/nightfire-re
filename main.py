@@ -28,6 +28,9 @@ if __name__ == '__main__':
         exit(0)
 
     for iso in found_isos:
+        if iso.startswith("##"):
+            continue
+
         abs_path = os.path.abspath(iso)
         logger.info("Found %s, running scripts", iso)
         computed_hash = Utils.calc_hash(abs_path)
