@@ -270,10 +270,35 @@ def handler_xboxentity(data):
 
 def handler_xboxtexture(data):
 
-    print("Texture data starts with: ", data[:200])
+    #print("Texture data starts with: ", data[:200])
 
-    tex_type = data[0:3]
-    #assert tex_type == b"KXT", f"Expected KXT header in Xbox texture data, got {data[0:3]}"
+    signature = data[0:3]
+    #assert signature == b"KXT", f"Expected KXT header in Xbox texture data, got {data[0:3]}"
+
+    # Has a header:
+    # signature = f.read(4) # KXT6
+    # tex.unk0 = f.read(4) # FFFFFFFF
+    # tex.length = rw.get_u32() # +1 to skip to next xbox texture
+    # tex.width = rw.get_u32()
+    # tex.height = rw.get_u32() # 128 * 128 / 2 = 8319 size of first mipmap
+    # tex.buffer_type = rw.get_u32() # 0: dxt1, 8: rgba
+    # tex.unk2 = rw.get_u32() # num mipmaps?
+    # tex.unk3 = rw.get_u32()
+    # tex.unk4 = rw.get_u32() # 1: dxt1, 0: rgba
+    # tex.unk5 = rw.get_u32() # 1: dxt1, 1: lightmap-simple, 12: water_shalwater_1
+    # tex.unk6 = rw.get_u32() # 30: water_shalwater_1
+    # tex.unk7 = rw.get_u32()
+    # tex.unk8 = rw.get_u32()
+    # tex.name = rw.get_string_c()
+    # f.seek(36 - len(tex.name) - 1, 1)
+
+    # Let's unpack this 
+    unk0, length, width, height, buffer_type, unk2, unk3, unk4, unk5, unk6, unk7, unk8 = struct.unpack("<IIIIIIIIIIII", data[4:52])
+
+    # Name is 128 bytes, an ASCII string padded with 0x00
+    name = data[52:180].split(b"\x00")[0].decode("ascii")
+
+    print(f"Texture found: {name}, {width}x{height}, {buffer_type}, {unk2} maybe mipmaps, {unk3}, {unk4}, {unk5}, {unk6}, {unk7}, {unk8}")
 
     return []
 
