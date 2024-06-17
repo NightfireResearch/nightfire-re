@@ -284,51 +284,38 @@ def handler_xboxentity(data):
 
     offset_start = 96
     for i in range((num_vertices)):
-        # XYZ as float, 8 bytes pad, UV as float
+        # XYZ as float, 8 bytes unknown, UV as float
         sz = 28
         x,y,z,pad0,pad1,u,v = struct.unpack("<fffIIff", data[offset_start + i*sz : offset_start + (i+1)*sz])
         xyzs.append((x,y,z))
         uvs.append((u,v))
 
-    # print(f"First vertex: {xyzs[0]}, {uvs[0]}")
-    # print(f"Second vertex: {xyzs[1]}, {uvs[1]}")
-
     # Indices come next
-    # FIXME: Alignment 3 bytes?
+    # Alignment? 3 bytes of padding?
     offset_start = 96 + num_vertices * 28 + 3
     indices = []
     for i in range(num_tris):
         indices.append(struct.unpack("<H", data[offset_start + i*2 : offset_start + (i+1)*2])[0])
 
-    print(f"First index: {indices[0]}")
-    print(f"Second index: {indices[1]}")
-
     # Finally all the surfaces
-    # FIXME: Alignment 3 bytes?
+    # Alignment? 3 bytes of padding?
     offset_start = 96 + num_vertices * 28 + 3 + num_tris * 2 + 3
     surfaces = []
     last_index = 0
     print(f"Going to parse {num_surfaces} surfaces")
     for i in range(num_surfaces):
-        print(f"Surface {i}")
-        # texture_index = rw.get_u16()
-        # unk = rw.get_u16()
-        # num_indices = rw.get_u16() + 2
-        # unk = rw.get_u32()
-        # unk = rw.get_u16()
+
         tex_idx, unk, num_indices, unk2, unk3 = struct.unpack("<HHHIH", data[offset_start + i*12 : offset_start + (i+1)*12])
         num_indices = num_indices + 2 # triangle strip
 
-        print(f"Surface {i}: tex_idx {tex_idx}, num_indices {num_indices}, unk {unk}, unk2 {unk2}, unk3 {unk3}")
+        # print(f"Surface {i}: tex_idx {tex_idx}, num_indices {num_indices}, unk {unk}, unk2 {unk2}, unk3 {unk3}")
 
         surf_indices = indices[ last_index : last_index + num_indices]
         last_index = last_index + num_indices
 
         surfaces.append({'texture':tex_idx, 'indices': surf_indices})
 
-    print(f"First surface: {surfaces[0]}")
-
-
+    # Return the entity data
     return [{'type': 'xboxentity', 'name': name, 'hashcode': graphics_hashcode, 'num_vertices': num_vertices, 'num_tris': num_tris, 'num_surfaces': num_surfaces, 'num_tris_unk': num_tris_unk, 'unk1': unk1, 'vertex_mode': vertex_mode, 'unk2': unk2, 'unk3': unk3, 'unk4': unk4, 'xyzs': xyzs, 'uvs': uvs, 'surfaces': surfaces}]
 
 
