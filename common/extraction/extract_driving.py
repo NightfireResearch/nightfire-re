@@ -27,5 +27,5 @@ def _dump_driving_file(file: str, dump_folder: str):
 	file_name_path = Path(file)
 	file_name_isolated = file_name_path.stem
 	file_extension = file_name_path.suffix
-	unpack_folder = "driving_unpack/{}_{}".format(file_name_isolated, file_extension.replace(".", ""))
+	unpack_folder = os.path.join("driving_unpack", "{}_{}".format(file_name_isolated, file_extension.replace(".", "")))
 	extract_bigf.extract(file, os.path.join(dump_folder, unpack_folder))
