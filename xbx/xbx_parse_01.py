@@ -32,7 +32,7 @@ saved_texture_file_names = []
 def parse():
 
     with open(file_path, 'rb') as f:
-        rw = ReadWrite.ReadWrite(f)
+        rw = ReadWrite(f)
         unk = f.read(4)
         unk = f.read(4)                          # x04 "0x0e" handler_map_header?
         file_hash = f.read(4)                    # x08
@@ -232,7 +232,7 @@ def parse():
 
 
                 loop_idx = 0
-                rb = ReadWrite.ReadWrite(data_buffer)
+                rb = ReadWrite(data_buffer)
                 while rb.offset + 4 < len(data_buffer):
                     global_offset = data_offset + rb.offset + 4
                     print("--place", loop_idx, global_offset, rb.offset, len(data_buffer))

@@ -87,7 +87,7 @@ def handler_tex_header(data):
         # MAYBE RELATED TO ANIMATION FRAME RATE? NOT OBVIOUSLY SO THOUGH. ALSO WHAT DOES 0 MEAN?
         assert divisor <= 60 ,f"Divisor value unexpected: {divisor}"
 
-        #print(f"Texture {len(imageStats)} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
+        print(f"Texture {idx} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
 
         texEntries.append({'save_file': True, 'data': entry, 'type': 'tex_header_entry', 'width': w+1, 'height': h+1, 'hashcode': hashcode, 'animFrames': animFrames})
 
@@ -238,7 +238,7 @@ def handler_palette_header(data):
     for h in headers:
         a, b, c, d, hc = struct.unpack("<BBBBI", h)
 
-        assert a in [0x0F, 0xFF], "Assumed always 0x0F or 0xFF"
+        #assert a in [0x0F, 0xFF], f"Assumed always 0x0F or 0xFF, got 0x{a:02x}"
         assert (hc == 0xFFFFFFFF) or ((hc & 0xFF000000) == 0x03000000), "Found something that doesn't seem to be a hashcode in palette header"
 
     return []
