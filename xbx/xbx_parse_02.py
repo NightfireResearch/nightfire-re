@@ -86,10 +86,13 @@ def export_obj(entity):
             indices = surface['indices']
             # Indices of vertices arranged in a triangle strip. We want to iterate from 0 to n-2
             for i in range(0, len(indices)-2):
+                a = indices[i]+1
+                b = indices[i+1]+1
+                c = indices[i+2]+1
                 if i % 2 == 0:
-                    f.write(f"f {indices[i]+1}/{indices[i]+1} {indices[i+1]+1}/{indices[i+1]+1} {indices[i+2]+1}/{indices[i+2]+1}\n")
+                    f.write(f"f {c}/{c} {b}/{b} {a}/{a}\n")
                 else:
-                    f.write(f"f {indices[i]+1}/{indices[i]+1} {indices[i+2]+1}/{indices[i+2]+1} {indices[i+1]+1}/{indices[i+1]+1}\n")
+                    f.write(f"f {a}/{a} {b}/{b} {c}/{c}\n")
 
 
 export_obj(xboxEntities[0])
