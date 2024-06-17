@@ -262,7 +262,19 @@ def handler_hashlist(data):
     return [{'save_file': True, 'type': f"hashlist", 'data': data}]
 
 def handler_xboxentity(data):
-    print("TODO: Handle Xbox entity here")
+    
+    # Handle signature
+    assert data[0:4] == b"KXE\x06", f"Expected KXE6 header in Xbox entity data, got {data[0:4]}"
+
+    # Unpack the data
+    graphics_hashcode, num_vertices, num_tris, num_surfaces, num_tris_unk, unk1, vertex_mode, unk2, unk3, unk4 = struct.unpack("<IIIIIIIIII", data[4:44])
+
+    # Name follows
+    name = data[44:144].split(b"\x00")[0].decode("ascii")
+
+    print(f"Entity {name}: {graphics_hashcode:08x}, {num_vertices} vertices, {num_tris} tris, {num_surfaces} surfaces, num_tris_unk:{num_tris_unk}, {unk1}, vtx mode: {vertex_mode}, {unk2}, {unk3}, {unk4}")
+
+    # The rest of the data is
 
     return []
 
@@ -273,28 +285,27 @@ def handler_xboxtexture(data):
     #print("Texture data starts with: ", data[:200])
 
     signature = data[0:3]
-    #assert signature == b"KXT", f"Expected KXT header in Xbox texture data, got {data[0:3]}"
+
+    if len(data) == 88: # A blank entry containing no texture data, just the metadata and name - lookup into an index of some sort?
+        print(f"Blank entry, index might be 0x{data[0]:02x}, 0x{data[1]:02x}")
+    else:
+        assert signature == b"KXT", f"If data is meant to be present, we expect KXT header in Xbox texture data, got {data[0:3]}"
 
     unk0, length, width, height, buffer_type, unk2, unk3, unk4, unk5, unk6, unk7, unk8 = struct.unpack("<IIIIIIIIIIII", data[4:52])
 
-    # Name is 128 bytes, an ASCII string padded with 0x00
-    name = data[52:180].split(b"\x00")[0].decode("ascii")
+    # Name is a bunch of bytes, an ASCII string padded with 0x00. The exact amount doesn't matter as long as it's bigger than the string, as it's split by the 0x00.
+    name = data[52:152].split(b"\x00")[0].decode("ascii")
 
     print(f"Texture found: signature {signature}: {name}, {width}x{height}, {buffer_type}, {unk2} maybe mipmaps, {unk3}, {unk4}, {unk5}, {unk6}, {unk7}, {unk8}")
 
+    # The rest of the data, if present, is the texture data itself as well as mipmaps
+    # TODO: Handle the texture data
+
     return []
 
-def handler_staticdata(data):
-
-    # Consists of 76 bytes per graphical entity:
-    # ???
-    # The hashcode of the mesh
-    # ???
-    # Some floats (scale?)
-    # ???
-
-    # TODO: RE, implement, add this
-    pass
+def handler_collision(data):
+    # TODO: Parse the collision data
+    return []
 
 
 typelookup = {
@@ -339,6 +350,7 @@ handlers = {
     0x27: handler_lod,
     #0x28: handler_sound,
     0x2c: handler_hashlist,
+    0x2e: handler_collision,
 
 }
 
