@@ -40,4 +40,4 @@ if __name__ == '__main__':
 
         logger.info("Known ISO provided and dumped!")
         # TODO: This need to be PLAYSTATION ONLY
-        extract_driving.extract_game_files(dump_folder)
+        extract_driving.extract_driving(dump_folder)
