@@ -28,7 +28,7 @@ if __name__ == '__main__':
         exit(0)
 
     for iso in found_isos:
-        if iso.startswith("##"):
+        if "##" in iso:
             continue
 
         abs_path = os.path.abspath(iso)
