@@ -78,6 +78,7 @@ print("Found", len(xboxEntities), "xbox entities, first is " + xboxEntities[0]['
 
 # Export as .obj
 def export_obj(entity):
+    print(f"Exporting: {entity['name']} as .obj")
     with open(f"{entity['name']}.obj", "w") as f:
         for vert in entity['xyzs']:
             f.write(f"v {vert[0]} {vert[1]} {vert[2]}\n")
@@ -132,7 +133,7 @@ def decode_morton_swizzled(buffer, width, height): # gen
 
 # Convert to dds, deswizzling etc if required
 for tex in xboxTextures:
-    print(f"Exporting: {tex['name']}")
+    print(f"Exporting: {tex['name']} to texture file")
 
     texture_file_name = tex['name']
     out_folder_path = "./"

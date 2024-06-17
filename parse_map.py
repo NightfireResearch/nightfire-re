@@ -302,7 +302,6 @@ def handler_xboxentity(data):
     offset_start = 96 + num_vertices * 28 + 3 + num_tris * 2 + 3
     surfaces = []
     last_index = 0
-    print(f"Going to parse {num_surfaces} surfaces")
     for i in range(num_surfaces):
 
         tex_idx, unk, num_indices, unk2, unk3 = struct.unpack("<HHHIH", data[offset_start + i*12 : offset_start + (i+1)*12])
