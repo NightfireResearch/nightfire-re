@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Credits: Nightfire Research Team - 2024
 
 import glob
