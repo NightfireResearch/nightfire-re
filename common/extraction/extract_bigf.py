@@ -45,16 +45,16 @@ def extract(pack_file, target_directory):
 			# the filename is stored as a cstring and
 			# ends with a null byte. read until we reach
 			# this byte.
-			fileName = ""
+			file_name = ""
 			while True:
 				n = read_writer.f.read(1).decode("utf-8")
 				if ord(n) == 0:
 					break
 
-				fileName += n
+				file_name += n
 
 			e = entry()
-			e.name = fileName
+			e.name = file_name
 			e.position = entryPos
 			e.size = entrySize
 			entries.append(e)
@@ -68,10 +68,9 @@ def extract(pack_file, target_directory):
 			# in order to ensure that the directories needed actually
 			# exists
 			fileTargetDir = target_directory
-			file_path, fileName = os.path.split(e.name)
-			corrected_file_path = file_path.split("\\")
+			corrected_file_name = e.name.split("\\")
 
-			targetPath = os.path.join(fileTargetDir, *corrected_file_path, fileName)
+			targetPath = os.path.join(fileTargetDir, *corrected_file_name)
 			fileTargetDir = os.path.dirname(targetPath)
 
 			# create the directories if they don't exist.
