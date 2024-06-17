@@ -6,7 +6,7 @@
 # There are 3 types included. One appears to be a "COLLBOX" array, which contains:
 # Bounds min (3x float)
 # Children or FFFF (2x short)
-# Bounds maz (3x float)
+# Bounds max (3x float)
 # Unknown data (0x14 making 0x30 total)
 
 # Note that this is off by 4 bytes from parsemap_block_Coll_Data_New

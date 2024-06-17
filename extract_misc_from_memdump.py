@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Extract embedded data from the ELF
+# Extract embedded data from the PS2 ELF
 import common.external_knowledge as external_knowledge
 import common.util as util
 import struct
