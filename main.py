@@ -42,5 +42,6 @@ if __name__ == '__main__':
             continue
 
         logger.info("Known ISO provided and dumped!")
-        # TODO: This need to be PLAYSTATION ONLY
+        
+        # Extract from the BIGF archives containing the Driving engine's resources
         extract_driving.extract_driving(dump_folder)
