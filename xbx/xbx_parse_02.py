@@ -1,6 +1,8 @@
 import sys
 import struct
 
+from PIL import Image
+
 sys.path.append("..")
 
 import parse_map
@@ -69,6 +71,7 @@ while not finished:
 
 
 xboxEntities = [x for x in results if x['type'] == 'xboxentity']
+xboxTextures = [x for x in results if x['type'] == 'xboxtexture']
 
 print("Found", len(xboxEntities), "xbox entities, first is " + xboxEntities[0]['name'] if len(xboxEntities) > 0 else "none")
 
@@ -96,3 +99,98 @@ def export_obj(entity):
 
 for entity in xboxEntities:
     export_obj(entity)
+
+
+
+
+
+def part1by1(n): # gen
+    n &= 0x0000FFFF
+    n = (n | (n << 8)) & 0x00FF00FF
+    n = (n | (n << 4)) & 0x0F0F0F0F
+    n = (n | (n << 2)) & 0x33333333
+    n = (n | (n << 1)) & 0x55555555
+    return n
+
+def decode_morton(x, y): # gen
+    return part1by1(y) | (part1by1(x) << 1)
+
+def decode_morton_swizzled(buffer, width, height): # gen
+    decoded = [0] * (width * height * 4)
+    for y in range(height):
+        for x in range(width):
+            morton_index = decode_morton(x, y)
+            buffer_index = morton_index * 4
+            pixel_index = (y * width + x) * 4
+            #decoded[pixel_index:pixel_index + 4] = buffer[buffer_index:buffer_index + 4]
+            decoded[pixel_index    ] = buffer[buffer_index + 2]  # R = B
+            decoded[pixel_index + 1] = buffer[buffer_index + 1]  # G = G
+            decoded[pixel_index + 2] = buffer[buffer_index    ]  # B = R
+            decoded[pixel_index + 3] = buffer[buffer_index + 3]  # A = A
+    return decoded
+
+
+# Convert to dds, deswizzling etc if required
+for tex in xboxTextures:
+    print(f"Exporting: {tex['name']}")
+
+    texture_file_name = tex['name']
+    out_folder_path = "./"
+
+    # Texture could be in a few different formats, indicated by the 'buffer_type' field
+    if (tex['buffer_type'] == 0 or tex['buffer_type'] == 4) and len(tex['buffer']) != 0:
+        texture_file_name += ".dds"
+        final_out_folder_path = out_folder_path + "/" + texture_file_name
+        #print(i, tex.buffer_type, tex.mip_count, tex.name)
+
+        first_mip_length = tex['width'] * tex['height'] // 2
+
+        #new_dxt1_buffer = gx_cmpr_to_dxt1(tex.buffer, tex.width, tex.height, tex.mip_count)
+        dds_buffer = b'DDS \x7c\x00\x00\x00\x07\x10\x0a\x00' # "DDS " + header length + flags
+        dds_buffer += struct.pack('<I', tex['height'])
+        dds_buffer += struct.pack('<I', tex['width'])
+        dds_buffer += struct.pack('<I', first_mip_length)
+        dds_buffer += b'\x01\x00\x00\x00' # depth (ignored)
+        dds_buffer += b'\x01\x00\x00\x00' #s.pack('<I', tex.mip_count)
+        # dds_buffer += b'\x00' * 44
+        dds_buffer += b'\x4E\x46\x00\x00' # "NF" for NightFire
+        dds_buffer += b'\x00' * 40
+        dds_buffer += b'\x20\x00\x00\x00'
+        dds_buffer += b'\x04\x00\x00\x00'
+        if tex['buffer_type'] == 0:
+            dds_buffer += b'\x44\x58\x54\x31'#"DXT1".encode('utf-8') # "DXT1"
+        else:
+            dds_buffer += b'\x44\x58\x54\x35' # DXT5
+        dds_buffer += b'\x00' * 20
+        dds_buffer += b'\x08\x10\x40\x00' if tex['mip_count'] > 1 else b'\x08\x10\x00\x00' # compressed, alpha, mipmap
+        dds_buffer += b'\x00' * 16
+
+        dds_buffer += tex['buffer']
+
+        with open(final_out_folder_path, 'wb') as f:
+            f.write(dds_buffer)
+
+    elif tex['buffer_type'] == 8 and len(tex['buffer']) != 0:
+        texture_file_name += ".png"
+        final_out_file_path = out_folder_path + "/" + texture_file_name
+
+        rgba = decode_morton_swizzled(tex['buffer'], tex['width'], tex['height'])
+        #print(rgba)
+        #rgba = tex.buffer
+        rgba = [(rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]) for i in range(0, len(rgba), 4)]
+
+        image = Image.new("RGBA", (tex['width'], tex['height']))
+        image.putdata(rgba)
+        image = image.rotate(-90, expand=True)
+        image = image.transpose(Image.FLIP_LEFT_RIGHT)
+        #image = image.transpose(Image.ROTATE_90)
+        image.save(final_out_file_path, format="PNG")
+
+    else:
+        texture_file_name += ".txt"
+        final_out_folder_path = out_folder_path + "/" + texture_file_name
+
+        temp_buffer = b''
+
+        with open(final_out_folder_path, 'wb') as f:
+            f.write(temp_buffer)

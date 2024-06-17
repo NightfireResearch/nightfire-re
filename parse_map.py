@@ -322,8 +322,6 @@ def handler_xboxentity(data):
 
 def handler_xboxtexture(data):
 
-    #print("Texture data starts with: ", data[:200])
-
     signature = data[0:3]
 
     if len(data) == 88: # A blank entry containing no texture data, just the metadata and name - lookup into an index of some sort?
@@ -334,14 +332,14 @@ def handler_xboxtexture(data):
     unk0, length, width, height, buffer_type, unk2, unk3, unk4, unk5, unk6, unk7, unk8 = struct.unpack("<IIIIIIIIIIII", data[4:52])
 
     # Name is a bunch of bytes, an ASCII string padded with 0x00. The exact amount doesn't matter as long as it's bigger than the string, as it's split by the 0x00.
-    name = data[52:152].split(b"\x00")[0].decode("ascii")
+    name = data[52:88].split(b"\x00")[0].decode("ascii")
 
     print(f"Texture found: signature {signature}: {name}, {width}x{height}, {buffer_type}, {unk2} maybe mipmaps, {unk3}, {unk4}, {unk5}, {unk6}, {unk7}, {unk8}")
 
     # The rest of the data, if present, is the texture data itself as well as mipmaps
-    # TODO: Handle the texture data
+    buffer = data[88:]
 
-    return []
+    return [{'type': 'xboxtexture', 'name': name, 'width': width, 'height': height, 'mip_count': unk2, 'buffer_type': buffer_type, 'buffer': buffer}]
 
 def handler_collision(data):
     # TODO: Parse the collision data
