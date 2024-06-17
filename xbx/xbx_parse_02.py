@@ -67,4 +67,29 @@ while not finished:
 
     pass
 
+# TODO: Something interesting with the results
 
+xboxEntities = [x for x in results if x['type'] == 'xboxentity']
+
+print("Found", len(xboxEntities), "xbox entities, first is " + xboxEntities[0]['name'] if len(xboxEntities) > 0 else "none")
+
+
+# Export as .obj
+def export_obj(entity):
+    with open(f"test_{entity['name']}.obj", "w") as f:
+        for vert in entity['xyzs']:
+            f.write(f"v {vert[0]} {vert[1]} {vert[2]}\n")
+        for uvcoord in entity['uvs']:
+            f.write(f"vt {uvcoord[0]} {-uvcoord[1]}\n") # TODO: Why is the V inverted?
+        for surface in entity['surfaces']:
+            f.write(f"usemtl {surface['texture']}\n")
+            indices = surface['indices']
+            # Indices of vertices arranged in a triangle strip. We want to iterate from 0 to n-2
+            for i in range(0, len(indices)-2):
+                if i % 2 == 0:
+                    f.write(f"f {indices[i]+1}/{indices[i]+1} {indices[i+1]+1}/{indices[i+1]+1} {indices[i+2]+1}/{indices[i+2]+1}\n")
+                else:
+                    f.write(f"f {indices[i]+1}/{indices[i]+1} {indices[i+2]+1}/{indices[i+2]+1} {indices[i+1]+1}/{indices[i+1]+1}\n")
+
+
+export_obj(xboxEntities[0])
