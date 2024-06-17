@@ -16,3 +16,6 @@ tmpvag.vag
 iso_dump_folder/*.iso
 
 *.csv
+
+# macOS
+*.DS_Store
