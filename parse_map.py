@@ -321,10 +321,10 @@ def handler_xboxentity(data):
 
         print(f"Surface {i}: tex_idx {tex_idx}, num_indices {num_indices}, unk {unk}, unk2 {unk2}, unk3 {unk3}")
 
-        indices = indices[ last_index : last_index + num_indices]
+        surf_indices = indices[ last_index : last_index + num_indices]
         last_index = last_index + num_indices
 
-        surfaces.append({'texture':tex_idx, 'indices': indices})
+        surfaces.append({'texture':tex_idx, 'indices': surf_indices})
 
     print(f"First surface: {surfaces[0]}")
 
