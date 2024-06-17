@@ -5,9 +5,9 @@ import logging
 import os
 import sys
 
-import extract
-from nightfire_platform import NightfirePlatform
-from util import Utils
+from common.extraction import extract_driving
+from common.util import Utils
+from game_platform.nightfire_platform import NightfirePlatform
 
 logger = logging.getLogger()
 logging.basicConfig(
@@ -38,4 +38,5 @@ if __name__ == '__main__':
             continue
 
         logger.info("Known ISO provided and dumped!")
-        extract.extract_game_files(dump_folder)
+        # TODO: This need to be PLAYSTATION ONLY
+        extract_driving.extract_game_files(dump_folder)

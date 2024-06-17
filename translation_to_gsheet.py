@@ -2,18 +2,20 @@
 # Upload Nightfire translations to a spreadsheet
 
 from __future__ import print_function
+
+import io
+import os
 import os.path
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
+import string
+import unicodedata
+from datetime import datetime
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload
-import string
-from datetime import datetime
-import unicodedata
-import os
-import io
 from lxml import etree
 
 # If modifying these scopes, delete the file token.json.
@@ -54,7 +56,7 @@ gsheets = build('sheets', 'v4', credentials=creds)
 
 languages = ["DU", "FR", "GR", "IT", "JAP", "SP", "SW", "UK", "USA"]
 
-import extract_dat
+import common.extraction.extract_dat as extract_dat
 
 translations = extract_dat.extract_all("files_bin_unpack")
 

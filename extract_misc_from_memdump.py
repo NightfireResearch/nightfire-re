@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Extract embedded data from the ELF
-import external_knowledge
-import util
+import common.external_knowledge as external_knowledge
+import common.util as util
 import struct
 
 with open("memdump_ee_in_mission.bin", "rb") as f:
@@ -24,7 +24,7 @@ ammo_data = util.chunks(memdump[am_offset:am_offset+am_num*am_sz], am_sz)
 # We might expect:
 # Hashcodes for mesh
 # Hashcodes for animations (reload, shoot, take out, put away, alt fire switch, idle fiddling)
-# Hashcodes for sprites (ammo status) 
+# Hashcodes for sprites (ammo status)
 # Translation IDs for names
 # SFX IDs for shots, reload
 # Vectors for hand hold points, ejection port for casings, etc - "animation datum"
@@ -112,7 +112,7 @@ with open("weapdata.csv", "w") as f:
 		# Final end line
 		f.write("\n")
 
-		
+
 with open("ammodata.csv", "w") as f:
 	f.write("unk0,unk1,casing,name\n")
 	for a in ammo_data:
