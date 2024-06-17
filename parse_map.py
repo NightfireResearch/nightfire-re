@@ -261,6 +261,21 @@ def handler_hashlist(data):
 
     return [{'save_file': True, 'type': f"hashlist", 'data': data}]
 
+def handler_xboxentity(data):
+    print("TODO: Handle Xbox entity here")
+
+    return []
+
+
+
+def handler_xboxtexture(data):
+
+    print("Texture data starts with: ", data[:200])
+
+    tex_type = data[0:3]
+    #assert tex_type == b"KXT", f"Expected KXT header in Xbox texture data, got {data[0:3]}"
+
+    return []
 
 def handler_staticdata(data):
 
@@ -303,11 +318,13 @@ typelookup = {
 handlers = {
     0x04: handler_entity_params,
     0x05: handler_aipath,
+    0x0d: handler_xboxentity,
     0x0e: handler_map_header,
     0x0f: handler_palette_header,
     0x10: handler_tex_header,
     0x12: handler_tex_palette,
     0x16: handler_tex_data,
+    0x18: handler_xboxtexture,
     0x1c: handler_blank_discard,
     0x1a: parse_placements.toBlocks,
     0x26: handler_lightambient,
