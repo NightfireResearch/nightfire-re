@@ -67,7 +67,6 @@ while not finished:
 
     pass
 
-# TODO: Something interesting with the results
 
 xboxEntities = [x for x in results if x['type'] == 'xboxentity']
 
@@ -76,7 +75,7 @@ print("Found", len(xboxEntities), "xbox entities, first is " + xboxEntities[0]['
 
 # Export as .obj
 def export_obj(entity):
-    with open(f"test_{entity['name']}.obj", "w") as f:
+    with open(f"{entity['name']}.obj", "w") as f:
         for vert in entity['xyzs']:
             f.write(f"v {vert[0]} {vert[1]} {vert[2]}\n")
         for uvcoord in entity['uvs']:
@@ -95,4 +94,5 @@ def export_obj(entity):
                     f.write(f"f {a}/{a} {b}/{b} {c}/{c}\n")
 
 
-export_obj(xboxEntities[0])
+for entity in xboxEntities:
+    export_obj(entity)
