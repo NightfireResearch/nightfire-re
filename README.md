@@ -27,5 +27,5 @@ Refer to the [Notion site](http://nightfire.dev) for a high-level summary of the
 * Gamecube audio is noticeably poorer than other platforms
 * PS2 textures may be lower resolution than other platforms
 * Some scripts/processes may be PS2-specific. For example, `extract_misc_from_memdump.py`.
-* We may not keep this up to date - ask in the [Discord](discord.nightfire.dev) if something doesn't work as expected.
+* We may not keep this up to date - ask in the [Discord](https://discord.nightfire.dev) if something doesn't work as expected.
 * Driving engine file formats are poorly understood right now - our focus is on Action engine.
