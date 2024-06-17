@@ -18,7 +18,7 @@ class NightfirePlatform:
             PlatformHashes("PS2 EU SLES-51260", "NO_HASH_COMPUTED"),
             PlatformHashes("PS2 US SLUS-20579", "5dcb9e55f08eb3376c64e1d9cf772409365976dc"),
             PlatformHashes("PS2 JP SLPS-25203", "NO_HASH_COMPUTED"),
-            PlatformHashes("XBox EU", "NO_HASH_COMPUTED"),
+            PlatformHashes("XBox EU", "0f5055c48208b79cdb6311b45a444ce27492b1e7"),
             PlatformHashes("XBox US", "7c4dbc97f087039f7afe695ed5ecb7baf64acfb7"),
             PlatformHashes("XBox JP", "NO_HASH_COMPUTED"),
             PlatformHashes("XBox QA", "NO_HASH_COMPUTED"),
