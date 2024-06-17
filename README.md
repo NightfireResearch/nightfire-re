@@ -1,4 +1,4 @@
-# 007: Nightfire (Console) - Reverse Engineering
+# 007: Nightfire (Console) - Reverse Engineering Tools
 
 This project aims to:
 
@@ -12,55 +12,20 @@ Longer term, this project might support:
 * A fan-made remake using the assets/levels within a modern game engine
 * A full engine decompilation project
 
-## Documentation / Game Code Structure
-
-At the very highest level, two engines are used, this is due to the development split between EA (Driving) and Eurocom (Action).
-
-The Action system is also responsible for the main menu.
-
 Refer to the [Notion site](http://nightfire.dev) for a high-level summary of the technical details.
 
-## Technical Notes on Decompilation
+## Setup / Running the tools
 
-There is a Ghidra server containing some annotation of the PS2 ELFs - ask Riley in the Nightfire Research Team Discord for details/access.
+1. Put your legitimately acquired ISO file(s) into `iso_dump_folder`. All platforms are supported to some extent.
+2. Install the dependencies using `pip install -r requirements.txt`
+3. Run `main.py` in VS Code or in a terminal.
 
-PS2 version of the Action engine has symbols; Xbox version has been stripped. The overall flow of the engine and much of the data structure is identical, except for platform-specific areas like sound or graphics. Both use inlining in places. Usually, this means that the PS2 is more readable, but the Xbox version will be more readable in calculation-intensive code (PS2 uses EE-specific instructions and inlines common calculations like matrix multiplication, Xbox does not seem to).
 
-PS2 seems to use the standard calling convention exclusively, Xbox sometimes deviates?
+## Known Limitations
 
-PS2 has separate floating-point registers, sometimes this needs manual fixing to match the order implied by function name.
-
-PS2 bakes some minor details about sound processing into the separate SFX.IRX.
-
-Xbox is speculated to have higher-quality assets, but that is not 100% confirmed as of yet. It does have pedestrians in the Paris level which suggests that at least the Driving engine may have been up against performance limitations on the hardware.
-
-## PS2
-
-* SFX.IRX: Has function names. Annotated well enough to understand all audio structures, but perhaps not all effects and nuances. Likely uses GP=0x3B880.
-* ACTION.ELF: Has function names. Broad but not deep/comprehensively annotated.
-* DRIVING.ELF: Requires manual work to use data from SYMBOLS.SYM - there's a varying offset betwen the files (due to linker optimisation?).
-
-## XBox
-
-* Action (default.xbe): Lightly annotated using PS2 for reference.
-* Driving (Driving.xbe): Not started.
-
-## Translations
-
-Translations are found in FILES.BIN. They are pretty simple UTF8/UTF16 null-terminated strings with offset.
-
-We could import into enum using Ghidra:
-
-```python
-from ghidra.program.model.data import EnumDataType
-# maximum enum value is (2^length)-1 according to some comment, but if you pass 8 it should be every possible Java long value, so I am not sure
-enum = EnumDataType("EnumName", length)
-enum.add("One", 1)
-enum.add("Two", 2)
-enum.add("Three", 3)
-dataTypeManager.addDataType(enum, None)
-```
-
-We'd need something like ChatGPT to summarise/simplify all the strings for import.
-
-This would make it easy to interpret stuff like `P_CNCONTROLS_Handler__FUcP9M_CONTROLUiUiii` - the `Txt_BindLabel` calls would explain exactly what's going on.
+* Xbox ISOs can only be partially extracted, we haven't yet worked out `filesys.dxx` unpacking. We can work around using the [Cxbx](https://github.com/NightfireResearch/nightfire-cxbx/) project to dump (and patch/test) files from a running process on Windows.
+* Gamecube audio is noticeably poorer than other platforms
+* PS2 textures may be lower resolution than other platforms
+* Some scripts/processes may be PS2-specific. For example, `extract_misc_from_memdump.py`.
+* We may not keep this up to date - ask in the [Discord](discord.nightfire.dev) if something doesn't work as expected.
+* Driving engine file formats are poorly understood right now - our focus is on Action engine.
