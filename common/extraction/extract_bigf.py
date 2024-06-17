@@ -67,10 +67,9 @@ def extract(pack_file, target_directory):
 			# calculate the path where the file will be created
 			# in order to ensure that the directories needed actually
 			# exists
-			fileTargetDir = target_directory
 			corrected_file_name = e.name.split("\\")
 
-			targetPath = os.path.join(fileTargetDir, *corrected_file_name)
+			targetPath = os.path.join(target_directory, *corrected_file_name)
 			fileTargetDir = os.path.dirname(targetPath)
 
 			# create the directories if they don't exist.
