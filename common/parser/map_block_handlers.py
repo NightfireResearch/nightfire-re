@@ -332,7 +332,33 @@ extraHandlers = {
 
 }
 
+# Parse placement/object data according to parsemap_block_map_data_static and parsemap_create_dynamic_objects
+# This appears to be handled in two passes for some reason - maybe cross-linking needed somehow?
 
+# This is a TARGET_PLACEMENT in code
+
+# ImHex reference:
+"""
+#include <std/sys.pat>
+#include <std/mem.pat>
+
+struct Entry {
+u16 index;
+u16 unk0;
+u32 gfxHashcode;
+u32 ObjectPlacementType;
+float transform[3];
+float rotate[3];
+u8 unk2[12];
+float unkn[4];
+u8 unk3[8];
+u32 numExtraData;
+if (numExtraData)
+    u8 extras[8*numExtraData];
+};
+
+Entry entries[while($ < std::mem::size())] @ 0x00;
+"""
 def handler_placements(data):
 
     offset = 0
