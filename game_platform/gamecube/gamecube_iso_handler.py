@@ -1,3 +1,5 @@
+# Credits: Nightfire Research Team - 2024
+
 import logging
 import os
 from pathlib import Path

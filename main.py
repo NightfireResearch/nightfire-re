@@ -35,13 +35,12 @@ if __name__ == '__main__':
         logger.info("Found %s, running scripts", iso)
         computed_hash = Utils.calc_hash(abs_path)
         logger.debug("Hash is %s", computed_hash.hexdigest())
-        success, dump_folder = NightfirePlatform().dump_iso_if_known(iso, computed_hash.hexdigest())
+        platform_tools = NightfirePlatform()
+        success, dump_folder = platform_tools.dump_iso_if_known(iso, computed_hash.hexdigest())
 
         if success is False:
             logger.error("Unknown ISO provided!")
             continue
 
+        platform_tools.extract_game_files(dump_folder)
         logger.info("Known ISO provided and dumped!")
-        
-        # Extract from the BIGF archives containing the Driving engine's resources
-        extract_driving.extract_driving(dump_folder)

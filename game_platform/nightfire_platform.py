@@ -3,8 +3,11 @@
 import logging
 import os
 
+from common.extraction.extract_driving import extract_driving
 from game_platform.gamecube.gamecube_iso_handler import GameCubeIsoHandler
 from game_platform.platform_hashes import PlatformHashes
+from game_platform.playstation.playstation_eurocom_handler import \
+    PlaystationEurocomHandler
 from game_platform.playstation.playstation_iso_handler import \
     PlaystationIsoHandler
 from game_platform.xbox.xbox_iso_handler import XboxIsoHandler
@@ -28,20 +31,22 @@ class NightfirePlatform:
             PlatformHashes("GameCube EU", "NO_HASH_COMPUTED"),
         ]
 
+        self.current_platform = None
+
     def dump_iso_if_known(self, iso_file: str, hash_value: str) -> tuple[bool, str]:
         for known in self.known_hashes:
             if hash_value == known.hashcode:
-                platform_name = known.platform_name
-                folder_name = platform_name.lower().replace(" ", "_")
-                if "ps2" in platform_name.lower():
+                self.current_platform = known.platform_name
+                folder_name = self.current_platform.lower().replace(" ", "_")
+                if "ps2" in self.current_platform.lower():
                     handler = PlaystationIsoHandler()
-                if "gamecube" in platform_name.lower():
+                if "gamecube" in self.current_platform.lower():
                     handler = GameCubeIsoHandler()
-                if "xbox" in platform_name.lower():
+                if "xbox" in self.current_platform.lower():
                     handler = XboxIsoHandler()
 
                 if handler is None:
-                    logger.warning("No handler configured for %s", platform_name)
+                    logger.warning("No handler configured for %s", self.current_platform)
                     return False
 
                 dump_folder = os.path.abspath("extract/" + folder_name)
@@ -49,3 +54,25 @@ class NightfirePlatform:
                 return (True, dump_folder)
         return (False, None)
 
+    def extract_game_files(self, dump_folder: str):
+        self._extract_eurocom_files(dump_folder)
+        self._extract_driving_files(dump_folder)
+        pass
+
+    def _extract_driving_files(self, dump_folder: str):
+        # Extract from the BIGF archives containing the Driving engine's resources
+        extract_driving(dump_folder)
+
+    def _extract_eurocom_files(self, dump_folder: str):
+        if "ps2" in self.current_platform.lower():
+            handler = PlaystationEurocomHandler()
+        if "gamecube" in self.current_platform.lower():
+            handler = None
+        if "xbox" in self.current_platform.lower():
+            handler = None
+
+        if handler is None:
+            logger.warning("No handler configured for %s", self.current_platform)
+            return False
+
+        return handler.dump_eurocom_files(dump_folder)
