@@ -246,9 +246,8 @@ def handler_xboxentity(data):
 
     print(f"Entity {name}: {graphics_hashcode:08x}, {num_vertices} vertices, {num_tris} tris, {num_surfaces} surfaces, num_tris_unk:{num_tris_unk}, {unk1}, vtx mode: {vertex_mode}, {unk2}, {unk3}, {unk4}")
 
-    if num_vertices == 0:
-        print("The given entity has no vertices, skipping")
-        return []
+    # There exist some entities with zero vertices etc.
+    # However we cannot skip over them because this will mess up our indices.
 
     # The rest of the data consists of vertex data, tris, surfaces, and some unknown data
     xyzs = []
@@ -352,7 +351,7 @@ u32 ObjectPlacementType;
 float transform[3];
 float rotate[3];
 u8 unk2[12];
-float unkn[4];
+float unkn[4]; //quat?
 u8 unk3[8];
 u32 numExtraData;
 if (numExtraData)
@@ -369,12 +368,11 @@ def handler_placements(data):
     while(offset < len(data)):
         index, unk0, gfxHashcode, placementType = struct.unpack("<HHII", data[offset:offset+12])
         transform = struct.unpack("<fff", data[offset+12:offset+24])
-        rotation = struct.unpack("<fff", data[offset+24:offset+36])
+        rot_euler = struct.unpack("<fff", data[offset+24:offset+36])
 
         unk1 = struct.unpack("<12B", data[offset+36:offset+48])
 
-        # Often but not always around 1
-        unk2 = struct.unpack("<ffff", data[offset+48:offset+64])
+        rot_quat = struct.unpack("<ffff", data[offset+48:offset+64])
 
         unk3 = struct.unpack("<8B", data[offset+64:offset+72])
 
@@ -383,16 +381,6 @@ def handler_placements(data):
         numExtraBytes = 8 * numExtraData
 
         extraData = data[offset+76:offset+76+numExtraBytes]
-
-
-        block = {
-            'type': 'placement',
-            'index': index,
-            'gfxHashcode': gfxHashcode,
-            'transform': transform,
-            'rotation': rotation,
-            'extraData': extraData,
-        }
 
         # A block should be identified either with a hashcode (index: 0xFFFF) or an index (hashcode=0xFFFFFFFF)
         assert (gfxHashcode != 0xFFFFFFFF or index != 0xFFFF), "Both index and hashcode are invalid identifiers"
@@ -415,8 +403,21 @@ def handler_placements(data):
             # PlacementType then used by parseentity_fixup_entity?
             typeName = f"Cel_{placementType:08x}" # More details?
 
+        
+        block = {
+            'type': 'placement',
+            'placementType': placementType,
+            'placementTypeName': typeName,
+            'index': index,
+            'gfxHashcode': gfxHashcode,
+            'transform': transform,
+            'rotation_euler': rot_euler,
+            'rotation_quaternion': rot_quat,
+            'extraData': extraData,
+        }
 
-        print(f"Placement of {typeName} - {gfxHashcode:08x} / index {index} at ({transform[0]}, {transform[1]}, {transform[2]}), extra data: {numExtraBytes} bytes")
+
+        print(f"Placement of {typeName} - {gfxHashcode:08x} / index {index} at ({transform[0]}, {transform[1]}, {transform[2]}), extra data: {numExtraBytes} bytes, unknown data is {unk0:08x} {unk1}, {unk3}")
 
         extraHandler = extraHandlers.get(placementType, defaultHandler)
 
