@@ -5,13 +5,15 @@ import sys
 
 from PIL import Image
 
+sys.path.append("../../")
+
 from common.parser import parse_map
 
 level_hash = "07000026"
 file = "01000100"
 #file = "01000156"
 
-file_path = f"xbx_bins/{level_hash}/{file}.bin"
+file_path = f"../../tmp/{file}.bin"
 
 with open(file_path, "rb") as f:
     data = f.read()
@@ -35,7 +37,7 @@ while not finished:
     bh_identifier = bh >> 24
     bh_size = bh & 0xFFFFFF
 
-    handler = parse_map.handlers.get(bh_identifier, None)
+    handler = parse_map.map_block_handlers.handlers.get(bh_identifier, None)
     handler_name = "not yet implemented" if handler is None else handler.__name__
     print(f"Processing block {idx} - ID: 0x{bh_identifier:02x} ({handler_name}), Size: {bh_size}")
 
@@ -100,8 +102,6 @@ def export_obj(entity):
 
 for entity in xboxEntities:
     export_obj(entity)
-
-
 
 
 
