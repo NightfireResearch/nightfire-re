@@ -8,12 +8,14 @@ from PIL import Image
 sys.path.append("../../")
 
 from common.parser import parse_map
+from common import util
 
 level_hash = "07000026"
 file = "01000100"
 #file = "01000156"
 
 file_path = f"../../tmp/{file}.bin"
+out_folder_path = f"../../tmp/out"
 
 with open(file_path, "rb") as f:
     data = f.read()
@@ -81,7 +83,7 @@ print("Found", len(xboxEntities), "xbox entities, first is " + xboxEntities[0]['
 # Export as .obj
 def export_obj(entity):
     print(f"Exporting: {entity['name']} as .obj")
-    with open(f"{entity['name']}.obj", "w") as f:
+    with open(f"{out_folder_path}/{entity['name']}.obj", "w") as f:
         for vert in entity['xyzs']:
             f.write(f"v {vert[0]} {vert[1]} {vert[2]}\n")
         for uvcoord in entity['uvs']:
@@ -136,7 +138,6 @@ for tex in xboxTextures:
     print(f"Exporting: {tex['name']} to texture file")
 
     texture_file_name = tex['name']
-    out_folder_path = "./"
 
     # Texture could be in a few different formats, indicated by the 'buffer_type' field
     if (tex['buffer_type'] == 0 or tex['buffer_type'] == 4) and len(tex['buffer']) != 0:

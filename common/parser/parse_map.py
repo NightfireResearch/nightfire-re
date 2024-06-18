@@ -6,7 +6,7 @@ from pathlib import Path
 from pprint import pprint
 
 from common import external_knowledge, util
-from common.parser import parse_mesh, parse_placements, map_block_handlers, map_file_exporters
+from common.parser import parse_mesh, map_block_handlers, map_file_exporters
 
 logger = logging.getLogger()
 
