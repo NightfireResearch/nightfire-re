@@ -5,13 +5,17 @@ import sys
 
 from PIL import Image
 
+sys.path.append("../../")
+
 from common.parser import parse_map
+from common import util
 
 level_hash = "07000026"
 file = "01000100"
 #file = "01000156"
 
-file_path = f"xbx_bins/{level_hash}/{file}.bin"
+file_path = f"../../tmp/{file}.bin"
+out_folder_path = f"../../tmp/out"
 
 with open(file_path, "rb") as f:
     data = f.read()
@@ -35,7 +39,7 @@ while not finished:
     bh_identifier = bh >> 24
     bh_size = bh & 0xFFFFFF
 
-    handler = parse_map.handlers.get(bh_identifier, None)
+    handler = parse_map.map_block_handlers.handlers.get(bh_identifier, None)
     handler_name = "not yet implemented" if handler is None else handler.__name__
     print(f"Processing block {idx} - ID: 0x{bh_identifier:02x} ({handler_name}), Size: {bh_size}")
 
@@ -79,7 +83,7 @@ print("Found", len(xboxEntities), "xbox entities, first is " + xboxEntities[0]['
 # Export as .obj
 def export_obj(entity):
     print(f"Exporting: {entity['name']} as .obj")
-    with open(f"{entity['name']}.obj", "w") as f:
+    with open(f"{out_folder_path}/{entity['name']}.obj", "w") as f:
         for vert in entity['xyzs']:
             f.write(f"v {vert[0]} {vert[1]} {vert[2]}\n")
         for uvcoord in entity['uvs']:
@@ -103,40 +107,11 @@ for entity in xboxEntities:
 
 
 
-
-
-def part1by1(n): # gen
-    n &= 0x0000FFFF
-    n = (n | (n << 8)) & 0x00FF00FF
-    n = (n | (n << 4)) & 0x0F0F0F0F
-    n = (n | (n << 2)) & 0x33333333
-    n = (n | (n << 1)) & 0x55555555
-    return n
-
-def decode_morton(x, y): # gen
-    return part1by1(y) | (part1by1(x) << 1)
-
-def decode_morton_swizzled(buffer, width, height): # gen
-    decoded = [0] * (width * height * 4)
-    for y in range(height):
-        for x in range(width):
-            morton_index = decode_morton(x, y)
-            buffer_index = morton_index * 4
-            pixel_index = (y * width + x) * 4
-            #decoded[pixel_index:pixel_index + 4] = buffer[buffer_index:buffer_index + 4]
-            decoded[pixel_index    ] = buffer[buffer_index + 2]  # R = B
-            decoded[pixel_index + 1] = buffer[buffer_index + 1]  # G = G
-            decoded[pixel_index + 2] = buffer[buffer_index    ]  # B = R
-            decoded[pixel_index + 3] = buffer[buffer_index + 3]  # A = A
-    return decoded
-
-
 # Convert to dds, deswizzling etc if required
 for tex in xboxTextures:
     print(f"Exporting: {tex['name']} to texture file")
 
     texture_file_name = tex['name']
-    out_folder_path = "./"
 
     # Texture could be in a few different formats, indicated by the 'buffer_type' field
     if (tex['buffer_type'] == 0 or tex['buffer_type'] == 4) and len(tex['buffer']) != 0:
@@ -175,7 +150,7 @@ for tex in xboxTextures:
         texture_file_name += ".png"
         final_out_file_path = out_folder_path + "/" + texture_file_name
 
-        rgba = decode_morton_swizzled(tex['buffer'], tex['width'], tex['height'])
+        rgba = util.xbox_decode_morton_swizzled(tex['buffer'], tex['width'], tex['height'])
         #print(rgba)
         #rgba = tex.buffer
         rgba = [(rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]) for i in range(0, len(rgba), 4)]

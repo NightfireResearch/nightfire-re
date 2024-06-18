@@ -59,10 +59,10 @@ def align(offset, wordSize):
 
 
 # PS2 alpha is in range 0-2 (0x80 = full alpha)
-def alphaScale(b):
+def ps2_alphaScale(b):
     return int(b * (255/0x80))
 
-def manipulatePalette20(data):
+def ps2_manipulatePalette20(data):
 
     # This is a guess as to how we can reinterpret the palette, from the following:
     # CSM1: The pixels are stored and swizzled every 0x20 bytes. This option is faster for PS2 rendering.
@@ -75,7 +75,7 @@ def manipulatePalette20(data):
         chs = chs[8:]
     return newData
 
-def depalettizeFrame(indexed_data, palette, w, h, bpp):
+def ps2_depalettizeFrame(indexed_data, palette, w, h, bpp):
 
     image = Image.new("RGBA", (w, h))
     pixels = image.load()
@@ -99,7 +99,7 @@ def depalettizeFrame(indexed_data, palette, w, h, bpp):
     return image
 
 
-def depalettize(indexed_data, palette, w, h, animFrames):
+def ps2_depalettize(indexed_data, palette, w, h, animFrames):
 
 
     # Palettes can have size 1024 bytes or 64 bytes. Each entry is 4 bytes of uncompressed colour, so
@@ -122,7 +122,7 @@ def depalettize(indexed_data, palette, w, h, animFrames):
 
     frames = []
     for i in range(animFrames):
-        frames.append(depalettizeFrame(indexed_data[i*bytes_per_frame:(i+1)*bytes_per_frame], palette, w, h, bpp))
+        frames.append(ps2_depalettizeFrame(indexed_data[i*bytes_per_frame:(i+1)*bytes_per_frame], palette, w, h, bpp))
 
     return frames
 
@@ -138,7 +138,7 @@ def framesToFile(frames, filename):
         frames[0].save(filename +".webp", save_all=True, append_images = frames[1:], optimize=False, duration=200, loop=0)
 
 
-def vifUnpack(data):
+def ps2_vifUnpack(data):
     # VIF instructions explain how much data to take and how to unpack it.
     # To do this perfectly, we'd need to emulate the VIF as well as anything the VIF could interact with
     # Let's just make some assumptions, look at the unpacks, and maybe attempt to infer the rest
@@ -225,6 +225,33 @@ def vifUnpack(data):
 
     #print("Finished searching for VIF unpacks")
     return unpacks
+
+
+def part1by1(n): # gen
+    n &= 0x0000FFFF
+    n = (n | (n << 8)) & 0x00FF00FF
+    n = (n | (n << 4)) & 0x0F0F0F0F
+    n = (n | (n << 2)) & 0x33333333
+    n = (n | (n << 1)) & 0x55555555
+    return n
+
+def xbox_decode_morton(x, y): # gen
+    return part1by1(y) | (part1by1(x) << 1)
+
+def xbox_decode_morton_swizzled(buffer, width, height): # gen
+    decoded = [0] * (width * height * 4)
+    for y in range(height):
+        for x in range(width):
+            morton_index = xbox_decode_morton(x, y)
+            buffer_index = morton_index * 4
+            pixel_index = (y * width + x) * 4
+            #decoded[pixel_index:pixel_index + 4] = buffer[buffer_index:buffer_index + 4]
+            decoded[pixel_index    ] = buffer[buffer_index + 2]  # R = B
+            decoded[pixel_index + 1] = buffer[buffer_index + 1]  # G = G
+            decoded[pixel_index + 2] = buffer[buffer_index    ]  # B = R
+            decoded[pixel_index + 3] = buffer[buffer_index + 3]  # A = A
+    return decoded
+
 
 class Utils:
     @staticmethod
