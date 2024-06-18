@@ -3,8 +3,8 @@
 import logging
 import os
 
+from game_platform.gamecube.gamecube_iso_handler import GameCubeIsoHandler
 from game_platform.platform_hashes import PlatformHashes
-from game_platform.platform_iso_base import PlatformIsoBase
 from game_platform.playstation.playstation_iso_handler import \
     PlaystationIsoHandler
 from game_platform.xbox.xbox_iso_handler import XboxIsoHandler
@@ -49,36 +49,3 @@ class NightfirePlatform:
                 return (True, dump_folder)
         return (False, None)
 
-class GameCubeDiskHeader():
-    def __init__(
-            self, iso_info, console_id, game_code, country_code, maker_code,
-            disk_id, version, audio_streaming, stream_buffer_size, magic_word,
-            game_name, debug_monitor_offset, debug_monitor_load_addr,
-            main_exe_offset, file_system_table_offset, file_system_table_size,
-            max_file_system_table_size, user_position, user_length):
-        self.iso_info = iso_info
-        self.console_id = console_id
-        self.game_code = game_code
-        self.country_code = country_code
-        self.maker_code = maker_code
-        self.disk_id = disk_id
-        self.version = version
-        self.audio_streaming = audio_streaming
-        self.stream_buffer_size = stream_buffer_size
-        self.magic_word = magic_word
-        self.game_name = game_name
-        self.debug_monitor_offset = debug_monitor_offset
-        self.debug_monitor_load_addr = debug_monitor_load_addr
-        self.main_exe_offset = main_exe_offset
-        self.file_system_table_offset = file_system_table_offset
-        self.file_system_table_size = file_system_table_size
-        self.max_file_system_table_size = max_file_system_table_size
-        self.user_position = user_position
-        self.user_length = user_length
-
-class GameCubeIsoHandler(PlatformIsoBase):
-    def dump_iso(self, iso_file: str, extract_folder: str) -> bool:
-        if not os.path.exists(extract_folder):
-            os.makedirs(extract_folder)
-
-        pass
