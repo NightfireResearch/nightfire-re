@@ -4,12 +4,15 @@ import logging
 import os
 
 from common.extraction.extract_driving import extract_driving
+from game_platform.gamecube.gamecube_eurocom_handler import \
+    GameCubeEurocomHandler
 from game_platform.gamecube.gamecube_iso_handler import GameCubeIsoHandler
 from game_platform.platform_hashes import PlatformHashes
 from game_platform.playstation.playstation_eurocom_handler import \
     PlaystationEurocomHandler
 from game_platform.playstation.playstation_iso_handler import \
     PlaystationIsoHandler
+from game_platform.xbox.xbox_eurocom_handler import XboxEurocomHandler
 from game_platform.xbox.xbox_iso_handler import XboxIsoHandler
 
 logger = logging.getLogger()
@@ -67,12 +70,12 @@ class NightfirePlatform:
         if "ps2" in self.current_platform.lower():
             handler = PlaystationEurocomHandler()
         if "gamecube" in self.current_platform.lower():
-            handler = None
+            handler = GameCubeEurocomHandler()
         if "xbox" in self.current_platform.lower():
-            handler = None
+            handler = XboxEurocomHandler()
 
         if handler is None:
             logger.warning("No handler configured for %s", self.current_platform)
-            return False
+            return
 
-        return handler.dump_eurocom_files(dump_folder)
+        handler.dump_eurocom_files(dump_folder)

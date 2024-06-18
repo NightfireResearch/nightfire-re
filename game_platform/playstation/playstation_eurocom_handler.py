@@ -13,7 +13,7 @@ logger = logging.getLogger()
 
 
 class PlaystationEurocomHandler(PlatformEurocomBase):
-    def dump_eurocom_files(self, dump_folder: str) -> bool:
+    def dump_eurocom_files(self, dump_folder: str) -> None:
         logger.info("Unpacking Action engine resources")
         # In order to understand FILES.BIN, we need to use some knowledge from ACTION.ELF - which contains a FileList, consisting of 118 entries, of structure:
         # char[16] name

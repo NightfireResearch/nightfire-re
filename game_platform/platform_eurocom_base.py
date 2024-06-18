@@ -4,5 +4,5 @@ class PlatformEurocomBase:
     def __init__(self) -> None:
         pass
 
-    def dump_eurocom_files(dump_folder: str) -> bool:
+    def dump_eurocom_files(dump_folder: str) -> None:
         pass
