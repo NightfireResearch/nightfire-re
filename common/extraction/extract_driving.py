@@ -13,8 +13,12 @@ logger = logging.getLogger()
 def extract_driving(dump_folder: str):
 	logger.info("Unpacking Driving engine resources")
 
+	driving_files = []
 	driving_folder = os.path.join(dump_folder, "DRIVING")
-	driving_files = glob.glob(driving_folder + "/*.mus") + glob.glob(driving_folder + "/*.viv") + glob.glob(driving_folder + "/*.spe")
+	for extension in ["mus", "viv", "spe"]:
+		driving_files += glob.glob(driving_folder + f"/*.{extension}")
+		driving_files += glob.glob(driving_folder + f"/*.{extension.upper()}")
+		
 
 	processes = [Process(target=_dump_driving_file, args=(file, dump_folder), name=Path(file).stem) for file in driving_files]
 	for process in processes:

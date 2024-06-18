@@ -226,7 +226,7 @@ def handler_blank_discard(data):
 def handler_palette_header(data):
     # Consists of N entries (N = the number of textures), each 8 bytes:
     # AA BB CC DD HH HH HH HH
-    # AA is always 0x0F or 0xFF
+    # AA is always 0x0F or 0xFF on PS2, can take other values on Xbox
     # BB, CC, DD seem randomish, sometimes all zero
     # HH is either the hashcode of the texture (if known) or FFFFFFFF
 
@@ -255,7 +255,7 @@ def handler_hashlist(data):
         s=struct.unpack("<I", x)[0]
         hashcodes.append(f"{s:08x}")
 
-    print(f"Hashlist consists of {len(data)/4} resources:\n" + "\n".join(hashcodes))
+    print(f"Hashlist consists of {len(data)//4} resources:\n" + "\n".join(hashcodes))
 
     return [{'save_file': True, 'type': f"hashlist", 'data': data}]
 
