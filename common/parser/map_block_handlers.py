@@ -67,15 +67,17 @@ def handler_tex_header(data):
 def handler_tex_palette(data):
 
     # This type of palette is swizzled (for performance?)
+    # FIXME: Xbox?
     if len(data) == 1024:
-        data = util.manipulatePalette20(data)
+        data = util.ps2_manipulatePalette20(data)
         pass
 
     # Each colour within the palette is represented as 4 bytes, order RGBA (PS2 scaling for A)
+    # FIXME: Xbox?
     pBytes = list(util.chunks(data, 4))
     palette = []
     for b in pBytes:
-        palette.append((int(b[0]), int(b[1]), int(b[2]), util.alphaScale(b[3])))
+        palette.append((int(b[0]), int(b[1]), int(b[2]), util.ps2_alphaScale(b[3])))
 
     return [{'type': 'tex_palette', 'colours': palette}]
 

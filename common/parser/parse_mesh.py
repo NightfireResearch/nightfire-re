@@ -116,7 +116,7 @@ def interpret_ps2gfx(data, name, material_file):
 
             print("Unpacking meshes...")
 
-            unpacks = util.vifUnpack(data[offsetOfData-4:offsetOfData-4 + maybeLenOfData])
+            unpacks = util.ps2_vifUnpack(data[offsetOfData-4:offsetOfData-4 + maybeLenOfData])
 
             # We must iterate over all unpacks. Start with texture ID 0
             currentTexture = 0

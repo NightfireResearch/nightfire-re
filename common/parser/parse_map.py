@@ -203,7 +203,7 @@ def extract_leveldir(directory, level_name):
             hashcode = header_item['hashcode']
 
             saveto = f"{savepath}/{index}" if hashcode==0xffffffff else f"{savepath}/{hashcode:08x}"
-            util.framesToFile(util.depalettize(data_item['data'], palette_item['colours'], w, h,animFrames), saveto)
+            util.framesToFile(util.ps2_depalettize(data_item['data'], palette_item['colours'], w, h,animFrames), saveto)
 
 
         # Debug - dump ps2gfx and entity params to a file temporarily
