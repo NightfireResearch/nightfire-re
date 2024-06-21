@@ -8,7 +8,7 @@ import sys
 
 from common.extraction import extract_driving
 from common.util import Utils
-from game_platform.nightfire_platform import NightfirePlatform
+from nightfire_platform import NightfirePlatform
 
 logger = logging.getLogger()
 logging.basicConfig(

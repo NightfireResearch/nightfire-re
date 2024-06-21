@@ -109,4 +109,4 @@ def extract_all(target_dir):
 	return translations
 
 if __name__=="__main__":
-	extract_all("files_bin_unpack")
+	extract_all("../platform_ps2/ps2_archives_extracted")

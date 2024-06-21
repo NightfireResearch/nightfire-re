@@ -122,7 +122,7 @@ def load_skin(data):
 if __name__=="__main__":
 
 	# 05000091 is Golden Gun - a test for animation of rigid components
-	filename = "files_bin_unpack/0700004b_HT_Level_Ravine.bin_extract/05000091_03.bin"
+	filename = "../platform_ps2/ps2_archives_extracted/0700004b_HT_Level_Ravine.bin_extract/05000091_03.bin"
 
 	with open(filename, "rb") as f:
 		data = f.read()
@@ -134,7 +134,7 @@ if __name__=="__main__":
 	# TODO: Validate this / see how the sequence data relates to the rest
 
 
-	filename = f"files_bin_unpack/07000007_HT_Level_CastleIndoors1.bin_extract/05000007_03.bin"
+	filename = f"../platform_ps2/ps2_archives_extracted/07000007_HT_Level_CastleIndoors1.bin_extract/05000007_03.bin"
 
 	with open(filename, "rb") as f:
 		data = f.read()

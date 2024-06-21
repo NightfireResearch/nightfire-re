@@ -80,7 +80,7 @@ def handle_block(data, identifier):
 
 
 def extract_leveldir(directory, level_name):
-    target_dir = os.path.join(directory, f"files_bin_unpack/{level_name}.bin_extract/")
+    target_dir = os.path.join(directory, f"../platform_ps2/ps2_archives_extracted/{level_name}.bin_extract/")
 
     if not os.path.exists(target_dir):
         os.mkdir(target_dir)
@@ -175,7 +175,7 @@ def extract_leveldir(directory, level_name):
             pass
 
         archivepath = external_knowledge.archive_names.get(archive_hashcode, f"{level_name}/unknown_{archive_hashcode}")
-        savepath = os.path.join(directory, f"level_unpack/{archivepath}")
+        savepath = os.path.join(directory, f"../../platform_ps2/ps2_converted/{archivepath}")
         Path(savepath).mkdir(parents=True, exist_ok=True)
         #print(f"ARCHIVE {archive_hashcode} ({archivepath}) DECODED - RESULT: {len(results)} blocks")
 

@@ -4,16 +4,16 @@ import logging
 import os
 
 from common.extraction.extract_driving import extract_driving
-from game_platform.gamecube.gamecube_eurocom_handler import \
+from platform_gc.gc_eurocom_handler import \
     GameCubeEurocomHandler
-from game_platform.gamecube.gamecube_iso_handler import GameCubeIsoHandler
-from game_platform.platform_hashes import PlatformHashes
-from game_platform.playstation.playstation_eurocom_handler import \
+from platform_gc.gc_iso_handler import GameCubeIsoHandler
+from platform_hashes import PlatformHashes
+from platform_ps2.ps2_eurocom_handler import \
     PlaystationEurocomHandler
-from game_platform.playstation.playstation_iso_handler import \
+from platform_ps2.ps2_iso_handler import \
     PlaystationIsoHandler
-from game_platform.xbox.xbox_eurocom_handler import XboxEurocomHandler
-from game_platform.xbox.xbox_iso_handler import XboxIsoHandler
+from platform_xbox.xbox_eurocom_handler import XboxEurocomHandler
+from platform_xbox.xbox_iso_handler import XboxIsoHandler
 
 logger = logging.getLogger()
 
@@ -52,7 +52,7 @@ class NightfirePlatform:
                     logger.warning("No handler configured for %s", self.current_platform)
                     return False
 
-                dump_folder = os.path.abspath("extract/" + folder_name)
+                dump_folder = os.path.abspath("iso_extract/" + folder_name)
                 handler.dump_iso(iso_file, dump_folder)
                 return (True, dump_folder)
         return (False, None)

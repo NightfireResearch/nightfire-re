@@ -6,8 +6,8 @@ import struct
 
 from common.nightfire_reader import NightfireReader
 from common.util import Endian
-from game_platform.platform_helpers import PlatformHelper
-from game_platform.platform_iso_base import PlatformIsoBase
+from platform_helpers import PlatformHelper
+from platform_iso_base import PlatformIsoBase
 
 logger = logging.getLogger()
 

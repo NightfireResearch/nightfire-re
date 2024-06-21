@@ -9,7 +9,7 @@ from typing import Union
 
 from PIL import Image
 
-from game_platform.gamecube.pyisotools.iohelper import read_string
+from platform_gc.pyisotools.iohelper import read_string
 
 
 def io_preserve(func):

@@ -6,7 +6,7 @@ import os
 
 from pycdlib import PyCdlib
 
-from game_platform.platform_iso_base import PlatformIsoBase
+from platform_iso_base import PlatformIsoBase
 
 logger = logging.getLogger()
 

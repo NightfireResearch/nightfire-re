@@ -4,8 +4,8 @@ import logging
 import os
 from pathlib import Path
 
-from game_platform.gamecube.pyisotools.iso import GamecubeISO
-from game_platform.platform_iso_base import PlatformIsoBase
+from platform_gc.pyisotools.iso import GamecubeISO
+from platform_iso_base import PlatformIsoBase
 
 logger = logging.getLogger()
 

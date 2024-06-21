@@ -27,7 +27,7 @@ def extract_anims(level_name):
 
     global boneNums
 
-    target_dir = f"files_bin_unpack/{level_name}.bin_extract/"
+    target_dir = f"../platform_ps2/ps2_archives_extracted/{level_name}.bin_extract/"
     ordered_dir=sorted(os.listdir(target_dir)) # Go through in the order set by the bin file
 
     for filename in ordered_dir:
@@ -63,7 +63,7 @@ def extract_anims(level_name):
 
 if __name__ == "__main__":
 
-    directory = "files_bin_unpack/"
+    directory = "../platform_ps2/ps2_archives_extracted/"
     print(f"Extracting all animations from levels in {directory}")
     fnames=sorted(os.listdir(directory))
     levels = [x.replace(".bin_extract", "") for x in fnames if ".bin_extract" in x]

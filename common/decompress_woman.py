@@ -7,7 +7,7 @@
 # top of the pause menu.
 from PIL import Image
 
-with open("files_bin_unpack/HT_Level_AllCharacters2.bin_extract/woman_10.bin", "rb") as f:
+with open("../platform_ps2/ps2_archives_extracted/07000049_HT_Level_AllCharacters2.bin_extract/woman_10.bin", "rb") as f:
 	data = f.read()
 
 p = 0

@@ -5,7 +5,7 @@ import struct
 import common.external_knowledge as external_knowledge
 import common.util as util
 
-with open("extract/ACTION.ELF", "rb") as f:
+with open("ps2_iso_extracted/ACTION.ELF", "rb") as f:
     action_elf = f.read()
 
 

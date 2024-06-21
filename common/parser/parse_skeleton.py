@@ -60,7 +60,7 @@ def load_skeleton(data):
 if __name__=="__main__":
 
 	for i in range(45):
-		filename = f"files_bin_unpack/07000011_HT_Level_Tower2A.bin_extract/SKEL{i:04}_06.bin"
+		filename = f"../platform_ps2/ps2_archives_extracted/07000011_HT_Level_Tower2A.bin_extract/SKEL{i:04}_06.bin"
 		with open(filename, "rb") as f:
 			data = f.read()
 		load_skeleton(data)

@@ -121,7 +121,7 @@ def rawDataToWav(data, freq, wavFilePath):
 
 def extract_bank(bank):
 
-    path = f"extract/PS2/ENGLISH/SB_{bank//8}/SB_{bank}"
+    path = f"ps2_iso_extracted/PS2/ENGLISH/SB_{bank//8}/SB_{bank}"
 
     with open(f"{path}.SBF", "rb") as f:
         sbf = f.read()
@@ -217,7 +217,7 @@ def extract_bank(bank):
 
 def extract_music(bank):
 
-    path = f"extract/PS2/MUSIC/MFX_{bank//16}/MFX_{bank}"
+    path = f"ps2_iso_extracted/PS2/MUSIC/MFX_{bank//16}/MFX_{bank}"
 
     # SMF (meta file) and SSD (data)
     with open(f"{path}.SMF", "rb") as f:
@@ -250,10 +250,10 @@ def extract_streams():
 
     # Contains spoken voice lines
 
-    with open("extract/PS2/ENGLISH/STREAMS/STREAMS.LUT", "rb") as f:
+    with open("ps2_iso_extracted/PS2/ENGLISH/STREAMS/STREAMS.LUT", "rb") as f:
         streamLut = f.read()
 
-    with open("extract/PS2/ENGLISH/STREAMS/STREAMS.BIN", "rb") as f:
+    with open("ps2_iso_extracted/PS2/ENGLISH/STREAMS/STREAMS.BIN", "rb") as f:
         streams = f.read()
 
     # LUT is loaded into StreamLookupFileDataStore by SFXInitialiseAudioStreamSystem

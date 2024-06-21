@@ -271,17 +271,17 @@ map_Kd {n}.png
 
 """)
 
-    #directory = "level_unpack/environment/"
-    #directory = "level_unpack/weapons/Pistol"
-    directory = "level_unpack/gadgets/Glasses"
-    directory = "level_unpack/vehicles/limo"
-    #directory = "level_unpack/common_objects"
-    #directory = "level_unpack/weapons/OddjobHat"
-    #directory="level_unpack/07000024_HT_Level_SkyRail"
-    directory = "level_unpack/07000005_HT_Level_CastleExterior"
-    directory = "level_unpack/07000025_HT_Level_SubPen"
-    directory="level_unpack/07000012_HT_Level_Tower2B"
-    directory="level_unpack/07000009_HT_Level_TowerA"
+    #directory = "../platform_ps2/ps2_converted/environment/"
+    #directory = "../platform_ps2/ps2_converted/weapons/Pistol"
+    directory = "../platform_ps2/ps2_converted/gadgets/Glasses"
+    directory = "../platform_ps2/ps2_converted/vehicles/limo"
+    #directory = "../platform_ps2/ps2_converted/common_objects"
+    #directory = "../platform_ps2/ps2_converted/weapons/OddjobHat"
+    #directory="../platform_ps2/ps2_converted/07000024_HT_Level_SkyRail"
+    directory = "../platform_ps2/ps2_converted/07000005_HT_Level_CastleExterior"
+    directory = "../platform_ps2/ps2_converted/07000025_HT_Level_SubPen"
+    directory="../platform_ps2/ps2_converted/07000012_HT_Level_Tower2B"
+    directory="../platform_ps2/ps2_converted/07000009_HT_Level_TowerA"
 
     for filename in sorted(os.listdir(directory)):
 
@@ -316,12 +316,12 @@ map_Kd {container_hashcode}_{n}.png
             # For others (eg level geometry), name is "{container_hashcode:08x}_{idx}.png"
             shutil.copyfile(directory +"/"+filename, "3dmodel/"+filename)
 
-    #with open("level_unpack/environment/229-OBJECT_SHELL_5_56NATO_02000447.bin", "rb") as f:
-    #with open("level_unpack/vehicles/truck/69-OBJECT_wine_truck_020003be.bin", "rb") as f:
-    #with open("level_unpack/weapons/Pistol/10-Grip_020005b6.bin", "rb") as f:
-    #with open("level_unpack/weapons/Pistol/12-Trigger_020005b7.bin", "rb") as f:
-    #with open("level_unpack/0700000c_HT_Level_PowerStationA1/010000e5_mesh_450_4_ffffffff.bin", "rb") as f:
-    #with open("level_unpack/mp_objects/320-PICKUP_RocketLauncher_0200067a.bin", "rb") as f:
+    #with open("../platform_ps2/ps2_converted/environment/229-OBJECT_SHELL_5_56NATO_02000447.bin", "rb") as f:
+    #with open("../platform_ps2/ps2_converted/vehicles/truck/69-OBJECT_wine_truck_020003be.bin", "rb") as f:
+    #with open("../platform_ps2/ps2_converted/weapons/Pistol/10-Grip_020005b6.bin", "rb") as f:
+    #with open("../platform_ps2/ps2_converted/weapons/Pistol/12-Trigger_020005b7.bin", "rb") as f:
+    #with open("../platform_ps2/ps2_converted/0700000c_HT_Level_PowerStationA1/010000e5_mesh_450_4_ffffffff.bin", "rb") as f:
+    #with open("../platform_ps2/ps2_converted/mp_objects/320-PICKUP_RocketLauncher_0200067a.bin", "rb") as f:
     #    data = f.read()
     #interpret_mesh(data)
 

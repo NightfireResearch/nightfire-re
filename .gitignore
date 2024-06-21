@@ -1,19 +1,25 @@
+# ps2
 audio/
-extract/
-files_bin_unpack/
-level_unpack/
+ps2_iso_extracted/
+ps2_archives_extracted/
+ps2_converted/
 
+# gc
 ep2.exe
-ngc/ngc_archives/
-ngc/ngc_bins/
-ngc/ngc_levels/
+gc_iso_extracted/
+gc_archives/
+gc_archives_extracted/
+gc_converted/
 
-xbx/xbx_bins/
-xbx/xbx_levels/
+# xbox
+xbox_iso_extracted/
+xbox_archives_extracted/
+xbox_converted/
 
 __pycache__
 tmpvag.vag
 iso_dump_folder/*.iso
+iso_extract/
 
 *.csv
 

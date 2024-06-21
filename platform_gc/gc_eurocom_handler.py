@@ -2,7 +2,7 @@
 
 import logging
 
-from game_platform.platform_eurocom_base import PlatformEurocomBase
+from platform_eurocom_base import PlatformEurocomBase
 
 logger = logging.getLogger()
 

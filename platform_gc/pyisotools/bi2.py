@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from io import BytesIO
 
-from game_platform.gamecube.pyisotools.iohelper import (read_uint32,
+from platform_gc.pyisotools.iohelper import (read_uint32,
                                                         write_uint32)
 
 

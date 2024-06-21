@@ -6,8 +6,8 @@ import struct
 
 from common import external_knowledge, util
 from common.parser import parse_map
-from game_platform.platform_eurocom_base import PlatformEurocomBase
-from game_platform.playstation import extract_bin
+from platform_eurocom_base import PlatformEurocomBase
+from platform_ps2 import extract_bin
 
 logger = logging.getLogger()
 
@@ -37,7 +37,7 @@ class PlaystationEurocomHandler(PlatformEurocomBase):
             filesbin_data = f.read()
 
         # Extract the contents to a file within the target directory
-        target_dir = os.path.join(dump_folder, "files_bin_unpack")
+        target_dir = os.path.join(dump_folder, "../platform_ps2/ps2_archives_extracted")
 
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)

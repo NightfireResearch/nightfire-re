@@ -9,14 +9,14 @@ from typing import BinaryIO, Callable, Optional, Union
 from dolreader.dol import DolFile
 from sortedcontainers import SortedDict, SortedList
 
-from game_platform.gamecube.pyisotools.apploader import Apploader
-from game_platform.gamecube.pyisotools.bi2 import BI2
-from game_platform.gamecube.pyisotools.bnrparser import BNR
-from game_platform.gamecube.pyisotools.boot import Boot
-from game_platform.gamecube.pyisotools.fst import (FST, FSTNode,
+from platform_gc.pyisotools.apploader import Apploader
+from platform_gc.pyisotools.bi2 import BI2
+from platform_gc.pyisotools.bnrparser import BNR
+from platform_gc.pyisotools.boot import Boot
+from platform_gc.pyisotools.fst import (FST, FSTNode,
                                                    InvalidEntryError,
                                                    InvalidFSTError)
-from game_platform.gamecube.pyisotools.iohelper import (align_int, read_string,
+from platform_gc.pyisotools.iohelper import (align_int, read_string,
                                                         read_ubyte,
                                                         read_uint32,
                                                         write_uint32)
