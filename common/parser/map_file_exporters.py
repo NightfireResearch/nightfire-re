@@ -1,3 +1,4 @@
+import os
 import json
 import struct
 from common import util
@@ -8,7 +9,7 @@ def export_obj(entity, filename):
         for vert in entity['xyzs']:
             f.write(f"v {vert[0]} {vert[1]} {vert[2]}\n")
         for uvcoord in entity['uvs']:
-            f.write(f"vt {uvcoord[0]} {-uvcoord[1]}\n") # TODO: Why is the V inverted?
+            f.write(f"vt {uvcoord[0]} {-uvcoord[1]}\n") # invert V to match .obj coordinate system
         for surface in entity['surfaces']:
             f.write(f"usemtl {surface['texture']}\n")
             indices = surface['indices']
@@ -24,6 +25,9 @@ def export_obj(entity, filename):
 
 
 def export_models_as_objs(parsed_data, savepath):
+
+    if not os.path.isdir(savepath):
+        os.makedirs(savepath)
 
     # Pick out all the model information blocks
     model_blocks = [x for x in parsed_data if x['type'] == "xboxentity"] # FIXME: This could also work with PS2 models

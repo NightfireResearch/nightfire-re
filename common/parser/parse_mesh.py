@@ -246,6 +246,7 @@ Tr 0.000000
 illum 1
 Ns 0.000000
 map_Kd {n}.png
+map_d {n}.png
 
 """)
 
