@@ -58,7 +58,7 @@ languages = ["DU", "FR", "GR", "IT", "JAP", "SP", "SW", "UK", "USA"]
 
 import common.extraction.extract_dat as extract_dat
 
-translations = extract_dat.extract_all("platform_ps2/ps2_archives_extracted")
+translations = extract_dat.extract_all("../platform_ps2/ps2_archives_extracted")
 
 
 # Prepare the data for the request
