@@ -80,8 +80,8 @@ def handle_block(data, identifier):
 
 
 def extract_leveldir(directory, level_name):
-    target_dir = os.path.join(directory, f"../platform_ps2/ps2_archives_extracted/{level_name}.bin_extract/")
-
+    target_dir = os.path.join(directory, f"{level_name}.bin_extract/")
+    
     if not os.path.exists(target_dir):
         os.mkdir(target_dir)
 
