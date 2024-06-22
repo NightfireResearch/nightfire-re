@@ -7,8 +7,11 @@ import os
 import shutil
 import struct
 from pathlib import Path
+import sys
+sys.path.append("../")
 
 import common.util as util
+
 
 ###### SUMMARY OF FILE CONTENTS AND IMPORTANT AUDIO INFORMATION
 
@@ -86,9 +89,6 @@ import common.util as util
 # The SFX enum in the .ELF is also alphabetical.
 
 
-
-Path("audio").mkdir(parents=True, exist_ok=True)
-
 def rawDataToWav(data, freq, wavFilePath):
 
     # Bypass for speed!
@@ -119,9 +119,9 @@ def rawDataToWav(data, freq, wavFilePath):
     cmd = f"ffmpeg -hide_banner -loglevel error -f vag -y -i tmpvag.vag {wavFilePath}"
     os.system(cmd)
 
-def extract_bank(bank):
+def extract_bank(directory_in, directory_out, bank):
 
-    path = f"ps2_iso_extracted/PS2/ENGLISH/SB_{bank//8}/SB_{bank}"
+    path = f"{directory_in}/PS2/ENGLISH/SB_{bank//8}/SB_{bank}"
 
     with open(f"{path}.SBF", "rb") as f:
         sbf = f.read()
@@ -152,7 +152,7 @@ def extract_bank(bank):
         toc.append((loop, offset, size, f_real, ch, bits,))
 
         #print(f"Got track {bank}-{subbank}-{i} with freq {freq}, channels {ch}, bits {bits}, loop {loop}")
-        #rawDataToWav(sbf[offset:offset+size], f_real, f"audio/bnk{bank}_{subbank}_{i}.wav")
+        #rawDataToWav(sbf[offset:offset+size], f_real, f"{directory_out}/bnk{bank}_{subbank}_{i}.wav")
 
 
     # SFX - the index / parameters for each SFX
@@ -179,7 +179,7 @@ def extract_bank(bank):
         varLenOffset = sfxParamsOffset + 0x44
         for i in range(numSubTracks):
 
-            outName = f"audio/SFX_{sfxNum:08}_{i}.wav"
+            outName = f"{directory_out}/SFX_{sfxNum:08}_{i}.wav"
 
             shdIndex, basePitchBend, randomPitchBend, baseVolume, randomVolume, basePan, randomPan = struct.unpack("<7i", sfx[varLenOffset: varLenOffset+28])
             varLenOffset += 28
@@ -191,7 +191,7 @@ def extract_bank(bank):
             # Converted via indexOfStream = -1 - *(int *)&DAT_70000184->mfxId; in SFXInitialiseStreamUpdate
             if shdIndex < 0:
                 print(f"SFX {sfxNum} is streamed (stream index {-shdIndex-1}), copying")
-                shutil.copy(f"audio/_streams_{-shdIndex-1}.wav", f"{outName}")
+                shutil.copy(f"{directory_out}/_streams_{-shdIndex-1}.wav", f"{outName}")
                 continue
 
             # Look up the value from the table of contents
@@ -215,9 +215,9 @@ def extract_bank(bank):
 
 
 
-def extract_music(bank):
+def extract_music(directory_in, directory_out, bank):
 
-    path = f"ps2_iso_extracted/PS2/MUSIC/MFX_{bank//16}/MFX_{bank}"
+    path = f"{directory_in}/PS2/MUSIC/MFX_{bank//16}/MFX_{bank}"
 
     # SMF (meta file) and SSD (data)
     with open(f"{path}.SMF", "rb") as f:
@@ -240,20 +240,20 @@ def extract_music(bank):
     # Sample rate is set in SFXInitialiseStreamUpdate
 
     for ch in ["l","r"]:
-        rawDataToWav(deinterleaved[ch], 32000, f"audio/_tmp_{bank}_{ch}.wav")
+        rawDataToWav(deinterleaved[ch], 32000, f"{directory_out}/_tmp_{bank}_{ch}.wav")
 
     # combine L and R into a single stereo track
-    os.system(f"ffmpeg -hide_banner -loglevel error -y -i audio/_tmp_{bank}_l.wav -i audio/_tmp_{bank}_r.wav -filter_complex \"[0:a][1:a]join=inputs=2:channel_layout=stereo[a]\" -map \"[a]\" audio/Mus_{bank}.wav")
+    os.system(f"ffmpeg -hide_banner -loglevel error -y -i {directory_out}/_tmp_{bank}_l.wav -i {directory_out}/_tmp_{bank}_r.wav -filter_complex \"[0:a][1:a]join=inputs=2:channel_layout=stereo[a]\" -map \"[a]\" {directory_out}/Mus_{bank}.wav")
 
 
-def extract_streams():
+def extract_streams(directory_in, directory_out):
 
     # Contains spoken voice lines
 
-    with open("ps2_iso_extracted/PS2/ENGLISH/STREAMS/STREAMS.LUT", "rb") as f:
+    with open(f"{directory_in}/PS2/ENGLISH/STREAMS/STREAMS.LUT", "rb") as f:
         streamLut = f.read()
 
-    with open("ps2_iso_extracted/PS2/ENGLISH/STREAMS/STREAMS.BIN", "rb") as f:
+    with open(f"{directory_in}/PS2/ENGLISH/STREAMS/STREAMS.BIN", "rb") as f:
         streams = f.read()
 
     # LUT is loaded into StreamLookupFileDataStore by SFXInitialiseAudioStreamSystem
@@ -289,23 +289,39 @@ def extract_streams():
 
         assert trueSize <= adpcmSize, "True size must not be greater than available data"
 
-        rawDataToWav(streams[adpcmOffset:adpcmOffset+trueSize], 22050, f"audio/_streams_{i}.wav")
+        rawDataToWav(streams[adpcmOffset:adpcmOffset+trueSize], 22050, f"{directory_out}/_streams_{i}.wav")
+
+def check_ffmpeg_exists():
+    # Check that FFMpeg is installed
+    if os.system("ffmpeg -version") != 0:
+        print("FFMpeg not found, please install it before extracting PS2 audio (or replace this with a Python implementation of ADPCM decode).")
+        return False
+    return True
+
+def extract_all(directory_in, directory_out):
+
+    if not check_ffmpeg_exists():
+        exit(1)
+
+    # Create the output directory if it doesn't exist
+    Path(directory_out).mkdir(parents=True, exist_ok=True)
+
+    print("About to extract streams...")
+    if True:
+        extract_streams(directory_in, directory_out)
+
+    print("About to extract SFX banks...")
+    for i in range(25):
+        extract_bank(directory_in, directory_out, i)
+        pass
 
 
+    print("About to extract music...")
+    for i in range(1, 17):
+        extract_music(directory_in, directory_out, i)
+        pass
 
-
-print("About to extract streams...")
-if True:
-    extract_streams()
-
-print("About to extract SFX banks...")
-for i in range(25):
-    extract_bank(i)
+if __name__ == "__main__":
+    
+    extract_all("../iso_extract/ps2_eu_sles-51258", "../audio")
     pass
-
-
-print("About to extract music...")
-for i in range(1, 17):
-    extract_music(i)
-    pass
-
