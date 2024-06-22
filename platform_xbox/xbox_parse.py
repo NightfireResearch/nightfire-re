@@ -5,7 +5,7 @@ import sys
 
 from PIL import Image
 
-sys.path.append("../../")
+sys.path.append("../")
 
 from common.parser import parse_map
 from common import util
@@ -14,8 +14,8 @@ level_hash = "07000026"
 file = "01000100"
 #file = "01000156"
 
-file_path = f"../../tmp/{file}.bin"
-out_folder_path = f"../../tmp/out"
+file_path = f"xbox_archives_extracted/{level_hash}/{file}.bin"
+out_folder_path = f"xbox_converted"
 
 with open(file_path, "rb") as f:
     data = f.read()

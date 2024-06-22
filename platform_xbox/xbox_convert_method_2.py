@@ -7,6 +7,8 @@ from binascii import hexlify
 
 from PIL import Image
 
+sys.path.append("../")
+
 import common.util as util
 from common.external_knowledge import placementTypes
 from common.nightfire_reader import NightfireReader
@@ -15,16 +17,17 @@ from common.nightfire_reader import NightfireReader
 # KXT = Xbox Texture
 # KXE = Xbox Entity
 
-level_hash = "07000026"
-file = "01000100"
-file = "01000156"
+level_hash = "07000026" # phoenix base "stealthship"
+file = "01000100" # phoenix base "stealthship"
+#file = "010001DD" # snow guard "snowtroop"
 
-file_path = f"xbx_bins/{level_hash}/{file}.bin"
+file_path = f"xbox_archives_extracted/{level_hash}/{file}.bin"
+convert_folder = "xbox_converted"
 
 #os.startfile(os.path.abspath(file_path)) # open the file with the default program
 
-save_textures = 1
-save_entities = 1
+save_textures = 0 # save .dds, .png
+save_entities = 0 # save .obj, .mtl
 textures = []
 entities = []
 saved_texture_file_names = []
@@ -35,22 +38,32 @@ def parse():
     with open(file_path, 'rb') as f:
         rw = NightfireReader(f)
         unk = f.read(4)
-        unk = f.read(4)                          # x04 "0x0e" handler_map_header?
-        file_hash = f.read(4)                    # x08
-        ent_count = rw.get_u32() # x0c
-        unk       = rw.get_u32() # x10 # ai path count?
-        tex_count = rw.get_u32() # x14
 
-        unk = s.unpack(">bbhbbh", f.read(8))
+        data_size = rw.get_u24()
+        data_type = rw.get_u8() # 0x0E handler_map_header
+
+        file_hash = f.read(4)
+        ent_count = rw.get_u32()
+        nav_count = rw.get_u32()
+        tex_count = rw.get_u32()
+
+        data_size = rw.get_u24()
+        data_type = rw.get_u8() # 0x10 texture headers
 
         tex_range = range(tex_count)
         ent_range = range(ent_count)
 
         tex_a = [] # texture headers
         tex_b = []
-        for i in tex_range:                  # x20
-            a = s.unpack("<hbbibbh", f.read(12))# GC?: the 'i' is a placeholder for texture address in memory
-            tex_a.append(a)
+
+        for i in tex_range:
+            print(i, f.tell())
+            flag, unk0, w, h, animFrames, divisor, address_placeholder = s.unpack("BBHHBBI", f.read(12))
+            print("    ", flag, unk0, w + 1, h + 1, animFrames, divisor, hex(address_placeholder))
+            tex_a.append((flag, unk0, w, h, animFrames, divisor, address_placeholder))
+
+        data_size = rw.get_u24()
+        data_type = rw.get_u8() # 0x0F
 
         for i in tex_range:
             b = s.unpack("<ii", f.read(8))
@@ -58,12 +71,12 @@ def parse():
 
         for i in tex_range:
             tex_offset = f.tell()
-            print(f"----\nTEXTURE {i} starts", tex_offset)
+            print(f"\nTexture {i} starts", tex_offset)
 
             tex = KXTexture()
 
             data_size = rw.get_u24()
-            data_type = s.unpack("B", f.read(1))[0] # 0x18=Xbox texture
+            data_type = rw.get_u8() # 0x18 Xbox texture
             signature = f.read(4) # KXT6
             tex.unk0 = f.read(4) # FFFFFFFF
             tex.length = rw.get_u32() # +1 to skip to next xbox texture
@@ -77,8 +90,7 @@ def parse():
             tex.unk6 = rw.get_u32() # 30: water_shalwater_1
             tex.unk7 = rw.get_u32()
             tex.unk8 = rw.get_u32()
-            tex.name = rw.get_string_c()
-            f.seek(36 - len(tex.name) - 1, 1)
+            tex.name = rw.get_string(36)
 
             # types
             # 0x00 |  0 | DXT1
@@ -93,9 +105,17 @@ def parse():
             if data_size <= 92:
                 textures.append(tex)
                 f.seek(tex_offset + data_size)
+                # signature
+                # all from stealthship/01000100:
+                # 0f 02 54 44
+                # fc 01 54 44
+                # d5 01 54 44
+                # 74 00 54 44
+                # ~  ~  T  68
+                #print("signature", hexlify(signature))
                 continue
 
-            if tex.buffer_type == 0 or tex.buffer_type == 4:# and signature == b'\x4B\x58\x54\x06': # DXT1 KXT6
+            if tex.buffer_type == 0 or tex.buffer_type == 4: # DXT1 or DXT5
                 tex.buffer = f.read(tex.length)
                 f.seek(1, 1)
                 textures.append(tex)
@@ -110,19 +130,12 @@ def parse():
                     textures.append(tex)
                     f.seek(tex_offset + data_size)
             else:
-                print("Different data type or empty texture <-------------------------------------", tex.buffer_type)
-                # signature/hash/unknown
-                # all from stealthship/01000100:
-                # 0f025444
-                # fc015444
-                # d5015444
-                # 74005444
-                #print("signature", hexlify(signature))
-
+                print("Different texture type", tex.buffer_type)
                 print("    ", tex, "    ends:", f.tell())
                 textures.append(tex)
 
                 f.seek(tex_offset + data_size)
+                return
 
             # if i == 17:
             #   return
@@ -132,6 +145,14 @@ def parse():
 
 
         print("\n\nOther + Entities", f.tell())
+
+        skip_data_types = [
+            0x1C, # "Discard"
+            0x2C, # "HashList"
+            0x21, # "PortalData"
+            0x27, # "LodData"
+            0x26, # "LightSetAmbientRad"
+        ]
 
         idx = 0
         while True:
@@ -144,7 +165,9 @@ def parse():
             print("\n=====================================================")
             print(f"DATA {idx} {data_type} {data_offset}")
 
-            if data_type == 0x2E:       # Collision Maybe?
+            if data_type in skip_data_types:
+                f.seek(data_offset + data_size)
+            elif data_type == 0x2E:
                 print("    collision?")
                 f.seek(data_offset + data_size)
             elif data_type == 0x0D:     # Xbox Entity
@@ -165,13 +188,7 @@ def parse():
                 ent.unk4 = rw.get_u32()
 
                 print("surfaces", ent.num_surfaces)
-
-                #print(f.tell())
-
-                #ent.name = get_string_c(f)
-                ent.name = rw.get_string(16)
-                f.seek(36, 1)
-                #f.seek(36 - len(ent.name) - 1, 1)
+                ent.name = rw.get_string(52)
 
                 all_indices = []
 
@@ -183,13 +200,26 @@ def parse():
                         uv = rw.get_vec2() # uv?
                         ent.vertices.append(xyz)
                         ent.tex_coords.append(uv)
+                elif ent.vertex_mode == 1:
+                    for v in range(ent.num_vertices):
+                        xyz = rw.get_vec3()
+                        unk0 = s.unpack("BBBB", rw.f.read(4)) # vertex color? vertex normal?
+                        unk1 = rw.get_s32()
+                        uv = rw.get_vec2() # uv
+                        unk2 = rw.get_u8() # skinning index?
+                        unk3 = rw.get_u8() # skinning index?
+                        unk4 = rw.get_s16()
+
+                        #print(f"{v:4}{unk2:3}{unk3:3}{unk4:6}")
+                        ent.vertices.append(xyz)
+                        ent.tex_coords.append(uv)
                 else:
-                    print("Different Vertex Mode!")
+                    print("Different Vertex Mode!", ent.vertex_mode)
                     return
 
                 f.seek(3, 1) # 00
 
-                print("all_indices", f.tell(), len(ent.vertices), "BRUH")
+                print("all_indices", f.tell(), len(ent.vertices))
 
                 for idk in range(ent.num_tris):
                     all_indices.append(rw.get_u16())
@@ -278,29 +308,17 @@ def parse():
 
                     loop_idx += 1
 
-                    # if loop_idx == 72:
-                    #     break
-
-                #print(index)
-
                 f.seek(data_offset + data_size)
-                # return
-
-
-            elif data_type == 0x1C:
-                print("    discard")
-                f.seek(data_offset + data_size)
-
 
             elif data_type == 0x1D:
-                print("    end", f.tell())
+                print("    end!", f.tell())
                 break # keep
             else:
                 #print("???", f.tell(), hex(data_type))
                 #break
-                print("    skip unknown", f.tell(), hex(data_type))
+                print("    unknown", f.tell(), hex(data_type))
                 f.seek(data_offset + data_size)
-                #return
+                return
                 #break
 
 
@@ -324,7 +342,7 @@ def extract_entities(entities, file_path):
         print(file_path, "No entities to extract")
         return None
 
-    out_folder_path = f"xbx_levels/{level_hash}/{file_name}"
+    out_folder_path = f"{convert_folder}/{level_hash}/{file_name}"
 
     print(out_folder_path)
 
@@ -438,7 +456,7 @@ def extract_textures(textures):
         print(file_path, "No textures to extract")
         return None
 
-    out_folder_path = f"xbx_levels/{level_hash}/{file_name}"
+    out_folder_path = f"{convert_folder}/{level_hash}/{file_name}"
 
     if not os.path.isdir(out_folder_path):
         os.makedirs(out_folder_path)
