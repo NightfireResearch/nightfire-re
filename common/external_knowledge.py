@@ -407,7 +407,8 @@ def memaddr_to_elfaddr(memaddr):
     return (memaddr - text_start) + elf_header_size
 
 
-filetable_offset_in_elf = memaddr_to_elfaddr(0x002453a0)
+eu_filetable_offset_in_elf = memaddr_to_elfaddr(0x002453a0)
+us_filetable_offset_in_elf = memaddr_to_elfaddr(0x002446A0)
 filetable_length = 118
 
 

@@ -14,14 +14,14 @@ logger = logging.getLogger()
 logging.basicConfig(
 	stream=sys.stdout,
 	level=logging.DEBUG,
-	format='[%(asctime)s] [%(thread)d] [%(processName)s] [%(module)s] [%(levelname)s] - %(message)s',
+	format='[%(asctime)s] [%(processName)s] [%(module)s] [%(levelname)s] - %(message)s',
 	datefmt='%H:%M:%S')
 
 TOOL_VERSION = "0.0.1"
 
 if __name__ == '__main__':
     logger.info("Running the Nightfire tool v%s", TOOL_VERSION)
-    found_isos = glob.glob("iso_dump_folder/*.iso")
+    found_isos = glob.glob(os.path.join("iso_dump_folder", "*.iso"))
 
     if len(found_isos) == 0:
         logger.warning("No ISO files found, quitting")
@@ -36,11 +36,11 @@ if __name__ == '__main__':
         computed_hash = Utils.calc_hash(abs_path)
         logger.debug("Hash is %s", computed_hash.hexdigest())
         platform_tools = NightfirePlatform()
-        success, dump_folder = platform_tools.dump_iso_if_known(iso, computed_hash.hexdigest())
+        success, dump_folder, playform_hash = platform_tools.dump_iso_if_known(iso, computed_hash.hexdigest())
 
         if success is False:
             logger.error("Unknown ISO provided!")
             continue
 
-        platform_tools.extract_game_files(dump_folder)
+        platform_tools.extract_and_expand_game_files(dump_folder, playform_hash)
         logger.info("Known ISO provided and dumped!")

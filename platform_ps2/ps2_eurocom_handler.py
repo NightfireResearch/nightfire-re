@@ -7,13 +7,14 @@ import struct
 from common import external_knowledge, util
 from common.parser import parse_map
 from platform_eurocom_base import PlatformEurocomBase
+from platform_hash import PlatformHash
 from platform_ps2 import extract_bin
 
 logger = logging.getLogger()
 
 
 class PlaystationEurocomHandler(PlatformEurocomBase):
-    def dump_eurocom_files(self, dump_folder: str) -> None:
+    def dump_eurocom_files(self, dump_folder: str, platform_hash: PlatformHash) -> None:
         logger.info("Unpacking Action engine resources")
         # In order to understand FILES.BIN, we need to use some knowledge from ACTION.ELF - which contains a FileList, consisting of 118 entries, of structure:
         # char[16] name
@@ -21,7 +22,11 @@ class PlaystationEurocomHandler(PlatformEurocomBase):
         # uint32_t size_within_bin
         # char[8] padding
 
-        offset_within_elf = external_knowledge.filetable_offset_in_elf
+        if ("SLES" in platform_hash.platform_name):
+            offset_within_elf = external_knowledge.eu_filetable_offset_in_elf
+        elif ("SLUS" in platform_hash.platform_name):
+            offset_within_elf = external_knowledge.us_filetable_offset_in_elf
+
         length_of_table = external_knowledge.filetable_length
 
         with open(os.path.join(dump_folder, "ACTION.ELF"), "rb") as f:
