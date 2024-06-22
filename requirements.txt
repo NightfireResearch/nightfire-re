@@ -1,3 +1,5 @@
 # Python
 pycdlib
 dolreader
+sortedcontainers
+chardet
