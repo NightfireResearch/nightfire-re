@@ -1,11 +1,13 @@
 # Credits: Nightfire Research Team - 2024
 
 import hashlib
+import logging
 import os
 import struct
 
 from PIL import Image
 
+logger = logging.getLogger()
 
 def tristrip_to_faces(strip, rot=True):
     face_group = []
@@ -113,11 +115,11 @@ def ps2_depalettize(indexed_data, palette, w, h, animFrames):
     bytes_per_frame = w * h // (8//bpp)
     num_bytes_required = animFrames * bytes_per_frame
 
-    #print(f"Got {animFrames} frames of dimension {w}, {h} and depth {bpp} so expected {num_bytes_required}, got {len(indexed_data)} bytes")
+    #logger.info(f"Got {animFrames} frames of dimension {w}, {h} and depth {bpp} so expected {num_bytes_required}, got {len(indexed_data)} bytes")
     if(num_bytes_required < len(indexed_data)):
-        print(f"Got too many bytes, extraction incomplete!!!")
+        logger.info(f"Got too many bytes, extraction incomplete!!!")
     if(num_bytes_required > len(indexed_data)):
-        print(f"Got too few bytes, skipping!!!")
+        logger.info(f"Got too few bytes, skipping!!!")
         return
 
     frames = []
@@ -129,7 +131,7 @@ def ps2_depalettize(indexed_data, palette, w, h, animFrames):
 def framesToFile(frames, filename):
 
     if frames==None:
-        print(f"Tried to write to {filename} but got no data, misunderstood the format?")
+        logger.info(f"Tried to write to {filename} but got no data, misunderstood the format?")
         return
 
     if len(frames) == 1:
@@ -174,9 +176,9 @@ def ps2_vifUnpack(data):
 
             unpack_type = cmds_unpack[cmd]
 
-            #print(f"Potentially found VIF Unpack command at {offsetAt:08x} with {num} elements of {unpack_type[0]}{unpack_type[1]}-{unpack_type[2]}")
+            #logger.info(f"Potentially found VIF Unpack command at {offsetAt:08x} with {num} elements of {unpack_type[0]}{unpack_type[1]}-{unpack_type[2]}")
             size = unpack_type[1] * unpack_type[2]//8 * num
-            #print(f"Data size is therefore {size}")
+            #logger.info(f"Data size is therefore {size}")
             unpack_raw_data = data[offsetAt + 4: offsetAt + 4 + size]
 
             unpacks.append(["data", unpack_type, unpack_raw_data])
@@ -184,33 +186,33 @@ def ps2_vifUnpack(data):
             offsetAt += 4 + size
 
         elif cmd == 0x01: # STCYCL
-            #print(f"STCYCL {imm:04x}")
+            #logger.info(f"STCYCL {imm:04x}")
             offsetAt += 4
 
         elif cmd == 0x17: # MSCNT - start executing microprogram on the VU
-            #print("MSCNT")
+            #logger.info("MSCNT")
             offsetAt += 4
 
         elif cmd == 0x10: # FLUSHE - await completion of microprogram
-            #print("FLUSHE")
+            #logger.info("FLUSHE")
             offsetAt += 4
 
         elif cmd == 0x50: # DIRECT (VIF1) - "Transfers IMMEDIATE quadwords to the GIF through PATH2. If PATH2 cannot take control of the GIF, the VIF stalls until PATH2 is activated."
-            #print(f"DIRECT_VIF1 {imm:04x}: ...")
+            #logger.info(f"DIRECT_VIF1 {imm:04x}: ...")
             for i,directData in enumerate(chunks(data[offsetAt+4:offsetAt+4+imm*16], 16)):
                 s = ' '.join('{:02x}'.format(x) for x in directData)
-                #print(f"{i:02x}: {s}")
+                #logger.info(f"{i:02x}: {s}")
             offsetAt += 4 + imm*16 # FIXME: I don't understand this instruction, but it solves the latter issue of weird non-zero imm/num in NOP so I think this is conceptually right
 
         elif cmd == 0x30: # STROW: Texture ID (*descending* order - ie if this is 0x14 in an object with 0x20 textures, this is IDd as item 12.png=0x0C), 0, 0, unknown
             strow = list(struct.unpack("<4I", data[offsetAt+4: offsetAt+20]))
-            #print(f"STROW {strow[0]:08x}  {strow[1]:08x}  {strow[2]:08x}  {strow[3]:08x} ")
+            #logger.info(f"STROW {strow[0]:08x}  {strow[1]:08x}  {strow[2]:08x}  {strow[3]:08x} ")
             unpacks.append(["texture", strow[0]])
             offsetAt += 4 + 16
 
         elif cmd == 0x31: # STCOL
             stcol = list(struct.unpack("<4I", data[offsetAt+4: offsetAt+20]))
-            #print(f"STCOL {stcol[0]:08x}  {stcol[1]:08x}  {stcol[2]:08x}  {stcol[3]:08x} ")
+            #logger.info(f"STCOL {stcol[0]:08x}  {stcol[1]:08x}  {stcol[2]:08x}  {stcol[3]:08x} ")
             offsetAt += 4 + 16
 
         elif cmd==0x00: # NOP
@@ -219,11 +221,11 @@ def ps2_vifUnpack(data):
             offsetAt += 4
 
         else:
-            print(f"Warning: Unhandled operation in VIF stream 0x{cmd:02x}")
+            logger.info(f"Warning: Unhandled operation in VIF stream 0x{cmd:02x}")
             offsetAt += 4
 
 
-    #print("Finished searching for VIF unpacks")
+    #logger.info("Finished searching for VIF unpacks")
     return unpacks
 
 
@@ -255,8 +257,7 @@ def xbox_decode_morton_swizzled(buffer, width, height): # gen
 
 class Utils:
     @staticmethod
-    def calc_hash(file):
-        # BUF_SIZE is totally arbitrary, change for your app!
+    def calc_file_hash(file):
         BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
 
         sha1 = hashlib.sha1()
@@ -267,6 +268,25 @@ class Utils:
                 if not data:
                     break
                 sha1.update(data)
+
+        return sha1
+
+    @staticmethod
+    def calc_folder_hash(folder):
+        BUF_SIZE = 65536 * 2 # lets read stuff in 128kb chunks!
+
+        sha1 = hashlib.sha1()
+
+        for file in os.scandir(folder):
+            if file.is_dir():
+                continue
+
+            with open(file, 'rb') as f:
+                while True:
+                    data = f.read(BUF_SIZE)
+                    if not data:
+                        break
+                    sha1.update(data)
 
         return sha1
 

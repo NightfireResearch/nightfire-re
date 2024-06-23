@@ -7,7 +7,6 @@ import logging
 import os
 import sys
 
-from common.extraction import extract_driving
 from common.util import Utils
 from nightfire_platform import NightfirePlatform
 
@@ -15,7 +14,7 @@ logger = logging.getLogger()
 logging.basicConfig(
 	stream=sys.stdout,
 	level=logging.DEBUG,
-	format='[%(asctime)s] [%(processName)s] [%(module)s] [%(levelname)s] - %(message)s',
+	format='[%(asctime)s] [%(module)s] [%(levelname)s] %(message)s',
 	datefmt='%H:%M:%S')
 
 TOOL_VERSION = "0.0.1"
@@ -39,7 +38,7 @@ if __name__ == '__main__':
 
         abs_path = os.path.abspath(iso)
         logger.info("Found %s, running scripts", iso)
-        computed_hash = Utils.calc_hash(abs_path)
+        computed_hash = Utils.calc_file_hash(abs_path)
         logger.debug("Hash is %s", computed_hash.hexdigest())
         platform_tools = NightfirePlatform()
         success, dump_folder, playform_hash = platform_tools.dump_iso_if_known(iso, computed_hash.hexdigest())
