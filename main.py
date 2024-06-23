@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Credits: Nightfire Research Team - 2024
 
+import argparse
 import glob
 import logging
 import os
@@ -20,6 +21,11 @@ logging.basicConfig(
 TOOL_VERSION = "0.0.1"
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(prog='NightfireTools')
+    parser.add_argument('-sd', '--skip-driving', action="store_true")
+    parser.add_argument('-sa', '--skip-action', action="store_true")
+    args = parser.parse_args()
+
     logger.info("Running the Nightfire tool v%s", TOOL_VERSION)
     found_isos = glob.glob(os.path.join("iso_dump_folder", "*.iso"))
 
@@ -42,5 +48,5 @@ if __name__ == '__main__':
             logger.error("Unknown ISO provided!")
             continue
 
-        platform_tools.extract_and_expand_game_files(dump_folder, playform_hash)
+        platform_tools.extract_and_expand_game_files(dump_folder, playform_hash, args.skip_driving, args.skip_action)
         logger.info("Known ISO provided and dumped!")

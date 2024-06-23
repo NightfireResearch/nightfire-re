@@ -54,9 +54,11 @@ class NightfirePlatform:
                 return (True, dump_folder, known)
         return (False, None)
 
-    def extract_and_expand_game_files(self, dump_folder: str, platform_hash: PlatformHash):
-        self._extract_and_expand_eurocom_files(dump_folder, platform_hash)
-        #self._extract_and_expand_driving_files(dump_folder)
+    def extract_and_expand_game_files(self, dump_folder: str, platform_hash: PlatformHash, skip_driving: bool, skip_action: bool):
+        if not skip_action:
+            self._extract_and_expand_eurocom_files(dump_folder, platform_hash)
+        if not skip_driving:
+            self._extract_and_expand_driving_files(dump_folder, platform_hash)
 
     def _extract_and_expand_driving_files(self, dump_folder: str, platform_hash: PlatformHash):
         # Extract from the BIGF archives containing the Driving engine's resources
