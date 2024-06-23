@@ -13,330 +13,335 @@ import common.util as util
 from common.external_knowledge import placementTypes
 from common.nightfire_reader import NightfireReader
 
+"""
 # Signatures
 # KXT = Xbox Texture
 # KXE = Xbox Entity
 
-level_hash = "07000026" # phoenix base "stealthship"
-file = "01000100" # phoenix base "stealthship"
-#file = "010001DD" # snow guard "snowtroop"
+# Note
+# If a texture is saved as .txt it is either an external texture or 
+# the pixel data hasn't been converted to a common format yet.
+"""
 
-file_path = f"xbox_archives_extracted/{level_hash}/{file}.bin"
+save_textures = 1 # save .dds, .png, .txt
+save_entities = 1 # save .obj, .mtl
+level_hash = "07000024" # skyrail
+#level_hash = "07000026" # phoenix base "stealthship" archive
+
+
 convert_folder = "xbox_converted"
+#saved_texture_file_names = []
 
-#os.startfile(os.path.abspath(file_path)) # open the file with the default program
+def testing():
 
-save_textures = 0 # save .dds, .png
-save_entities = 0 # save .obj, .mtl
-textures = []
-entities = []
-saved_texture_file_names = []
+    test_mode = 1
+    
+    file = "01000100" # phoenix base "stealthship"
+    #file = "010001DD" # snow guard
+    file = "010001C4"
+
+    if test_mode == 0:
+        file_path = f"xbox_archives_extracted/{level_hash}/{file}.bin"
+        test = parse(file_path)
+    if test_mode == 1:
+        all_folders = next(os.walk(f"xbox_archives_extracted/{level_hash}/"))[2]
+
+        for i, file in enumerate(all_folders):
+            if file.startswith("01"):
+                test = parse(f"xbox_archives_extracted/{level_hash}/{file}")
+                if test == False:
+                    return
+            # if i == 4:
+            #     return
+
+    #os.startfile(os.path.abspath(file_path)) # open the file with the default program
 
 
-def parse():
+
+def parse(file_path):
+    print(f"\nParsing {file_path}")
 
     with open(file_path, 'rb') as f:
-        rw = NightfireReader(f)
-        unk = f.read(4)
+        ra = NightfireReader(f.read())
 
-        data_size = rw.get_u24()
-        data_type = rw.get_u8() # 0x0E handler_map_header
+    unk0 = ra.bget_u32()
+    # start of 0x0E
+    data_size = ra.bget_u24()
+    data_id = ra.bget_u8() # 0x0E handler_map_header
 
-        file_hash = f.read(4)
-        ent_count = rw.get_u32()
-        nav_count = rw.get_u32()
-        tex_count = rw.get_u32()
+    assert data_id == 0x0E, "Incorrect file type."
 
-        data_size = rw.get_u24()
-        data_type = rw.get_u8() # 0x10 texture headers
+    file_hash = ra.bget(4)
+    ent_count = ra.bget_u32()
+    nav_count = ra.bget_u32()
+    tex_count = ra.bget_u32()
+    # end of 0x0E
 
-        tex_range = range(tex_count)
-        ent_range = range(ent_count)
+    tex_headers = []
+    tex_headers_b = []
+    textures = []
+    entities = []
+    placements = []
 
-        tex_a = [] # texture headers
-        tex_b = []
+    skip_data_ids = [
+        0x1C, # "Discard"
+        0x2C, # "HashList"
+        0x21, # "PortalData"
+        0x27, # "LodData"
+        0x26, # "LightSetAmbientRad"
+        0x28, # "LoadMapSounds"
+        0x30, # "ParticleData"ParticleData
+    ]
 
-        for i in tex_range:
-            print(i, f.tell())
-            flag, unk0, w, h, animFrames, divisor, address_placeholder = s.unpack("BBHHBBI", f.read(12))
-            print("    ", flag, unk0, w + 1, h + 1, animFrames, divisor, hex(address_placeholder))
-            tex_a.append((flag, unk0, w, h, animFrames, divisor, address_placeholder))
+    tex_idx = 0
+    idx = 0
+    while True:
+        data_offset = ra.btell()
+        data_size = ra.bget_u24()
+        data_id = ra.bget_u8()
 
-        data_size = rw.get_u24()
-        data_type = rw.get_u8() # 0x0F
+        rb = NightfireReader(ra.bget(data_size - 4)) #ra.f[ra.offset:ra.offset + data_size]
 
-        for i in tex_range:
-            b = s.unpack("<ii", f.read(8))
-            tex_b.append(b)
+        print(f"----------------------------------------------\nData {idx} offset:{data_offset} id:{hex(data_id)} size:{data_size}")
 
-        for i in tex_range:
-            tex_offset = f.tell()
-            print(f"\nTexture {i} starts", tex_offset)
+
+        if data_id in skip_data_ids:
+            print("Skipping")
+        elif data_id == 0x10: # TextureHeader
+            for i in range(tex_count):
+                flag, unk0, w, h, anim_frames, divisor, address_placeholder = s.unpack("BBHHBBI", rb.bget(12))
+                #print(f"tex header{i:3}{flag:4}{unk0:3}{w+1:4}{h+1:4}{anim_frames:3}{divisor:3} {hex(address_placeholder)}")
+                tex_headers.append((flag, unk0, w, h, anim_frames, divisor, address_placeholder))
+        elif data_id == 0x0F: # PaletteHeader
+            for i in range(tex_count):
+                tex_headers_b.append(s.unpack("<ii", rb.bget(8)))
+
+        elif data_id == 0x18: # TextureDataXbox
+            print(f"\nTexture {tex_idx}")
 
             tex = KXTexture()
-
-            data_size = rw.get_u24()
-            data_type = rw.get_u8() # 0x18 Xbox texture
-            signature = f.read(4) # KXT6
-            tex.unk0 = f.read(4) # FFFFFFFF
-            tex.length = rw.get_u32() # +1 to skip to next xbox texture
-            tex.width = rw.get_u32()
-            tex.height = rw.get_u32() # 128 * 128 / 2 = 8319 size of first mipmap
-            tex.buffer_type = rw.get_u32() # 0: dxt1, 8: rgba
-            tex.unk2 = rw.get_u32() # num mipmaps?
-            tex.unk3 = rw.get_u32()
-            tex.unk4 = rw.get_u32() # 1: dxt1, 0: rgba
-            tex.unk5 = rw.get_u32() # 1: dxt1, 1: lightmap-simple, 12: water_shalwater_1
-            tex.unk6 = rw.get_u32() # 30: water_shalwater_1
-            tex.unk7 = rw.get_u32()
-            tex.unk8 = rw.get_u32()
-            tex.name = rw.get_string(36)
+            
+            tex.signature = rb.bget(4) # KXT6
+            tex.unk0 = rb.bget(4) # FFFFFFFF
+            tex.length = rb.bget_u32() # +1 to skip to next xbox texture
+            tex.width = rb.bget_u32()
+            tex.height = rb.bget_u32() # 128 * 128 / 2 = 8319 size of first mipmap
+            tex.type = rb.bget_u32()
+            tex.unk2 = rb.bget_u32() # num mipmaps?
+            tex.unk3 = rb.bget_u32()
+            tex.unk4 = rb.bget_u32() # 1: dxt1, 0: rgba
+            tex.unk5 = rb.bget_u32() # 1: dxt1, 1: lightmap-simple, 12: water_shalwater_1
+            tex.unk6 = rb.bget_u32() # 30: water_shalwater_1
+            tex.unk7 = rb.bget_u32()
+            tex.unk8 = rb.bget_u32()
+            tex.name = rb.bget_string(36)
 
             # types
             # 0x00 |  0 | DXT1
-            # 0x04 |  4 | DXT3/5?
+            # 0x04 |  4 | DXT5
             # 0x08 |  8 | RGBA Morton swizzled??
 
             # unk6
             # 0x1E | 30 | RGBA, possibly with frames/mipmaps
 
 
-            print("    ", tex, "    ends:", f.tell() + tex.length)
+            print(f"    {tex.name} type:{tex.type}   ends:{data_offset + data_size}")
+            
+
             if data_size <= 92:
                 textures.append(tex)
-                f.seek(tex_offset + data_size)
                 # signature
                 # all from stealthship/01000100:
-                # 0f 02 54 44
-                # fc 01 54 44
-                # d5 01 54 44
-                # 74 00 54 44
+                # 0f 02 54 44 METALTHIN_silvershine
+                # fc 01 54 44 METALTHIN_silverradioplain
+                # d5 01 54 44 irisflag
+                # 74 00 54 44 Ruger_Muzz_back3
                 # ~  ~  T  68
                 #print("signature", hexlify(signature))
-                continue
 
-            if tex.buffer_type == 0 or tex.buffer_type == 4: # DXT1 or DXT5
-                tex.buffer = f.read(tex.length)
-                f.seek(1, 1)
+            elif tex.type == 1:
+                textures.append(tex) # TODO
+
+            elif tex.type == 0 or tex.type == 4: # DXT1 or DXT5
+                tex.buffer = rb.bget(tex.length)
                 textures.append(tex)
-            elif tex.buffer_type == 8:
+            elif tex.type == 8:
                 if tex.unk6 != 0:
-                    textures.append(tex)
-                    f.seek(tex_offset + data_size)
+                    textures.append(tex) # TODO
                 else:
-                    tex.buffer = f.read((tex.width * tex.height) * 4)
-                    #tex.buffer = f.read(tex.length)
-                    f.seek(1, 1)
+                    tex.buffer = rb.bget((tex.width * tex.height) * 4)
                     textures.append(tex)
-                    f.seek(tex_offset + data_size)
             else:
-                print("Different texture type", tex.buffer_type)
-                print("    ", tex, "    ends:", f.tell())
+                print("Different texture type", tex.type, file_path)
                 textures.append(tex)
+                #continue
+                return False
 
-                f.seek(tex_offset + data_size)
-                return
+            # if tex_idx == 17:
+            #   return False
 
-            # if i == 17:
-            #   return
-
-
-        #return
-
-
-        print("\n\nOther + Entities", f.tell())
-
-        skip_data_types = [
-            0x1C, # "Discard"
-            0x2C, # "HashList"
-            0x21, # "PortalData"
-            0x27, # "LodData"
-            0x26, # "LightSetAmbientRad"
-        ]
-
-        idx = 0
-        while True:
-            data_offset = f.tell()
-            data_size = rw.get_u24()
-            data_type = rw.get_u8()
-            data_buffer = f.read(data_size)
-            f.seek(-data_size, 1)
-
-            print("\n=====================================================")
-            print(f"DATA {idx} {data_type} {data_offset}")
-
-            if data_type in skip_data_types:
-                f.seek(data_offset + data_size)
-            elif data_type == 0x2E:
-                print("    collision?")
-                f.seek(data_offset + data_size)
-            elif data_type == 0x0D:     # Xbox Entity
-                print("    entity -------------------------------------------------------------")
-
-                ent = KXEntity()
-
-                signature = f.read(4) # KXE6
-                ent.graphics_hashcode = rw.get_u32() # 020005B6 aka `B6050002` in 01000156
-                ent.num_vertices = rw.get_u32()
-                ent.num_tris = rw.get_u32()
-                ent.num_surfaces = rw.get_u32() # aka num of meshes separated by texture
-                ent.num_tris_unk = rw.get_u32()
-                ent.unk1 = rw.get_u32()
-                ent.vertex_mode = rw.get_u32()
-                ent.unk2 = rw.get_u32()
-                ent.unk3 = rw.get_u32()
-                ent.unk4 = rw.get_u32()
-
-                print("surfaces", ent.num_surfaces)
-                ent.name = rw.get_string(52)
-
-                all_indices = []
-
-                print("vtx", f.tell(), ent.num_vertices)
-                if ent.vertex_mode == 0:
-                    for v in range(ent.num_vertices):
-                        xyz = rw.get_vec3()
-                        f.seek(8, 1)
-                        uv = rw.get_vec2() # uv?
-                        ent.vertices.append(xyz)
-                        ent.tex_coords.append(uv)
-                elif ent.vertex_mode == 1:
-                    for v in range(ent.num_vertices):
-                        xyz = rw.get_vec3()
-                        unk0 = s.unpack("BBBB", rw.f.read(4)) # vertex color? vertex normal?
-                        unk1 = rw.get_s32()
-                        uv = rw.get_vec2() # uv
-                        unk2 = rw.get_u8() # skinning index?
-                        unk3 = rw.get_u8() # skinning index?
-                        unk4 = rw.get_s16()
-
-                        #print(f"{v:4}{unk2:3}{unk3:3}{unk4:6}")
-                        ent.vertices.append(xyz)
-                        ent.tex_coords.append(uv)
-                else:
-                    print("Different Vertex Mode!", ent.vertex_mode)
-                    return
-
-                f.seek(3, 1) # 00
-
-                print("all_indices", f.tell(), len(ent.vertices))
-
-                for idk in range(ent.num_tris):
-                    all_indices.append(rw.get_u16())
-
-                #print(f.tell())
-
-                f.seek(3, 1) # 000000
-
-                last_index = 0
-                for i in range(ent.num_surfaces):
-                    texture_index = rw.get_u16()
-                    unk = rw.get_u16()
-                    num_indices = rw.get_u16() + 2
-                    unk = rw.get_u32()
-                    unk = rw.get_u16()
-
-                    indices = all_indices[ last_index : last_index + num_indices]
-                    last_index = last_index + num_indices
-
-                    ent.surfaces.append((texture_index, num_indices, indices))
-
-                entities.append(ent)
-
-                print("    entity end", f.tell())
-                f.seek(data_offset + data_size)
-
-            elif data_type == 4:
-                print("    entity Params", data_offset)
-                f.seek(data_offset + data_size)
-
-            elif data_type == 5:
-                print("    ai path nav", data_offset)
-                f.seek(data_offset + data_size)
-
-            elif data_type == 0x1A:
-                print("    placements")
-                print(len(data_buffer))
+            tex_idx += 1
+            
 
 
-                placements = []
 
+        elif data_id == 0x2E:
+            print("    collision")
+        elif data_id == 0x0D:     # Xbox Entity
+            print("    entity")
 
-                loop_idx = 0
-                rb = NightfireReader(data_buffer)
-                while rb.offset + 4 < len(data_buffer):
-                    global_offset = data_offset + rb.offset + 4
-                    print("--place", loop_idx, global_offset, rb.offset, len(data_buffer))
+            ent = KXEntity()
 
-                    index = rb.bget_s16() # entity graphics index if not -1
-                    unk0 = rb.bget_u16()
-                    gfx_hashcode = rb.bget_u32() # external if not -1?
-                    placement_type = rb.bget_s32()
-                    translation = rb.bget_vec3()
-                    rotation = rb.bget_vec3()
-                    unk1 = s.unpack_from("<12B", data_buffer, offset=rb.offset); rb.offset += 12
-                    unk2 = rb.bget_vec4()
-                    unk3 = s.unpack_from("<8B", data_buffer, offset=rb.offset); rb.offset += 8
-                    num_extra_data = rb.bget_u32()
+            ent.signature = rb.bget(4) # KXE6
+            ent.graphics_hashcode = rb.bget_u32() # 020005B6 aka `B6050002` in 01000156
+            ent.num_vertices = rb.bget_u32()
+            ent.num_tris = rb.bget_u32()
+            ent.num_surfaces = rb.bget_u32() # aka num of meshes separated by texture
+            ent.num_tris_unk = rb.bget_u32()
+            ent.unk1 = rb.bget_u32()
+            ent.vertex_mode = rb.bget_u32()
+            ent.unk2 = rb.bget_u32()
+            ent.unk3 = rb.bget_u32()
+            ent.unk4 = rb.bget_u32()
+            ent.name = rb.bget_string(52)
 
+            all_indices = []
 
-                    placement_name = placementTypes.get(placement_type, "unk")
-                    print(placement_name)
-                    #print(f"('{placement_name}', {list(translation)}),")
-                    #print((placement_name, translation), ",")
+            print(f"{ent.name} {data_offset + rb.btell()} {ent.num_vertices}")
+            if ent.vertex_mode == 0:
+                for v in range(ent.num_vertices):
+                    xyz = rb.bget_vec3()
+                    unk0 = rb.bget(8) # vertex color?
+                    uv = rb.bget_vec2() # uv?
+                    ent.vertices.append(xyz)
+                    ent.tex_coords.append(uv)
+            elif ent.vertex_mode == 1 or ent.vertex_mode == 2: # 01000083 has 2:
+                for v in range(ent.num_vertices):
+                    xyz = rb.bget_vec3()
+                    unk0 = rb.bget(4) # vertex color? vertex normal?
+                    unk1 = rb.bget_s32()
+                    uv = rb.bget_vec2() # uv
+                    unk2 = rb.bget_u8() # skinning index?
+                    unk3 = rb.bget_u8() # skinning index?
+                    unk4 = rb.bget_s16()
 
-                    # print(index)
-                    # print(unk0)
-                    # print(hex(gfx_hashcode))
-                    # print(placement_type & 0xff)
-                    # print(translation)
-                    # print(rotation)
-                    # print(unk1)
-                    # print(unk2)
-                    # print(unk3)
-                    # print(num_extra_data)
-
-                    extra_data = []
-
-                    for i in range(num_extra_data):
-                        extra_data.append((rb.bget_u32(), rb.bget_u32()))
-
-                    if placement_type & 0xa000 != 0:
-                        #print("Invalid or debug placement? Skipping")
-                        pass
-                        #continue
-
-                    loop_idx += 1
-
-                f.seek(data_offset + data_size)
-
-            elif data_type == 0x1D:
-                print("    end!", f.tell())
-                break # keep
+                    #print(f"{v:4}{unk2:3}{unk3:3}{unk4:6}")
+                    ent.vertices.append(xyz)
+                    ent.tex_coords.append(uv)
             else:
-                #print("???", f.tell(), hex(data_type))
-                #break
-                print("    unknown", f.tell(), hex(data_type))
-                f.seek(data_offset + data_size)
-                return
-                #break
+                print("Different Vertex Mode!", ent.vertex_mode, file_path)
+                return False
+
+            rb.offset += 3 # padding?
+
+            print("        all_indices", rb.btell(), len(ent.vertices))
+
+            for idk in range(ent.num_tris):
+                all_indices.append(rb.bget_u16())
+
+            rb.offset += 3 # padding?
+
+            last_index = 0
+            for i in range(ent.num_surfaces):
+                texture_index = rb.bget_u16()
+                unk = rb.bget_u16()
+                num_indices = rb.bget_u16() + 2
+                unk = rb.bget_u32()
+                unk = rb.bget_u16()
+
+                indices = all_indices[ last_index : last_index + num_indices]
+                last_index = last_index + num_indices
+
+                ent.surfaces.append((texture_index, num_indices, indices))
+
+            entities.append(ent)
+
+            print("    entity end", data_offset + ra.btell())
+
+        elif data_id == 4:
+            print("    entity Params", data_offset)
+
+        elif data_id == 5:
+            print("    ai path nav", data_offset)
+
+        elif data_id == 0x1A:
+            print("    placements")
+
+            loop_idx = 0
+            while rb.offset + 4 < len(rb.f):
+                global_offset = data_offset + rb.offset + 4
+                print("    placement    ", loop_idx, global_offset, rb.offset, len(rb.f))
+
+                index = rb.bget_s16() # entity graphics index if not -1
+                unk0 = rb.bget_u16()
+                gfx_hashcode = rb.bget_u32() # external if not -1?
+                placement_type = rb.bget_s32()
+                translation = rb.bget_vec3()
+                rotation = rb.bget_vec3()
+                unk1 = s.unpack_from("<12B", rb.f, offset=rb.offset); rb.offset += 12
+                unk2 = rb.bget_vec4()
+                unk3 = s.unpack_from("<8B", rb.f, offset=rb.offset); rb.offset += 8
+                num_extra_data = rb.bget_u32()
 
 
-            # if idx == 124:
-            #     return
-            #     #break
+                placement_name = placementTypes.get(placement_type, "unk")
+                print("   ", placement_name)
+                #print(f"('{placement_name}', {list(translation)}),")
+                #print((placement_name, translation), ",")
+
+                # print(index)
+                # print(unk0)
+                # print(hex(gfx_hashcode))
+                # print(placement_type & 0xff)
+                # print(translation)
+                # print(rotation)
+                # print(unk1)
+                # print(unk2)
+                # print(unk3)
+                # print(num_extra_data)
+
+                extra_data = []
+
+                for i in range(num_extra_data):
+                    extra_data.append((rb.bget_u32(), rb.bget_u32()))
+
+                if placement_type & 0xa000 != 0:
+                    #print("Invalid or debug placement? Skipping")
+                    pass
+                    #continue
+
+                loop_idx += 1
+
+        elif data_id == 0x1D:
+            print("    end!"); break # <- keep!
+        else:
+            #print("???", f.tell(), hex(data_id))
+            #break
+            print("    UNKNOWN", file_path)
+            return False
+            #break
 
 
-            idx += 1
+        # if idx == 124:
+        #     return False
+        #     #break
 
 
+        idx += 1
+
+
+    print(f"\nParsing Done {file_path}")
 
     if save_textures:
-        extract_textures(textures)
+        extract_textures(textures, file_path)
     if save_entities:
-        extract_entities(entities, file_path)
+        extract_entities(entities, file_path, textures=textures)
+    if save_textures or save_entities:
+        print(f"\nConverting Done {file_path}")
 
-def extract_entities(entities, file_path):
+    return True
+
+def extract_entities(entities, file_path, textures = []):
     file_name = os.path.basename(file_path)[:-4]
     if len(entities) == 0:
         print(file_path, "No entities to extract")
@@ -360,7 +365,7 @@ def extract_entities(entities, file_path):
 
         tex = textures[j]
         texture_name = f"tex{j:03d}_{tex.name}"
-        if tex.buffer_type != 8:
+        if tex.type != 8:
             mtl_data += f"\nmap_Kd {texture_name}.dds"
         else:
             mtl_data += f"\nmap_Kd {texture_name}.png"
@@ -373,7 +378,6 @@ def extract_entities(entities, file_path):
         #texture_name = saved_texture_file_names[texture_index]
         #print(texture_name)
 
-
         #mtl_data += f"\nmap_Kd {ent_file_name}.{j}.png"
         #mtl_data += f"\nmap_Kd {texture_name}"
 
@@ -384,10 +388,20 @@ def extract_entities(entities, file_path):
 
 
     for i, ent in enumerate(entities):
+
+        if "/" in ent.name:
+            ent.name = ent.name.replace("/", "________________")
+
+        print(ent.name)
+
         ent_file_name = f"ent{i:03d}_{ent.name}"
         obj_final_out_path = out_folder_path + "/" + ent_file_name + ".obj"
 
+
         print(ent.name, ent.num_surfaces)
+
+
+
 
         obj_data = ""
         obj_data += f"# graphics_hashcode: {hex(ent.graphics_hashcode)}\n"
@@ -411,6 +425,7 @@ def extract_entities(entities, file_path):
         # obj_data += "\n"
 
 
+        obj_data += "s 1\n"
         for j, surf in enumerate(ent.surfaces):
             new_faces = util.tristrip_to_faces(surf[2])
 
@@ -447,7 +462,7 @@ illum 1"""
 
 
 
-def extract_textures(textures):
+def extract_textures(textures, file_path):
 
     file_name = os.path.basename(file_path)[:-4]
     print(file_name)
@@ -467,10 +482,10 @@ def extract_textures(textures):
 
         print(i, texture_file_name)
 
-        if (tex.buffer_type == 0 or tex.buffer_type == 4) and len(tex.buffer) != 0:
+        if (tex.type == 0 or tex.type == 4) and len(tex.buffer) != 0:
             texture_file_name += ".dds"
             final_out_folder_path = out_folder_path + "/" + texture_file_name
-            #print(i, tex.buffer_type, tex.mip_count, tex.name)
+            #print(i, tex.type, tex.mip_count, tex.name)
 
             first_mip_length = tex.width * tex.height // 2
 
@@ -486,7 +501,7 @@ def extract_textures(textures):
             dds_buffer += b'\x00' * 40
             dds_buffer += b'\x20\x00\x00\x00'
             dds_buffer += b'\x04\x00\x00\x00'
-            if tex.buffer_type == 0:
+            if tex.type == 0:
                 dds_buffer += b'\x44\x58\x54\x31'#"DXT1".encode('utf-8') # "DXT1"
             else:
                 dds_buffer += b'\x44\x58\x54\x35' # DXT5
@@ -499,11 +514,14 @@ def extract_textures(textures):
             with open(final_out_folder_path, 'wb') as f:
                 f.write(dds_buffer)
 
-        elif tex.buffer_type == 8 and len(tex.buffer) != 0:
+        elif tex.type == 8 and len(tex.buffer) != 0:
             texture_file_name += ".png"
             final_out_file_path = out_folder_path + "/" + texture_file_name
 
-            rgba = util.xbox_decode_morton_swizzled(tex.buffer, tex.width, tex.height)
+            try:
+                rgba = util.xbox_decode_morton_swizzled(tex.buffer, tex.width, tex.height)
+            except:
+                rgba = tex.buffer
             #print(rgba)
             #rgba = tex.buffer
             rgba = [(rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]) for i in range(0, len(rgba), 4)]
@@ -524,11 +542,12 @@ def extract_textures(textures):
             with open(final_out_folder_path, 'wb') as f:
                 f.write(temp_buffer)
 
-        saved_texture_file_names.append(texture_file_name)
+        #saved_texture_file_names.append(texture_file_name)
 
 
 class KXTexture:
     def __init__(self):
+        self.signature = b''
         self.name = ""
         self.length = 0
         self.buffer_type = 0
@@ -542,6 +561,7 @@ class KXTexture:
 
 class KXEntity:
     def __init__(self):
+        self.signature = b''
         self.name = ""
         self.num_vertices = 0
         self.num_tris = 0
@@ -554,4 +574,4 @@ class KXEntity:
 
 
 
-parse()
+testing()
