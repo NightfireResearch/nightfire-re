@@ -9,6 +9,9 @@ class NightfireReader:
         self.f = buffer # file/buffer
         self.en = ">" if big_endian else "<"
         self.offset = 0
+        # self.is_buffer = True
+        # if str(type(buffer)) == "<class '_io.BufferedReader'>":
+        #     self.is_buffer = False
 
     """
     name len range
@@ -24,6 +27,8 @@ class NightfireReader:
     u64 | 8 | 0 to 18446744073709551615 # <- not added
     """
 
+    def btell(self):
+        return self.offset
 
     ### Buffer Get
 
@@ -53,6 +58,10 @@ class NightfireReader:
         return val
 
     # other
+    def bget(self, length):
+        val = self.f[self.offset:self.offset + length]; self.offset += length
+        return val
+
     def bget_float32(self):
         val = struct.unpack_from(self.en + "f", self.f, offset=self.offset)[0]; self.offset += 4
         return val
@@ -68,8 +77,7 @@ class NightfireReader:
         return vec
 
     def bget_string(self, length):
-        string = struct.unpack_from("B" * length, self.f, offset=self.offset).strip(b'\x00').decode('utf-8')
-        self.offset += length
+        string = self.bget(length).strip(b'\x00').decode('utf-8')#; self.offset += length
         return string
     def bget_string_c(self):
         string = b''
