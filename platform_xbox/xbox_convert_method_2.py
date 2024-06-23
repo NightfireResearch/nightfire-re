@@ -215,7 +215,7 @@ def parse(file_path):
                     uv = rb.bget_vec2() # uv?
                     ent.vertices.append(xyz)
                     ent.tex_coords.append(uv)
-            elif ent.vertex_mode == 1:
+            elif ent.vertex_mode == 1 or ent.vertex_mode == 2: # 01000083 has 2:
                 for v in range(ent.num_vertices):
                     xyz = rb.bget_vec3()
                     unk0 = rb.bget(4) # vertex color? vertex normal?
