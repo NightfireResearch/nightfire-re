@@ -2,19 +2,20 @@
 
 # .BIN files often contain other files
 # This code roughly matches LoaderLoad__F11tLoaderTypeUiPUcUi
+import glob
 import logging
 import os
 import struct
+from pathlib import Path
 
 logger = logging.getLogger()
 
 
 def extract_all(target_dir):
-	for filename in os.listdir(target_dir):
-		if not filename.endswith(".bin"):
-			continue
+	for filepath in glob.glob(os.path.join(target_dir, "*.bin")):
+		filename = Path(filepath).name
 
-		with open(target_dir + "/" + filename, "rb") as f:
+		with open(filepath, "rb") as f:
 			bin_file = f.read()
 
 		# If the file is .bin, this means that further files are contained within. this structure is how an entire level of data is loaded
@@ -71,7 +72,7 @@ def extract_all(target_dir):
 				name = ""
 				# TODO: Understand why this comes up!
 
-			logger.info(f"Got subfile {i} with name {name}, attrs {attrs} size {size}")
+			logger.debug(f"Got subfile {i} with name {name}, attrs {attrs} size {size}")
 
 			# Directories?
 			# Or is it just C-string reading??

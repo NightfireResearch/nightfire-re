@@ -1,9 +1,9 @@
+import logging
 import struct
-from pprint import pprint
 
-from common import util
+from common import external_knowledge, util
 
-from common import external_knowledge
+logger = logging.getLogger()
 
 def handler_entity_params(data):
 
@@ -25,13 +25,13 @@ def handler_entity_params(data):
     name = (data[48:].split(b"\x00")[0].decode("ascii"))
     # for p in params:
     #     if type(p) == int:
-    #         print(f"hex: {p:08x}, dec: {p}")
+    #         logger.info(f"hex: {p:08x}, dec: {p}")
     #     else:
-    #         pprint(p)
+    #         logger.info(p)
 
     # TODO: Something useful with this data?
 
-    #print(f"Entity: {name} owned by {ident}_{idx} - {path}")
+    #logger.info(f"Entity: {name} owned by {ident}_{idx} - {path}")
 
     name = name.replace("/", "__").replace("\\", "__")
 
@@ -39,7 +39,7 @@ def handler_entity_params(data):
 
 def handler_map_header(data):
     _, entityCnt, pathCnt, texCnt, = struct.unpack("<IIII", data[0:16])
-    #print(f"Map header: Allocates header (m_pmap) and sets up counts. maybeEntity: {entityCnt}, maybePath: {pathCnt}, maybeTex: {texCnt}")
+    #logger.info(f"Map header: Allocates header (m_pmap) and sets up counts. maybeEntity: {entityCnt}, maybePath: {pathCnt}, maybeTex: {texCnt}")
 
     return [{'type': 'map_header', 'entityCnt': entityCnt, 'pathCnt': pathCnt, 'texCnt': texCnt}]
 
@@ -57,7 +57,7 @@ def handler_tex_header(data):
         # MAYBE RELATED TO ANIMATION FRAME RATE? NOT OBVIOUSLY SO THOUGH. ALSO WHAT DOES 0 MEAN?
         assert divisor <= 60 ,f"Divisor value unexpected: {divisor}"
 
-        print(f"Texture {idx} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
+        logger.info(f"Texture {idx} has hashcode {hashcode:08x}, w: {w+1}, h: {h+1}, frames: {animFrames}, divisor: {divisor}, palDepth: {flags & 1}")
 
         texEntries.append({'save_file': True, 'data': entry, 'type': 'tex_header_entry', 'width': w+1, 'height': h+1, 'hashcode': hashcode, 'animFrames': animFrames})
 
@@ -91,7 +91,7 @@ def handler_lightambient(data):
     # First 4 bytes: Num lights
     # Then n * 32 bytes: Config for each light
     (n,) = struct.unpack("<I", data[0:4])
-    #print(f"Found {n} lights")
+    #logger.info(f"Found {n} lights")
 
     lights = util.chunks(data[4:], 32)
 
@@ -103,7 +103,7 @@ def handler_lightambient(data):
         # could be posx, posy, posz, radius, unknown4, r, g, b
         (posX, posY, posZ, radius, unk0, r, g, b) = struct.unpack("<ffffffff", light)
 
-        #print(f"Light {i} data: ({posX}, {posY}, {posZ}), {radius} - colour {r}, {g}, {b}, unk {unk0}")
+        #logger.info(f"Light {i} data: ({posX}, {posY}, {posZ}), {radius} - colour {r}, {g}, {b}, unk {unk0}")
 
         lightambients.append({'type': 'lightambient'}) # todo: the rest
 
@@ -119,7 +119,7 @@ def handler_lod(data):
         a, b = struct.unpack("<If", e)
         # assert a == 0xFFFFFFFF, f"unexpected value {a} in LOD"
         # assert b == 99999.0, f"Unexpected float {b} in LOD"
-        #print(f"Lod entry {i}: {a:08x} has dist {b}")
+        #logger.info(f"Lod entry {i}: {a:08x} has dist {b}")
         pass
 
     # TODO: What is LOD data used for?
@@ -140,14 +140,14 @@ def handler_aipath(data):
     nameBytes,maybeFlags, numA, unk1 = struct.unpack("<128sI32xII12x", data[8:8+184])
 
     name = nameBytes.split(b"\x00")[0].decode("ascii")
-    #print(f"Found a path called {name}")
+    #logger.info(f"Found a path called {name}")
 
     if(maybeFlags & 1 == 0):
-        #print("Handle according to the first half - paths/routes?")
+        #logger.info("Handle according to the first half - paths/routes?")
         pass
 
     else:
-        #print("Handle according to the second half - bounds?")
+        #logger.info("Handle according to the second half - bounds?")
         pass
 
     # For each Path:
@@ -229,7 +229,7 @@ def handler_hashlist(data):
         s=struct.unpack("<I", x)[0]
         hashcodes.append(f"{s:08x}")
 
-    print(f"Hashlist consists of {len(data)//4} resources:\n" + "\n".join(hashcodes))
+    logger.info(f"Hashlist consists of {len(data)//4} resources:\n" + "\n".join(hashcodes))
 
     return [{'save_file': True, 'type': f"hashlist", 'data': data}]
 
@@ -244,7 +244,7 @@ def handler_xboxentity(data):
     # Name follows, a fixed 52?? bytes of ASCII padded with 0x00
     name = data[44:44+52].split(b"\x00")[0].decode("ascii")
 
-    print(f"Entity {name}: {graphics_hashcode:08x}, {num_vertices} vertices, {num_tris} tris, {num_surfaces} surfaces, num_tris_unk:{num_tris_unk}, {unk1}, vtx mode: {vertex_mode}, {unk2}, {unk3}, {unk4}")
+    logger.info(f"Entity {name}: {graphics_hashcode:08x}, {num_vertices} vertices, {num_tris} tris, {num_surfaces} surfaces, num_tris_unk:{num_tris_unk}, {unk1}, vtx mode: {vertex_mode}, {unk2}, {unk3}, {unk4}")
 
     # There exist some entities with zero vertices etc.
     # However we cannot skip over them because this will mess up our indices.
@@ -278,7 +278,7 @@ def handler_xboxentity(data):
         tex_idx, unk, num_indices, unk2, unk3 = struct.unpack("<HHHIH", data[offset_start + i*12 : offset_start + (i+1)*12])
         num_indices = num_indices + 2 # triangle strip
 
-        # print(f"Surface {i}: tex_idx {tex_idx}, num_indices {num_indices}, unk {unk}, unk2 {unk2}, unk3 {unk3}")
+        # logger.info(f"Surface {i}: tex_idx {tex_idx}, num_indices {num_indices}, unk {unk}, unk2 {unk2}, unk3 {unk3}")
 
         surf_indices = indices[ last_index : last_index + num_indices]
         last_index = last_index + num_indices
@@ -298,7 +298,7 @@ def handler_xboxtexture(data):
     signature = data[0:3]
 
     if len(data) == 88: # A blank entry containing no texture data, just the metadata and name - lookup into an index of some sort?
-        print(f"Blank entry, index might be 0x{data[0]:02x}, 0x{data[1]:02x}")
+        logger.info(f"Blank entry, index might be 0x{data[0]:02x}, 0x{data[1]:02x}")
     else:
         assert signature == b"KXT", f"If data is meant to be present, we expect KXT header in Xbox texture data, got {data[0:3]}"
 
@@ -307,7 +307,7 @@ def handler_xboxtexture(data):
     # Name is a bunch of bytes, an ASCII string padded with 0x00. The exact amount doesn't matter as long as it's bigger than the string, as it's split by the 0x00.
     name = data[52:88].split(b"\x00")[0].decode("ascii")
 
-    print(f"Texture found: signature {signature}: {name}, {width}x{height}, {buffer_type}, {unk2} maybe mipmaps, {unk3}, {unk4}, {unk5}, {unk6}, {unk7}, {unk8}")
+    logger.info(f"Texture found: signature {signature}: {name}, {width}x{height}, {buffer_type}, {unk2} maybe mipmaps, {unk3}, {unk4}, {unk5}, {unk6}, {unk7}, {unk8}")
 
     # The rest of the data, if present, is the texture data itself as well as mipmaps
     # Conversion of this data to a usable format is handled in xbx/xbx_parse_02.py
@@ -324,8 +324,8 @@ def handler_collision(data):
 
 # Default case for handling placement extraData section
 def defaultHandler(data, placementType):
-    print(f"Handler for placement type {placementType} unknown, data:")
-    pprint(data)
+    logger.info(f"Handler for placement type {placementType} unknown, data:")
+    logger.info(data)
 
 # For handling placement extraData section
 # Match to the switch statement in parsemap_create_dynamic_objects
@@ -403,7 +403,7 @@ def handler_placements(data):
             # PlacementType then used by parseentity_fixup_entity?
             typeName = f"Cel_{placementType:08x}" # More details?
 
-        
+
         block = {
             'type': 'placement',
             'placementType': placementType,
@@ -417,7 +417,7 @@ def handler_placements(data):
         }
 
 
-        print(f"Placement of {typeName} - {gfxHashcode:08x} / index {index} at ({transform[0]}, {transform[1]}, {transform[2]}), extra data: {numExtraBytes} bytes, unknown data is {unk0:08x} {unk1}, {unk3}")
+        logger.info(f"Placement of {typeName} - {gfxHashcode:08x} / index {index} at ({transform[0]}, {transform[1]}, {transform[2]}), extra data: {numExtraBytes} bytes, unknown data is {unk0:08x} {unk1}, {unk3}")
 
         extraHandler = extraHandlers.get(placementType, defaultHandler)
 
@@ -428,7 +428,7 @@ def handler_placements(data):
         blocks.append(block)
         offset += 0x4c + numExtraBytes
 
-    print(f"Finished static data with {len(blocks)} placements")
+    logger.info(f"Finished static data with {len(blocks)} placements")
     return blocks
 
 

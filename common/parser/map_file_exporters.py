@@ -1,7 +1,13 @@
-import os
 import json
+import logging
+import os
 import struct
+
+from PIL import Image
+
 from common import util
+
+logger = logging.getLogger()
 
 # Take a set of XYZs, UVs and surfaces and export them as an .obj file
 def export_obj(entity, filename):
@@ -34,7 +40,7 @@ def export_models_as_objs(parsed_data, savepath):
 
     idx = 0
     for model in model_blocks:
-        print(f"Exporting model: {model['name']} as an obj, index {idx}")
+        logger.info(f"Exporting model: {model['name']} as an obj, index {idx}")
         filename = f"{savepath}/{model['name']}.obj"
         export_obj(model, filename)
         idx += 1
@@ -46,7 +52,7 @@ def export_textures(parsed_data, savepath):
 
     # Convert to dds, deswizzling etc if required
     for tex in xboxTextures:
-        print(f"Exporting: {tex['name']} to texture file")
+        logger.info(f"Exporting: {tex['name']} to texture file")
 
         texture_file_name = tex['name']
 
@@ -54,7 +60,7 @@ def export_textures(parsed_data, savepath):
         if (tex['buffer_type'] == 0 or tex['buffer_type'] == 4) and len(tex['buffer']) != 0:
             texture_file_name += ".dds"
             final_out_folder_path = out_folder_path + "/" + texture_file_name
-            #print(i, tex.buffer_type, tex.mip_count, tex.name)
+            #logger.info(f"{i}, {tex.buffer_type}, {tex.mip_count}, {tex.name}")
 
             first_mip_length = tex['width'] * tex['height'] // 2
 
@@ -88,7 +94,7 @@ def export_textures(parsed_data, savepath):
             final_out_file_path = out_folder_path + "/" + texture_file_name
 
             rgba = util.xbox_decode_morton_swizzled(tex['buffer'], tex['width'], tex['height'])
-            #print(rgba)
+            #logger.info(rgba)
             #rgba = tex.buffer
             rgba = [(rgba[i], rgba[i + 1], rgba[i + 2], rgba[i + 3]) for i in range(0, len(rgba), 4)]
 
@@ -114,7 +120,7 @@ def export_placements(parsed_blocks, savepath):
 
     # Pick out all the placement information blocks
     placement_blocks = [x for x in parsed_blocks if x['type'] == "placement"]
-    print(f"Found {len(placement_blocks)} placements")
+    logger.info(f"Found {len(placement_blocks)} placements")
 
     # Models which are embedded within the level. We need a separate trick to include stuff like the GoldenEye, KOTH, etc
 
@@ -128,7 +134,7 @@ def export_placements(parsed_blocks, savepath):
         # and won't be useful in a more modern engine
         # if pb['placementTypeName'].startswith("Cel_"):
         #     continue
-        
+
 
         # Note that a complex object may consist of multiple smaller placements.
         # For example, a fire hydrant will consist of:
@@ -142,16 +148,16 @@ def export_placements(parsed_blocks, savepath):
 
         gfxHashcode = pb['gfxHashcode']
         gfxIndex = pb['index']
-        
+
         if(gfxHashcode == 0xFFFFFFFF) and (gfxIndex == 0xFFFF):
-            print(f"No graphics for object {pb['placementTypeName']}, skipping")
+            logger.warn(f"No graphics for object {pb['placementTypeName']}, skipping")
             continue
 
         if gfxHashcode != 0xFFFFFFFF:
-            print(f"gfxHashcode: {gfxHashcode:08x} for object {pb['placementTypeName']} needs to be brought in from another file, skipping")
+            logger.info(f"gfxHashcode: {gfxHashcode:08x} for object {pb['placementTypeName']} needs to be brought in from another file, skipping")
             # TODO: Put an Empty marker here rather than skipping?
             continue
-        
+
 
         # Extract the placement information
         placements.append({

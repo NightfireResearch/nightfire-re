@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import io
+import logging
 import os
 import os.path
 import string
@@ -17,6 +18,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload
 from lxml import etree
+
+logger = logging.getLogger()
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
@@ -99,4 +102,4 @@ response = gsheets.spreadsheets().values().batchUpdate(
 ).execute()
 
 # Print the response (optional)
-print(response)
+logger.info(response)

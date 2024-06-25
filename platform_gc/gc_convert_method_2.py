@@ -1,6 +1,7 @@
 # Credits: Nightfire Research Team - 2024
 
 import binascii
+import logging
 import math
 import os
 import struct as s
@@ -10,6 +11,8 @@ from PIL import Image
 
 import common.util as util
 from common.nightfire_reader import NightfireReader
+
+logger = logging.getLogger()
 
 print_info = False
 
@@ -57,7 +60,7 @@ def ngc_parse_map_testing():
                     ngc_parse_map_file(in_file_path, extract=extract_assets, out_folder_path=out_folder_path)
 
     if test_mode == 3:
-        print(util.get_all_folders("."))
+        logger.info(util.get_all_folders("."))
 
 
 def tristrip_to_faces(strip):
@@ -81,7 +84,7 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
     #folder_path = "ngc_bins/07000004_HT_Level_HendersonD/"
     #folder_path = "ngc_archives_other/extracted/07000999"
 
-    print("\n\nEXTRA")
+    logger.info("\n\nEXTRA")
 
     # DISCARD (tristrips/faces, ?)
     discard_file = folder_path + "/" + "GC EXTRA DISCARD_0e.bin"
@@ -91,7 +94,7 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
 
     with open(discard_file, "rb") as f:
         rw = NightfireReader(f, big_endian=True)
-        print("DISCARD")
+        logger.info("DISCARD")
 
         # length of each surface header is 0x14
         # 3 surface headers in all discards?
@@ -131,14 +134,14 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
 
             surfaces.append(surface)
 
-        print("indices start", hex_tell(f))
+        logger.info("indices start", hex_tell(f))
 
         #test_index_count = 0
 
         sum_index_counts = 0
         max_vertex_index = 0
         for surface in surfaces:
-            #print(surface["index_counts"])
+            #logger.info(surface["index_counts"])
 
             for count in surface["index_counts"]:
                 indices = []
@@ -152,32 +155,32 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
                 sum_index_counts += count
                 surface["strips"].append(indices)
 
-        print(surface["strips"])
+        logger.info(surface["strips"])
 
-        print("indices end", hex_tell(f)   )#     , test_index_count)
+        logger.info(f"indices end {hex_tell(f)}"   )#     , test_index_count)
 
         len_indices_block = sum_index_counts * 2
         print_hex_tell(f)
-        print(hex(len_indices_block))
+        logger.info(hex(len_indices_block))
         f.seek(len_indices_block, 1)
         f.seek(len_indices_block, 1)
 
 
-        print("test search...")
+        logger.info("test search...")
         FFs_found = False
         while not FFs_found:
             search = f.read(1)
             if search == b'\xFF':
-                print(" found", hex_tell(f))
+                logger.info(f" found {hex_tell(f)}")
                 break
             elif search == b'':
-                print(" nothing")
+                logger.info(" nothing")
                 break
 
         # search = f.read(2)
         # if search == b'\xFF\xFF'
         f.seek(-7, 1)
-        print("end", hex_tell(f))
+        logger.info(f"end {hex_tell(f)}")
 
 
 
@@ -186,7 +189,7 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
     static_file = folder_path + "/" + "GC EXTRA STATIC_0d.bin"
     with open(static_file, "rb") as f:
         rw = NightfireReader(f, big_endian=True)
-        print("STATIC")
+        logger.info("STATIC")
 
         f.seek(32)
         vertices = []
@@ -200,16 +203,16 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
 
             for axis in (x, y, z):
                 if axis > 16384 or axis < -16384:
-                    print("COMBINED DATA?")
+                    logger.info("COMBINED DATA?")
                     return None
             for axis in (nx, ny, nz):
                 if axis > 16384 or axis < -16384:
-                    print("COMBINED DATA?")
+                    logger.info("COMBINED DATA?")
                     return None
 
             vertices.append((x / 16384, y / 16384, z / 16384)) # CONFIRMED!
             vtx_normals.append((nx / 16384, ny / 16384, nz / 16384))
-            # print(vertices[i])
+            # logger.info(vertices[i])
             # break
 
         #     if nx > biggest_vn:
@@ -218,7 +221,7 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
         #         biggest_vn = ny
         #     if nz > biggest_vn:
         #         biggest_vn = nz
-        # print("BIGGEST VN:", biggest_vn)
+        # logger.info(f"BIGGEST VN: {biggest_vn}")
         #print_hex_tell(f)
 
     if not extract_models:
@@ -243,7 +246,7 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
 
         obj_data += "\n"
 
-        print(f"object {i}")
+        logger.info(f"object {i}")
 
         new_faces = []
         for j, strip in enumerate(surface["strips"]):
@@ -255,7 +258,7 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
         new_faces = [nf for nf in new_faces if nf[0] != nf[2]]
 
         if len(new_faces) == 0:
-            print(f"No valid faces in surface {i}")
+            logger.info(f"No valid faces in surface {i}")
             continue
 
         obj_data += f"\no surface{i}"
@@ -278,7 +281,7 @@ def ngc_parse_extra(): # GC EXTRA STATIC/DISCARD
 def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
     #return None
 
-    print(f"\nParsing {file_path}")
+    logger.info(f"\nParsing {file_path}")
 
     # As a general pattern it looks like:
     # 00: Emplacements, MP entities, weapons (3rd person / drops?)
@@ -301,7 +304,7 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
 
     if sub_type not in ["00", "01", "02", "0b"]:
         if print_info:
-            print("NEW SUB TYPE?: ", sub_type)
+            logger.info("NEW SUB TYPE?: %s", sub_type)
         return None
 
     textures = []
@@ -342,8 +345,8 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
         temp_gx_list = [6, 7, 8]
 
         if print_info:
-            print("\nTextures", tex_count)
-            print("idx  start  end    name             res      type  other")
+            logger.info("\nTextures %i", tex_count)
+            logger.info("idx  start  end    name             res      type  other")
         for i in tex_range:
             tex_offset = hex_tell(f)
             tex_val1, tex_val2, tex_val3, data_type = s.unpack("BBBB", f.read(4))
@@ -383,15 +386,15 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
                 textures.append(tex)
 
             if print_info:
-                print(f"{i:3}  {tex_offset:6} {hex_tell(f):6} {tex_name:16} {tex_width:3} {tex_height:3}  {temp_gx_dict[str(tex_gx_type)]:5} {hex(tex_val2):4} {hex(tex_val3):4}")
+                logger.info(f"{i:3}  {tex_offset:6} {hex_tell(f):6} {tex_name:16} {tex_width:3} {tex_height:3}  {temp_gx_dict[str(tex_gx_type)]:5} {hex(tex_val2):4} {hex(tex_val3):4}")
 
 
 
         rw = NightfireReader(f)
         rw.big_endian = True
 
-        print("\nOther + Entities", ent_count)
-        print("idx offset name/type")
+        logger.info("\nOther + Entities %i", ent_count)
+        logger.info("idx offset name/type")
 
         # vertex count stealship 1st model at 0x526C in 01000207_00.bin? 156
         # header/surface count at 0x5264
@@ -412,16 +415,16 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
                 data_id = data_header >> 24
                 data_len = data_header & 0xFFFFFF # uint24
 
-                print("", i, data_id, data_off_hex)
+                logger.info(f"{i}, {data_id}, {data_off_hex:x}")
 
                 if data_id not in data_ids:
-                    print("NEW DATA TYPE at 0x", data_off_hex)
+                    logger.info("NEW DATA TYPE at 0x", data_off_hex)
                     return None
 
                 if data_id == 0x0c: #                           GC Entity Info
                     mdl_unk = f.read(4)
                     mdl_name = get_str(f, 20)
-                    print(f"{i:3} {data_off_hex:5} {mdl_name:16}")
+                    logger.info(f"{i:3} {data_off_hex:5} {mdl_name:16}")
 
                     num_surfaces = rw.get_u32() # len 0x30 d48
                     num_indices = rw.get_u32() # all corrected index counts (+2 on each) added up
@@ -445,11 +448,11 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
 
 
                     if i == 2:
-                        print("STOPPING.")
+                        logger.info("STOPPING.")
                         break
 
                 if data_id == 0x2f: #                           "CollisionData2"
-                    print(f"{i:3} {data_off_hex:5} type:0x2f")
+                    logger.info(f"{i:3} {data_off_hex:5} type:0x2f")
 
                     unk1 = rw.get_u32()
                     unk2 = rw.get_u16()
@@ -467,9 +470,9 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
                     for j in range(8): #unk3
                         x, y, z = s.unpack('>hhh', f.read(6))
                         thing.append((x / 4096, y / 4096, z / 4096)) # not sure which div is correct
-                        # print(thing[j])
+                        # logger.info(thing[j])
 
-                    print("DATA TYPE 0x2f. SKIPPING.")
+                    logger.info("DATA TYPE 0x2f. SKIPPING.")
                     f.seek(ent_offset)
                     f.seek(data_len, 1)
 
@@ -482,14 +485,14 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
         return None
 
     if len(textures) == 0:
-        print(file_path, "<---------- has no valid textures. Skipping!")
+        logger.info(f"{file_path} <---------- has no valid textures. Skipping!")
         return None
 
     if not os.path.isdir(out_folder_path):
         os.makedirs(out_folder_path)
 
     if print_info:
-        print("\nExtracted textures", len(textures))
+        logger.info("\nExtracted textures %i", len(textures))
     for i, tex in enumerate(textures):
         file_name = f"tex{i:03d}_{tex.name}"
 
@@ -502,7 +505,7 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
             file_name += ".png"
             final_out_folder_path = out_folder_path + "/" + file_name
             if print_info:
-                print(i, tex.gx_type, tex.mip_count, tex.name)
+                logger.info("%i %s %i %s", i, tex.gx_type, tex.mip_count, tex.name)
 
             if tex.mip_count > 1:
                 first_mip_length = (tex.width * tex.height) * 2
@@ -517,7 +520,7 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
         elif tex.gx_type == 7: # RGBA8 aka RGBA32
             file_name += ".png"
             final_out_folder_path = out_folder_path + "/" + file_name
-            print(i, tex.gx_type, tex.mip_count, tex.name)
+            logger.info("%i %s %i %s", i, tex.gx_type, tex.mip_count, tex.name)
 
             if tex.mip_count > 1:
                 first_mip_length = (tex.width * tex.height) * 4
@@ -532,7 +535,7 @@ def ngc_parse_map_file(file_path, extract=True, out_folder_path="ngc_levels"):
         elif tex.gx_type == 8: # CMPR
             file_name += ".dds"
             final_out_folder_path = out_folder_path + "/" + file_name
-            print(i, tex.gx_type, tex.mip_count, tex.name)
+            logger.info("%i %s %i %s", i, tex.gx_type, tex.mip_count, tex.name)
 
             first_mip_length = tex.width * tex.height // 2
 
@@ -597,7 +600,7 @@ def get_c_str(f):
 def hex_tell(f):
     return str(hex(f.tell()))[2:]
 def print_hex_tell(f):
-    print(hex_tell(f))
+    logger.info(hex_tell(f))
 
 
 def gx_rgba8_to_rgba(rgba8_buffer, width, height): # aka rgba32
@@ -663,11 +666,11 @@ def gx_rgb5a3_to_rgba(rgb5a3_buffer, width, height):
             g = (g * 17)
             b = (b * 17)
             # if r != 0:
-            #     print(i, "", r,g,b,a)
+            #     logger.info(f"{i}  {r},{g},{b},{a})
 
 
         pixels.append((r, g, b, a))
-        #print(i, "", r,g,b,a)
+        #logger.info(f"{i}  {r},{g},{b},{a})
         # if is_opaque:
         #     break
 
@@ -763,7 +766,7 @@ def gx_cmpr_to_dxt1(cmpr_buffer, width, height, mip_count):
         mip_w = mip_w // 2
         mip_h = mip_h // 2
 
-    #print(num_cols, num_rows, binascii.hexlify(new_dxt_buffer[0:8]).decode('utf-8'))
+    #logger.info("%i %i %s", num_cols, num_rows, binascii.hexlify(new_dxt_buffer[0:8]).decode('utf-8'))
 
     return new_dxt_buffer
 

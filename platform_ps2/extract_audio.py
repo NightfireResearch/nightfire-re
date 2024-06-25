@@ -3,15 +3,15 @@
 # Extract audio out of banks into separate files
 # then decode into .wav or some other modern format
 # Requires FFMpeg for decoding Sony ADPCM to WAV
+import logging
 import os
 import shutil
 import struct
 from pathlib import Path
-import sys
-sys.path.append("../")
 
 import common.util as util
 
+logger = logging.getLogger()
 
 ###### SUMMARY OF FILE CONTENTS AND IMPORTANT AUDIO INFORMATION
 
@@ -137,7 +137,7 @@ def extract_bank(directory_in, directory_out, bank):
     numShf = struct.unpack("<I", shf[p_shf:p_shf+4])[0]
     p_shf += 4
 
-    print(f"SHF contains {numShf} individual tracks.")
+    logger.info(f"SHF contains {numShf} individual tracks.")
 
     # Load into a table of contents for easy reference
     toc = []
@@ -151,7 +151,7 @@ def extract_bank(directory_in, directory_out, bank):
 
         toc.append((loop, offset, size, f_real, ch, bits,))
 
-        #print(f"Got track {bank}-{subbank}-{i} with freq {freq}, channels {ch}, bits {bits}, loop {loop}")
+        #logger.info(f"Got track {bank}-{subbank}-{i} with freq {freq}, channels {ch}, bits {bits}, loop {loop}")
         #rawDataToWav(sbf[offset:offset+size], f_real, f"{directory_out}/bnk{bank}_{subbank}_{i}.wav")
 
 
@@ -160,7 +160,7 @@ def extract_bank(directory_in, directory_out, bank):
     numSfx = struct.unpack("<I", sfx[p_sfx:p_sfx+4])[0]
     p_sfx += 4
 
-    print(f"Bank {bank} has {numSfx} SFX")
+    logger.info(f"Bank {bank} has {numSfx} SFX")
     totalTracks=0
     maxSfxCnt = 0
     unusedShdIndexes = [x for x in range(len(toc))]
@@ -183,14 +183,14 @@ def extract_bank(directory_in, directory_out, bank):
 
             shdIndex, basePitchBend, randomPitchBend, baseVolume, randomVolume, basePan, randomPan = struct.unpack("<7i", sfx[varLenOffset: varLenOffset+28])
             varLenOffset += 28
-            #print(f"SFX {sfxNum} subtrack {i} has SHD index {shdIndex}")
+            #logger.info(f"SFX {sfxNum} subtrack {i} has SHD index {shdIndex}")
 
             # A negative value here indicates streamed SFX.
             # - StartSample will force sample rate to 1881 (22050 Hz)
             # - ES_RequestVoiceHandle will assign a Stream rather than a Voice handle
             # Converted via indexOfStream = -1 - *(int *)&DAT_70000184->mfxId; in SFXInitialiseStreamUpdate
             if shdIndex < 0:
-                print(f"SFX {sfxNum} is streamed (stream index {-shdIndex-1}), copying")
+                logger.info(f"SFX {sfxNum} is streamed (stream index {-shdIndex-1}), copying")
                 shutil.copy(f"{directory_out}/_streams_{-shdIndex-1}.wav", f"{outName}")
                 continue
 
@@ -202,7 +202,7 @@ def extract_bank(directory_in, directory_out, bank):
 
 
             if(os.path.exists(outName)):
-                #print("File already exists, duplicated across banks")
+                #logger.info("File already exists, duplicated across banks")
                 pass
             else:
                 rawDataToWav(sbf[trk[1]:trk[1]+trk[2]], trk[3], outName)
@@ -230,7 +230,7 @@ def extract_music(directory_in, directory_out, bank):
     numSmf = struct.unpack("<I", smf[p_smf:p_smf+4])[0]
     p_smf += 4
 
-    print(f"Music track {bank} has {numSmf} markers")
+    logger.info(f"Music track {bank} has {numSmf} markers")
 
     # Data is 2-channel, 16-bit samples, 128-byte (0x80) interleave, 32000Hz rate
     channel_l = b''.join(list(util.chunks(ssd, 128))[::2])
@@ -266,7 +266,7 @@ def extract_streams(directory_in, directory_out):
         off = i * 16
         markerBinOffset, markerBinSize, adpcmOffset, adpcmSize = struct.unpack("<IIII", streamLut[off:off+16])
 
-        print(f"LUT {i}: {markerBinOffset:08x}, {markerBinSize:02x}, {adpcmOffset:08x}, {adpcmSize:08x}")
+        logger.info(f"LUT {i}: {markerBinOffset:08x}, {markerBinSize:02x}, {adpcmOffset:08x}, {adpcmSize:08x}")
 
         ## Let's test our assumptions
         assert markerBinSize == 0x88, f"Marker binary data size should be 0x88 but is 0x{i:08x}"
@@ -280,7 +280,7 @@ def extract_streams(directory_in, directory_out):
 
         # Looks like a Stream marker header data followed by said markers
         startCount, markerCount, startOffset, markerOffset, baseVolume = struct.unpack("<IIIII", markerBinData[0:20])
-        print(f"Assuming marker header, this has startCount {startCount}, num {markerCount}, off {startOffset}, base volume {baseVolume}")
+        logger.info(f"Assuming marker header, this has startCount {startCount}, num {markerCount}, off {startOffset}, base volume {baseVolume}")
 
         # Let's further assume we just have two markers - the Start marker, and the End marker
         # For the purposes of extracting an SFX, we only need the End marker's position value
@@ -294,7 +294,7 @@ def extract_streams(directory_in, directory_out):
 def check_ffmpeg_exists():
     # Check that FFMpeg is installed
     if os.system("ffmpeg -version") != 0:
-        print("FFMpeg not found, please install it before extracting PS2 audio (or replace this with a Python implementation of ADPCM decode).")
+        logger.info("FFMpeg not found, please install it before extracting PS2 audio (or replace this with a Python implementation of ADPCM decode).")
         return False
     return True
 
@@ -306,22 +306,22 @@ def extract_all(directory_in, directory_out):
     # Create the output directory if it doesn't exist
     Path(directory_out).mkdir(parents=True, exist_ok=True)
 
-    print("About to extract streams...")
+    logger.info("About to extract streams...")
     if True:
         extract_streams(directory_in, directory_out)
 
-    print("About to extract SFX banks...")
+    logger.info("About to extract SFX banks...")
     for i in range(25):
         extract_bank(directory_in, directory_out, i)
         pass
 
 
-    print("About to extract music...")
+    logger.info("About to extract music...")
     for i in range(1, 17):
         extract_music(directory_in, directory_out, i)
         pass
 
 if __name__ == "__main__":
-    
+
     extract_all("../iso_extract/ps2_eu_sles-51258", "../audio")
     pass

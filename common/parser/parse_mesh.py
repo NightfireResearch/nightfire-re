@@ -1,12 +1,14 @@
 # Credits: Nightfire Research Team - 2024
 
+import logging
 import os
 import shutil
 import struct
 from pathlib import Path
-from pprint import pprint
 
 import common.util as util
+
+logger = logging.getLogger()
 
 
 def interpret_ps2gfx(data, name, material_file):
@@ -30,23 +32,26 @@ def interpret_ps2gfx(data, name, material_file):
     #
     boxlist_num, boxlist_start, skininfo_start, unk4 = struct.unpack("<4I", data[-16:])
 
-    print(f"Handling file {name}")
-    print(f"Footer numbers: {boxlist_num}, {boxlist_start:08x}, {skininfo_start}, {unk4}")
+    logger.info(f"Handling file {name}")
+    logger.info(f"Footer numbers: {boxlist_num}, {boxlist_start:08x}, {skininfo_start}, {unk4}")
 
     if boxlist_num == 0:
-        print(f"WARNING: NO BOXES IN {name}")
+        logger.warn(f"WARNING: NO BOXES IN {name}")
         with open(f"{name}_no_boxes.ps2gfx", "wb") as f:
             f.write(data)
         return
 
     if boxlist_start==0:
-        print("WARNING: NO BOXLIST")
-        with open(f"{name}_no_boxlist.ps2gfx", "wb") as f:
-            f.write(data)
+        try:
+            logger.warn("WARNING: NO BOXLIST")
+            with open(f"{name}_no_boxlist.ps2gfx", "wb") as f:
+                f.write(data)
+        except Exception as ex:
+            logger.error(ex)
         return
 
     if skininfo_start != 0:
-        print(f"CANNOT HANDLE SKELETAL ANIMATION OR MORPHS YET: {name} may fail")
+        logger.warn(f"CANNOT HANDLE SKELETAL ANIMATION OR MORPHS YET: {name} may fail")
         with open(f"{name}_with_skin.ps2gfx", "wb") as f:
             f.write(data)
 
@@ -60,23 +65,23 @@ def interpret_ps2gfx(data, name, material_file):
 
         # Matrix (bone) number list
         boneRefs = util.ints_until_terminator(data[boneIdxArr-4:], 1, 0xFF)
-        print(f"Bone refs: {boneRefs}")
+        logger.info(f"Bone refs: {boneRefs}")
 
         # A list of offsets - used in skinning process? FFFFFFFF-terminated
         offsets = util.ints_until_terminator(data[offsetArr-4:], 4, 0xFFFFFFFF)
-        print(f"Offsets: {offsets}")
+        logger.info(f"Offsets: {offsets}")
 
         # A list of floating-point data - length known
         floats = [struct.unpack("<f", x)[0] for x in util.chunks(data[floatArr-4:floatArr-4+floatArrLen], 4)]
 
-        print(f"Found {len(floats)} floats related to the skin")
+        logger.info(f"Found {len(floats)} floats related to the skin")
 
         return
 
 
 
     if unk4 != 0:
-        print("unk4 not handled")
+        logger.warn("unk4 not handled")
 
 
     # We take boxlist position from the footer
@@ -93,9 +98,9 @@ def interpret_ps2gfx(data, name, material_file):
 
             minX, minY, minZ, maxX, maxY, maxZ, childA, childB, offsetOfData, texList, maybeLenOfData, stripElemCnt, vtxCnt, flags = struct.unpack("<6f8I", box)
 
-            print(f"Box {i} bounds ({minX}, {minY}, {minZ} - {maxX}, {maxY}, {maxZ}) - {vtxCnt} vertices, {stripElemCnt} strip elements, {flags}")
+            logger.info(f"Box {i} bounds ({minX}, {minY}, {minZ} - {maxX}, {maxY}, {maxZ}) - {vtxCnt} vertices, {stripElemCnt} strip elements, {flags}")
 
-            print(f"VIF data found at offset {offsetOfData:08x}, tex list at {texList:08x}, VIF len {maybeLenOfData:08x}")
+            logger.info(f"VIF data found at offset {offsetOfData:08x}, tex list at {texList:08x}, VIF len {maybeLenOfData:08x}")
 
 
             ## Note that not all glist boxes actually contain geometry.
@@ -103,7 +108,7 @@ def interpret_ps2gfx(data, name, material_file):
             # Potentially, only the leaves of this tree need to contain anything drawable.
             # Non-drawable ("container") boxes have their offset as 0.
             if offsetOfData == 0:
-                print("This Glist box is just a parent for smaller ones, no geometry.")
+                logger.info("This Glist box is just a parent for smaller ones, no geometry.")
                 # Note that in this case, "maybeLenOfData" is non-zero! Does it have special meaning?
                 continue
 
@@ -111,10 +116,10 @@ def interpret_ps2gfx(data, name, material_file):
             # TODO: Is this some index, some hashcode-related thing, something else?
             texRefs = util.ints_until_terminator(data[texList-4:], 4, 0xFFFFFFFF)
             for i, tex in enumerate(texRefs):
-                print(f"Texture {i}: {tex:08x}")
+                logger.info(f"Texture {i}: {tex:08x}")
 
 
-            print("Unpacking meshes...")
+            logger.info("Unpacking meshes...")
 
             unpacks = util.ps2_vifUnpack(data[offsetOfData-4:offsetOfData-4 + maybeLenOfData])
 
@@ -131,12 +136,12 @@ def interpret_ps2gfx(data, name, material_file):
                 # - 1-element block of config/unknown data
                 # - Sequences of UV, XYZ, Triangles and Colours
 
-                # print(f"AT INDEX {unpackAt}, unpack is:")
-                # pprint(unpacks[unpackAt])
+                # logger.info(f"AT INDEX {unpackAt}, unpack is:")
+                # logger.info(unpacks[unpackAt])
 
                 if unpacks[unpackAt][0] == "texture":
                     currentTexture = unpacks[unpackAt][1]
-                    print(f"TEXTURE CHANGE TO {currentTexture}")
+                    logger.info(f"TEXTURE CHANGE TO {currentTexture}")
                     unpackAt+=1
                     continue
 
@@ -178,7 +183,7 @@ def interpret_ps2gfx(data, name, material_file):
                     f.write(f"f {a}/{a} {b}/{b} {c}/{c}\n")
 
                 objVtxCnt += len(xyzs)
-                print(f"Block has found {len(xyzs)} points")
+                logger.info(f"Block has found {len(xyzs)} points")
 
 
 

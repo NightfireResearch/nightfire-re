@@ -64,7 +64,7 @@ with open("hc_to_str.csv", "w") as f:
 		# Pick out the string from the memory address
 		s = string_from_address(action_elf, ptr)
 
-		#print(f"HC {hc:08x} has name {s}")
+		#logger.info(f"HC {hc:08x} has name {s}")
 		f.write(f"{idx},0x{hc:08x},{s}\n")
 
 

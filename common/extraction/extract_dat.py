@@ -2,10 +2,13 @@
 
 # .DAT files contain language specific data (translations). There's the "U" and non-"U" form (UTF16-encoded Unicode?)
 
+import logging
 import os
 import struct
 
 import common.util as util
+
+logger = logging.getLogger()
 
 
 def extract(text_data, is_unicode):
@@ -51,7 +54,7 @@ def extract(text_data, is_unicode):
 		s = text_data[str_offset: str_offset + strlen].decode("utf_16_le" if is_unicode else "utf_8", 'replace')
 
 		stringTable.append(s)
-		#print(f"Got string with len {strlen}: {s}")
+		#logger.info(f"Got string with len {strlen}: {s}")
 
 	return stringTable
 
@@ -104,7 +107,7 @@ def extract_all(target_dir):
 
 		translations[lang_id.upper()] = entries
 
-		print(f"Translation file {filename} is language {lang_id}, unicode: {is_unicode} has {len(entries)} entries")
+		logger.info(f"Translation file {filename} is language {lang_id}, unicode: {is_unicode} has {len(entries)} entries")
 
 	return translations
 

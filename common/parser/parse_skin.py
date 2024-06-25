@@ -1,9 +1,12 @@
 # Credits: Nightfire Research Team - 2024
 
+import logging
 import struct
 
 import common.external_knowledge as external_knowledge
 import common.util as util
+
+logger = logging.getLogger()
 
 
 def load_skin(data):
@@ -29,13 +32,13 @@ def load_skin(data):
 	#assert scaleY==1.0, f"Expected scale=1, got {scaleY}"
 	#assert scaleZ==1.0, f"Expected scale=1, got {scaleZ}"
 
-	print(f"Skin {hashcode:08x} has numRiggedBodies: {numRiggedBodies}, discreteObjs: {numDiscreteObjs}, unk0: {unk0}, dt36: {dt36b}, skeletonNum: {skeletonNum}")
+	logger.info(f"Skin {hashcode:08x} has numRiggedBodies: {numRiggedBodies}, discreteObjs: {numDiscreteObjs}, unk0: {unk0}, dt36: {dt36b}, skeletonNum: {skeletonNum}")
 
 	assert numRiggedBodies < 2, "Expected < 2"
 	assert unk0 in [0, 22], "Expected 0 or 22 for unknown field"
 	assert skeletonNum in boneNums.keys(), "Skeleton details not known"
 
-	print(f"This skeleton has {boneNums[skeletonNum]} bones")
+	logger.info(f"This skeleton has {boneNums[skeletonNum]} bones")
 
 	# The code then goes on to skip 1 byte for each bone in the skeleton...
 	# Which means we need to handle in 2 passes - once to get the bone counts, then again to handle the skins.
@@ -46,7 +49,7 @@ def load_skin(data):
 	# The high bit seems to always be set, and the root takes the value 0xFF.
 	# This appears to match with the code in psiBuildMatrixPalette
 	for i in range(boneNums[skeletonNum]):
-		print(f"Bone {i} has parent {data[offset+i] & 0x7f}")
+		logger.info(f"Bone {i} has parent {data[offset+i] & 0x7f}")
 	offset += boneNums[skeletonNum]
 
 	# We then have a quantity of "discreteObjLinks" (whose size is 1 byte each)
@@ -63,10 +66,10 @@ def load_skin(data):
 	# Glist Hashcode list, with same number of entries as numDiscreteObjs above?
 	glistHashcodeList = list(util.chunks(data[offset:offset+4*numDiscreteObjs], 4))
 	if len(glistHashcodeList):
-		print(f"We reference {numDiscreteObjs} hashcodes: ")
+		logger.info(f"We reference {numDiscreteObjs} hashcodes: ")
 		for i, hc in enumerate(glistHashcodeList):
 			hcc = struct.unpack("<I", hc)[0]
-			print(f"{hcc:08x} possibly linked to bone {discreteObjLinks[i]}")
+			logger.info(f"{hcc:08x} possibly linked to bone {discreteObjLinks[i]}")
 
 	offset += 4 * numDiscreteObjs
 
@@ -81,7 +84,7 @@ def load_skin(data):
 		for i in range(numRiggedBodies):
 			hc = struct.unpack("<I", data[offset+i*4:offset+i*4+4])[0]
 			isSleeve = (hc & 0x00100000) != 0
-			print(f"Rigged Body {i}: {hc:08x}. Is a sleeve: {isSleeve}")
+			logger.info(f"Rigged Body {i}: {hc:08x}. Is a sleeve: {isSleeve}")
 		offset += 4 * numRiggedBodies
 
 		# Matrixes from quats/transforms...
@@ -93,7 +96,7 @@ def load_skin(data):
 			offStart = offset + i * 28
 			offEnd = offset + i * 28 + 28
 			x,y,z,a,b,c,d = struct.unpack("<fffffff", data[offStart:offEnd])
-			print(f"Initialisation of bone {i}: v=({x}, {y}, {z}), q=({a}, {b}, {c}, {d})")
+			logger.info(f"Initialisation of bone {i}: v=({x}, {y}, {z}), q=({a}, {b}, {c}, {d})")
 
 		offset += boneNums[skeletonNum] * 28
 
@@ -109,13 +112,13 @@ def load_skin(data):
 		offStart = offset + i * 36
 		offEnd = offset + i * 36 + 36
 		unk, boneNum, vx, vy, vz, qx, qy, qz, qw = struct.unpack("<II7f", data[offStart:offEnd])
-		print(f"Unknown 36-byte data {i}: {unk:08x}, boneNum: {boneNum}, v=({vx}, {vy}, {vz}), q=({qx}, {qy}, {qz}, {qw})")
+		logger.warn(f"Unknown 36-byte data {i}: {unk:08x}, boneNum: {boneNum}, v=({vx}, {vy}, {vz}), q=({qx}, {qy}, {qz}, {qw})")
 
 	offset += 36 * dt36b
 
 	remaining = len(data) - offset
 
-	print(f"At the end of the file; remaining: {remaining}")
+	logger.info(f"At the end of the file; remaining: {remaining}")
 
 
 
@@ -126,7 +129,7 @@ if __name__=="__main__":
 
 	with open(filename, "rb") as f:
 		data = f.read()
-		print("Interpreting skin data for a collection of rigid units...")
+		logger.info("Interpreting skin data for a collection of rigid units...")
 		load_skin(data)
 
 	# We know from the weapon data table that Golden Gun has the following animation sequences available:
@@ -138,5 +141,5 @@ if __name__=="__main__":
 
 	with open(filename, "rb") as f:
 		data = f.read()
-		print("Interpreting skin data for a rigged body...")
+		logger.info("Interpreting skin data for a rigged body...")
 		load_skin(data)

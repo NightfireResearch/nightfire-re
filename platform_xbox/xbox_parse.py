@@ -1,14 +1,15 @@
 # Credits: Nightfire Research Team - 2024#
 
+import logging
 import struct
 import sys
 
 from PIL import Image
 
-sys.path.append("../")
-
-from common.parser import parse_map
 from common import util
+from common.parser import parse_map
+
+logger = logging.getLogger()
 
 level_hash = "07000026"
 file = "01000100"
@@ -20,7 +21,7 @@ out_folder_path = f"xbox_converted"
 with open(file_path, "rb") as f:
     data = f.read()
 
-print("Loaded file with size", len(data))
+logger.info("Loaded file with size", len(data))
 
 
 # Loop over parsenextblock until we reach type=0x1d.
@@ -41,11 +42,11 @@ while not finished:
 
     handler = parse_map.map_block_handlers.handlers.get(bh_identifier, None)
     handler_name = "not yet implemented" if handler is None else handler.__name__
-    print(f"Processing block {idx} - ID: 0x{bh_identifier:02x} ({handler_name}), Size: {bh_size}")
+    logger.info(f"Processing block {idx} - ID: 0x{bh_identifier:02x} ({handler_name}), Size: {bh_size}")
 
     if bh_identifier == 0x1d:
         finished = True
-        print("Got a terminator signal")
+        logger.info("Got a terminator signal")
         continue
 
     if bh_identifier == 0x1a:
@@ -77,13 +78,13 @@ while not finished:
 xboxEntities = [x for x in results if x['type'] == 'xboxentity']
 xboxTextures = [x for x in results if x['type'] == 'xboxtexture']
 
-print("Found", len(xboxEntities), "xbox entities, first is " + xboxEntities[0]['name'] if len(xboxEntities) > 0 else "none")
+logger.info(f"Found {len(xboxEntities)} xbox entities, first is {xboxEntities[0]['name'] if len(xboxEntities) > 0 else "none"}")
 
 
 import common.parser.map_file_exporters as mfe
 
 for exporter in mfe.exporters:
-    print(f"Running {exporter.__name__} to folder {out_folder_path}")
+    logger.info(f"Running {exporter.__name__} to folder {out_folder_path}")
     exporter(results, out_folder_path)
 
 

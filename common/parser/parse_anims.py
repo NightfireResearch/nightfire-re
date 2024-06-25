@@ -1,5 +1,6 @@
 # Credits: Nightfire Research Team - 2024
 
+import logging
 import os
 import struct
 
@@ -8,6 +9,8 @@ import parse_skin
 
 import common.external_knowledge as external_knowledge
 import common.util as util
+
+logger = logging.getLogger()
 
 seenFiles = {}
 def dedupe(filename, data):
@@ -64,7 +67,7 @@ def extract_anims(level_name):
 if __name__ == "__main__":
 
     directory = "../platform_ps2/ps2_archives_extracted/"
-    print(f"Extracting all animations from levels in {directory}")
+    logger.info(f"Extracting all animations from levels in {directory}")
     fnames=sorted(os.listdir(directory))
     levels = [x.replace(".bin_extract", "") for x in fnames if ".bin_extract" in x]
 

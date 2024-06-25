@@ -42,7 +42,8 @@ class PlaystationEurocomHandler(PlatformEurocomBase):
             filesbin_data = f.read()
 
         # Extract the contents to a file within the target directory
-        target_dir = os.path.join(dump_folder, "../platform_ps2/ps2_archives_extracted")
+        # TODO: Prevent this from overriding other verison dumps
+        target_dir = os.path.join(dump_folder, ".." , "platform_ps2" , "ps2_archives_extracted")
 
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)

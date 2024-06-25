@@ -6,7 +6,7 @@ from pathlib import Path
 from pprint import pprint
 
 from common import external_knowledge, util
-from common.parser import parse_mesh, map_block_handlers, map_file_exporters
+from common.parser import map_block_handlers, map_file_exporters, parse_mesh
 
 logger = logging.getLogger()
 
@@ -81,7 +81,7 @@ def handle_block(data, identifier):
 
 def extract_leveldir(directory, level_name):
     target_dir = os.path.join(directory, f"{level_name}.bin_extract/")
-    
+
     if not os.path.exists(target_dir):
         os.mkdir(target_dir)
 
@@ -101,7 +101,7 @@ def extract_leveldir(directory, level_name):
         archive_extension = util.split_file_name(filename)[1]
 
         if archive_extension not in ["00", "01", "02", "0b"]:
-            #print(f"File {filename} is not map data (maybe anim or something), continuing...")
+            #logger.info(f"File {filename} is not map data (maybe anim or something), continuing...")
             continue
 
         # As a general pattern it looks like:
@@ -110,10 +110,10 @@ def extract_leveldir(directory, level_name):
         # x02: Skins
         # x0b: Weapons (1st person?)
 
-        #print(f"Extracting resources from {archive_hashcode} in {level_name}")
+        #logger.info(f"Extracting resources from {archive_hashcode} in {level_name}")
 
         # Follow logic of parsemap_parsemap
-        #print(f"Looking at archive data {archive_hashcode}...")
+        #logger.info(f"Looking at archive data {archive_hashcode}...")
 
         with open(target_dir + filename, "rb") as f:
             data = f.read()
@@ -145,7 +145,7 @@ def extract_leveldir(directory, level_name):
 
             if bh_identifier == 0x1d:
                 finished = True
-                #print("Got a terminator signal")
+                #logger.info("Got a terminator signal")
                 continue
 
             if bh_identifier == 0x1a:
@@ -174,10 +174,10 @@ def extract_leveldir(directory, level_name):
 
             pass
 
-        archivepath = external_knowledge.archive_names.get(archive_hashcode, f"{level_name}/unknown_{archive_hashcode}")
-        savepath = os.path.join(directory, f"../../platform_ps2/ps2_converted/{archivepath}")
+        archivepath = external_knowledge.archive_names.get(archive_hashcode, os.path.join(level_name, f"unknown_{archive_hashcode}"))
+        savepath = os.path.join(directory, "..", "..", "platform_ps2", "ps2_converted", archivepath)
         Path(savepath).mkdir(parents=True, exist_ok=True)
-        #print(f"ARCHIVE {archive_hashcode} ({archivepath}) DECODED - RESULT: {len(results)} blocks")
+        #logger.info(f"ARCHIVE {archive_hashcode} ({archivepath}) DECODED - RESULT: {len(results)} blocks")
 
         # Split by expected types
         tex_datas = [x for x in results if x['type'] == "tex_data"]
@@ -202,7 +202,7 @@ def extract_leveldir(directory, level_name):
             animFrames = header_item['animFrames']
             hashcode = header_item['hashcode']
 
-            saveto = f"{savepath}/{index}" if hashcode==0xffffffff else f"{savepath}/{hashcode:08x}"
+            saveto = os.path.join(savepath, f"{index}") if hashcode==0xffffffff else os.path.join(savepath, f"{hashcode:08x}")
             util.framesToFile(util.ps2_depalettize(data_item['data'], palette_item['colours'], w, h,animFrames), saveto)
 
 
@@ -211,12 +211,12 @@ def extract_leveldir(directory, level_name):
         for g, ep in zip(ps2gfxs, entity_params):
 
             fn = f"{ep['hashcode']:08x}_{ep['name']}"
-            parse_mesh.generate_materials(f"{savepath}/mtls.mtl")
-            parse_mesh.interpret_ps2gfx(g['data'], f"{savepath}/{fn}", "mtls.mtl")
+            parse_mesh.generate_materials(os.path.join(savepath, "mtls.mtl"))
+            parse_mesh.interpret_ps2gfx(g['data'], os.path.join(savepath, fn), "mtls.mtl")
 
         # Debug - dump all partially-understood files
         for i, u in enumerate(save_file):
-            with open(f"{savepath}/{i:04}_{u['type']}.bin", "wb") as f:
+            with open(os.path.join(savepath, f"{i:04}_{u['type']}.bin"), "wb") as f:
                 f.write(u['data'])
 
 def parse_maps(directory: str):

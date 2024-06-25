@@ -5,14 +5,18 @@
 # This image is seemingly the only one in the game to use a specific RLE encoding.
 # I believe this is becuse it is blended with a fire texture before being put on
 # top of the pause menu.
+import logging
+
 from PIL import Image
+
+logger = logging.getLogger()
 
 with open("../platform_ps2/ps2_archives_extracted/07000049_HT_Level_AllCharacters2.bin_extract/woman_10.bin", "rb") as f:
 	data = f.read()
 
 p = 0
 
-print(f"File is {len(data)} bytes")
+logger.info(f"File is {len(data)} bytes")
 
 
 # Decompressing from PCSX2:

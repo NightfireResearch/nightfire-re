@@ -1,6 +1,9 @@
 # Credits: Nightfire Research Team - 2024
 
+import logging
 import struct
+
+logger = logging.getLogger()
 
 """
 
@@ -42,7 +45,7 @@ def load_skeleton(data):
 	unk1, unk2, unk3 = struct.unpack_from("<III", data, offset=4)
 
 	remainingBytes = len(data) - 4 - 12 - (12 * numBones)
-	print(f"Skeleton {skelNum:04} has numBones:{numBones:2}, remaining bytes: {remainingBytes}")
+	logger.info(f"Skeleton {skelNum:04} has numBones:{numBones:2}, remaining bytes: {remainingBytes}")
 
 	# First root/origin bone isn't read by the game
 	# The rest are read at 001c6214, 001C6210, 001C6218 < last 2 for Z-axis?
@@ -51,7 +54,7 @@ def load_skeleton(data):
 	for i in range(numBones):
 		x, y, z = struct.unpack_from('<fff', data, offset=16 + i * 12)
 		boneTranslations.append((x, y, z))
-		# print("   ", x, y, z)
+		# logger.info("%f %f %f", x, y, z)
 
 	return (skelNum, numBones, boneTranslations)
 
