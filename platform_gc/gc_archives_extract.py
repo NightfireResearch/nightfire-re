@@ -1,26 +1,30 @@
 # Credits: Nightfire Research Team - 2024
 
 # notes:
-# save order of main files in a .txt/.json file with the same name as the archive (e.g 07000026.txt)
-# save them in ngc_bins
+# Archives less than or equal to hex 7000500 are levels. They are compressed by default
+# ep2.exe doesn't take paths so it has to be next to files when decompressing
 
-import logging
+#import logging
 import os
-import struct
 import sys
+import struct
 from shutil import move
 from subprocess import run
 
+sys.path.append("../")
 from common.external_knowledge import hashcode_name_mapping
+from common.nightfire_reader import NightfireReader
 
-logger = logging.getLogger()
 
-run_mode = 1 # 0 decompress archives | 1 unpack an archive | 2 parse unpacked archive
+#logger = logging.getLogger()
+
+run_mode = 1 # 0 decompress all archives | 1 unpack an archive
 archive_choice = "07000026" # e.g "07000026"
+cancel_saving = False # to only print info set this to True
 
 decompressor = "ep2.exe"
-archives_folder = "ngc_archives"
-bins_folder = "ngc_bins"
+archives_folder = "gc_archives"
+archives_extracted_folder = "gc_archives_extracted"
 
 def main():
 	if run_mode == 0:
@@ -29,10 +33,9 @@ def main():
 		decompress_archives(all_archives)
 	elif run_mode == 1:
 		unpack_archive(archives_folder + "/" + archive_choice + ".bin")
-		pass
 
 def unpack_archive(path):
-	file_name = os.path.basename(path) # name + .bin
+	file_name = os.path.basename(path) # name.bin
 	archive_name = os.path.splitext(file_name)[0] # name/hash string
 
 	matching_name = hashcode_name_mapping.get(archive_name)
@@ -41,66 +44,54 @@ def unpack_archive(path):
 	else:
 		new_folder_name = f"{archive_name}_{matching_name}"
 
-	logger.info("Unpacking:", archive_name)
+	print(f"Unpacking: {archive_name}")
 
 	block_headers = []
-	info_file_string = "" # {archive_name}
-	#file_order = []
+	info_file_string = "# file name ; index ; size ; id"
+	info_index = 0
 
 	with open(path, "rb") as f:
+		r = NightfireReader(f)
+		r.en = '>'
 
-		en = '>'
-
-		off_archives = struct.unpack(en+"I", f.read(4))[0] + 32
-		num_archives = struct.unpack(en+"I", f.read(4))[0]
+		off_archives = r.get_u32() + 32
+		num_archives = r.get_u32()
 		#unks = f.read(24)
 		f.seek(32)
 
-		en = '<' # all platforms have little for entries?
+		r.en = '<' # all platforms have little for entries?
 
 		for i in range(num_archives):
-			len_block = struct.unpack(en+"I", f.read(4))[0]
-			block_id = struct.unpack(en+"B", f.read(1))[0]
+			len_block = r.get_u32()
+			block_id = r.get_u8()
 
 			if block_id == 12:
 				file_name = f"unknown_{i}"
 				f.seek(4, 1)
 			else:
-				file_name = get_string_c(f)
+				file_name = r.get_string_c()
 
-			# if block_id not in good_block_ids:
-			# 	logger.info("%i %i <- unknown flag",off_current_header, block_id)
-			# 	#return False
-
-			#logger.info("%s %i", file_name, len_block)
-
-			logger.info(f"{i+1:2} {f.tell():8} {len_block:8} {block_id:2} {file_name}")
+			print(f"{i:5} header_offset:{f.tell():8} len:{len_block:8} id:{block_id:3} {file_name}")
 			if len_block > 0:
 				block_headers.append((len_block, block_id, file_name))
-				info_file_string += f"{file_name} {len_block} {block_id}\n"
-			else:
-				# logger.info("%i %i <- length", off_current_header, len_block)
-				logger.info("%i <- length", len_block)
+				if file_name.startswith("01"):
+					info_file_string += f"\n{file_name};{info_index};{len_block};{block_id}"
+				info_index += 1
+			# else:
+			# 	print(f"offset:{off_current_header} len:{len_block}")
+			# 	pass
 
 
+		if cancel_saving:
+			return
 
-
-
-
-
-
-		new_out_folder = f"{bins_folder}/{new_folder_name}"
+		new_out_folder = f"{archives_extracted_folder}/{new_folder_name}"
 		if not os.path.exists(new_out_folder): # os.path.exists(path)
 			os.mkdir(new_out_folder)
-		#logger.info(new_out_folder)
 
-		logger.info(f"{new_out_folder}/{archive_name}.txt")
-		# with open(f"{new_out_folder}/{out_name}", 'wb') as wf:
-		# 	wf.write(archive_buffer)
-
-
-		return None # cancel unpack
-
+		print(f"\nSaving: {archives_extracted_folder}/{archive_name}.txt")
+		with open(f"{archives_extracted_folder}/{archive_name}.txt", 'w') as wf:
+			wf.write(info_file_string)
 
 		f.seek(off_archives)
 
@@ -111,30 +102,27 @@ def unpack_archive(path):
 			off_current_archive = f.tell()
 
 			out_name = f"{block_name}_{block_id}.bin"
-			#logger.info(f"{i} {off_current_archive} {off_current_archive+header[0]} {out_name}")
+			#print(f"{i} {off_current_archive} {off_current_archive+header[0]} {out_name}")
 
 			archive_buffer = f.read(header[0])
 
 			if len(archive_buffer) < 1:
-				logger.info("Reached end of file before reading finished")
-				return None
+				print("Reached end of file before reading finished!")
+				return
 			else:
-				logger.info(f"{new_out_folder}/{out_name}")
-
-				return None
+				print(f"Saving: {new_out_folder}/{out_name}")
 
 				with open(f"{new_out_folder}/{out_name}", 'wb') as wf:
 					wf.write(archive_buffer)
 
-	logger.info("Unpacking Done")
-
+	print("Unpacking Done")
 
 
 
 def decompress_archives(all_archives):
-	logger.info("Decompressing")
+	print("Decompressing")
 
-	move(decompressor, "ngc_archives") # ep2 doesn't take paths so it has to be next to files
+	move(decompressor, archives_folder) # ep2 doesn't take paths so it has to be next to files
 
 	for file in all_archives:
 		archive_hash = int(os.path.splitext(file)[0], 16)
@@ -143,27 +131,14 @@ def decompress_archives(all_archives):
 			os.rename(f"{archives_folder}/{file}", f"{archives_folder}/other_{file}")
 			continue # skip
 
-		logger.info(file)
+		print(file)
 
 		command = f""""{decompressor}" u {file} -q""" # u = unpack, q = quiet
-		#logger.info(command)
+		#print(command)
 		run(command, cwd=archives_folder, shell=True, capture_output=True)
-		#break
 
 	move(f"{archives_folder}/{decompressor}", ".")
-	logger.info("Decompressing Done")
-
-
-def get_string_c(f):
-	string = ''
-	char = None
-	while char != b'\00':
-		char = f.read(1)
-		if char != b'\00':
-			string += bytes(char).decode('utf-8')
-		else:
-			break
-	return string
+	print("Decompressing Done")
 
 
 main()

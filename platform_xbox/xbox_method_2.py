@@ -8,7 +8,6 @@ from binascii import hexlify
 from PIL import Image
 
 sys.path.append("../")
-
 import common.util as util
 from common.external_knowledge import placementTypes
 from common.nightfire_reader import NightfireReader

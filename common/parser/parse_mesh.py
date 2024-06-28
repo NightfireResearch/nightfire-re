@@ -11,7 +11,11 @@ sys.path.append("../../")
 import common.util as util
 
 logger = logging.getLogger()
-
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format='[%(asctime)s] [%(module)s] [%(levelname)s] %(message)s',
+    datefmt='%H:%M:%S')
 
 def interpret_ps2gfx(data, name, material_file):
 
