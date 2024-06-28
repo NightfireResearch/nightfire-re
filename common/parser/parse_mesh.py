@@ -2,10 +2,12 @@
 
 import logging
 import os
+import sys
 import shutil
 import struct
 from pathlib import Path
 
+sys.path.append("../../")
 import common.util as util
 
 logger = logging.getLogger()
@@ -36,23 +38,23 @@ def interpret_ps2gfx(data, name, material_file):
     logger.info(f"Footer numbers: {boxlist_num}, {boxlist_start:08x}, {skininfo_start}, {unk4}")
 
     if boxlist_num == 0:
-        logger.warn(f"WARNING: NO BOXES IN {name}")
-        with open(f"{name}_no_boxes.ps2gfx", "wb") as f:
+        logger.warning(f"WARNING: NO BOXES IN {name}")
+        with open(f"temp/{name}_no_boxes.ps2gfx", "wb") as f:
             f.write(data)
         return
 
-    if boxlist_start==0:
+    if boxlist_start == 0:
         try:
-            logger.warn("WARNING: NO BOXLIST")
-            with open(f"{name}_no_boxlist.ps2gfx", "wb") as f:
+            logger.warning("WARNING: NO BOXLIST")
+            with open(f"temp/{name}_no_boxlist.ps2gfx", "wb") as f:
                 f.write(data)
         except Exception as ex:
             logger.error(ex)
         return
 
     if skininfo_start != 0:
-        logger.warn(f"CANNOT HANDLE SKELETAL ANIMATION OR MORPHS YET: {name} may fail")
-        with open(f"{name}_with_skin.ps2gfx", "wb") as f:
+        logger.warning(f"CANNOT HANDLE SKELETAL ANIMATION OR MORPHS YET: {name} may fail")
+        with open(f"temp/{name}_with_skin.ps2gfx", "wb") as f:
             f.write(data)
 
         # Skininfo is a pointer to another structure, containing yet more offsets?
@@ -60,8 +62,8 @@ def interpret_ps2gfx(data, name, material_file):
         # See also CacheSkin - that shows that the offsets and the floats(?) are linked?
         floatArr, floatArrLen, offsetArr, boneIdxArr, unknown1, unknown2 = struct.unpack("<IIIIII", data[skininfo_start-4:skininfo_start-4+24])
 
-        assert unknown1==0
-        assert unknown2==0
+        assert unknown1 == 0
+        assert unknown2 == 0
 
         # Matrix (bone) number list
         boneRefs = util.ints_until_terminator(data[boneIdxArr-4:], 1, 0xFF)
@@ -81,13 +83,13 @@ def interpret_ps2gfx(data, name, material_file):
 
 
     if unk4 != 0:
-        logger.warn("unk4 not handled")
+        logger.warning("unk4 not handled")
 
 
     # We take boxlist position from the footer
     glist_box = data[boxlist_start-4:boxlist_start-4+boxlist_num*0x38]
 
-    with open(f"{name}.obj", "w") as f:
+    with open(f"temp/{name}.obj", "w") as f:
 
         objVtxCnt = 0
 
@@ -260,9 +262,9 @@ map_d {n}.png
 
 if __name__=="__main__":
 
-    Path("3dmodel").mkdir(parents=True, exist_ok=True)
+    Path("temp").mkdir(parents=True, exist_ok=True)
 
-    with open("3dmodel/test.mtl", "w") as f:
+    with open("temp/test.mtl", "w") as f:
         for n in range(50):
             f.write(f"""
 newmtl material{n}
@@ -276,17 +278,18 @@ map_Kd {n}.png
 
 """)
 
-    #directory = "../platform_ps2/ps2_converted/environment/"
-    #directory = "../platform_ps2/ps2_converted/weapons/Pistol"
-    directory = "../platform_ps2/ps2_converted/gadgets/Glasses"
-    directory = "../platform_ps2/ps2_converted/vehicles/limo"
-    #directory = "../platform_ps2/ps2_converted/common_objects"
-    #directory = "../platform_ps2/ps2_converted/weapons/OddjobHat"
-    #directory="../platform_ps2/ps2_converted/07000024_HT_Level_SkyRail"
-    directory = "../platform_ps2/ps2_converted/07000005_HT_Level_CastleExterior"
-    directory = "../platform_ps2/ps2_converted/07000025_HT_Level_SubPen"
-    directory="../platform_ps2/ps2_converted/07000012_HT_Level_Tower2B"
-    directory="../platform_ps2/ps2_converted/07000009_HT_Level_TowerA"
+    #directory = "../../platform_ps2/ps2_converted/environment/"
+    #directory = "../../platform_ps2/ps2_converted/weapons/Pistol"
+    #directory = "../../platform_ps2/ps2_converted/gadgets/Glasses"
+    #directory = "../../platform_ps2/ps2_converted/vehicles/limo"
+    #directory = "../../platform_ps2/ps2_converted/common_objects"
+    #directory = "../../platform_ps2/ps2_converted/weapons/OddjobHat"
+    #directory = "../../platform_ps2/ps2_converted/07000024_HT_Level_SkyRail"
+    #directory = "../../platform_ps2/ps2_converted/07000005_HT_Level_CastleExterior"
+    #directory = "../../platform_ps2/ps2_converted/07000025_HT_Level_SubPen"
+    #directory = "../../platform_ps2/ps2_converted/07000012_HT_Level_Tower2B"
+    #directory = "../../platform_ps2/ps2_converted/07000009_HT_Level_TowerA"
+    directory = "../../platform_ps2/ps2_converted/skins/Bond_hands_femwhite"
 
     for filename in sorted(os.listdir(directory)):
 
@@ -297,7 +300,7 @@ map_Kd {n}.png
             # In this case, we need to export a material per bit
             fn_base = filename.split(".")[0]
             material_file = f"mtl_{fn_base}.mtl"
-            with open(f"3dmodel/{material_file}", "w") as f:
+            with open(f"temp/{material_file}", "w") as f:
                 for n in range(500):
                     f.write(f"""
 newmtl material{n}
@@ -319,7 +322,7 @@ map_Kd {container_hashcode}_{n}.png
         if ".png" in filename:
             # For known hashcodes of models, name will be "{idx}.png"
             # For others (eg level geometry), name is "{container_hashcode:08x}_{idx}.png"
-            shutil.copyfile(directory +"/"+filename, "3dmodel/"+filename)
+            shutil.copyfile(directory +"/"+filename, "temp/"+filename)
 
     #with open("../platform_ps2/ps2_converted/environment/229-OBJECT_SHELL_5_56NATO_02000447.bin", "rb") as f:
     #with open("../platform_ps2/ps2_converted/vehicles/truck/69-OBJECT_wine_truck_020003be.bin", "rb") as f:

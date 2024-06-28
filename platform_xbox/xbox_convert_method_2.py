@@ -23,33 +23,35 @@ from common.nightfire_reader import NightfireReader
 # the pixel data hasn't been converted to a common format yet.
 """
 
-save_textures = 1 # save .dds, .png, .txt
-save_entities = 1 # save .obj, .mtl
-level_hash = "07000024" # skyrail
-#level_hash = "07000026" # phoenix base "stealthship" archive
+save_textures = 0 # save .dds, .png, .txt
+save_entities = 0 # save .obj, .mtl
+#level_hash = "07000024" # skyrail
+level_hash = "07000026" # phoenix base "stealthship" archive
 
 
 convert_folder = "xbox_converted"
 #saved_texture_file_names = []
 
 def testing():
-
-    test_mode = 1
+    # 0 single file, 1 all files
+    test_mode = 0
     
-    file = "01000100" # phoenix base "stealthship"
+    file = "01000100" # phoenix base // stealth ship
     #file = "010001DD" # snow guard
-    file = "010001C4"
+    #file = "010001C4"
+    #file = "010001C4" # golden gun
+    file = "01000202" # Bond_hands_femwhite
 
     if test_mode == 0:
         file_path = f"xbox_archives_extracted/{level_hash}/{file}.bin"
         test = parse(file_path)
     if test_mode == 1:
-        all_folders = next(os.walk(f"xbox_archives_extracted/{level_hash}/"))[2]
+        all_files = next(os.walk(f"xbox_archives_extracted/{level_hash}/"))[2]
 
-        for i, file in enumerate(all_folders):
+        for i, file in enumerate(all_files):
             if file.startswith("01"):
                 test = parse(f"xbox_archives_extracted/{level_hash}/{file}")
-                if test == False:
+                if test is None:
                     return
             # if i == 4:
             #     return
@@ -101,12 +103,12 @@ def parse(file_path):
         data_id = ra.bget_u8()
 
         rb = NightfireReader(ra.bget(data_size - 4)) #ra.f[ra.offset:ra.offset + data_size]
-
-        print(f"----------------------------------------------\nData {idx} offset:{data_offset} id:{hex(data_id)} size:{data_size}")
+        print("----------------------------------------------")
+        print(f"Data {idx} offset:{data_offset} id:{hex(data_id)} size:{data_size}")
 
 
         if data_id in skip_data_ids:
-            print("Skipping")
+            print("    Skipping data id:", hex(data_id))
         elif data_id == 0x10: # TextureHeader
             for i in range(tex_count):
                 flag, unk0, w, h, anim_frames, divisor, address_placeholder = s.unpack("BBHHBBI", rb.bget(12))
@@ -117,7 +119,7 @@ def parse(file_path):
                 tex_headers_b.append(s.unpack("<ii", rb.bget(8)))
 
         elif data_id == 0x18: # TextureDataXbox
-            print(f"\nTexture {tex_idx}")
+            print(f"    Texture {tex_idx}")
 
             tex = KXTexture()
             
@@ -175,10 +177,10 @@ def parse(file_path):
                 print("Different texture type", tex.type, file_path)
                 textures.append(tex)
                 #continue
-                return False
+                return
 
             # if tex_idx == 17:
-            #   return False
+            #   return
 
             tex_idx += 1
             
@@ -186,10 +188,9 @@ def parse(file_path):
 
 
         elif data_id == 0x2E:
-            print("    collision")
+            print("    Collision")
         elif data_id == 0x0D:     # Xbox Entity
-            print("    entity")
-
+            print("    Entity")
             ent = KXEntity()
 
             ent.signature = rb.bget(4) # KXE6
@@ -205,32 +206,125 @@ def parse(file_path):
             ent.unk4 = rb.bget_u32()
             ent.name = rb.bget_string(52)
 
+            print(ent.name, ent.vertex_mode)
+
             all_indices = []
+
+            temp_u2_stuff = []
 
             print(f"{ent.name} {data_offset + rb.btell()} {ent.num_vertices}")
             if ent.vertex_mode == 0:
                 for v in range(ent.num_vertices):
                     xyz = rb.bget_vec3()
-                    unk0 = rb.bget(8) # vertex color?
+                    unk0 = s.unpack("BBBB", rb.bget(4)) # vertex color?
+                    unk1 = rb.bget_s32()
                     uv = rb.bget_vec2() # uv?
                     ent.vertices.append(xyz)
                     ent.tex_coords.append(uv)
+                    #print(unk0, unk1)
             elif ent.vertex_mode == 1 or ent.vertex_mode == 2: # 01000083 has 2:
                 for v in range(ent.num_vertices):
                     xyz = rb.bget_vec3()
-                    unk0 = rb.bget(4) # vertex color? vertex normal?
-                    unk1 = rb.bget_s32()
-                    uv = rb.bget_vec2() # uv
-                    unk2 = rb.bget_u8() # skinning index?
-                    unk3 = rb.bget_u8() # skinning index?
-                    unk4 = rb.bget_s16()
+                    u0 = s.unpack("BBBB", rb.bget(4)) # vertex color? vertex normal?
+                    u1 = rb.bget_s32()
+                    uv_coords = rb.bget_vec2() # uv
+
+
+                    # Skinning / Weights
+
+
+                    ### read as uint32/4bytes
+                    # u2 = rb.bget(4)
+                    # u2_hex = str(hexlify(u2))[2:][:-1]
+                    # print(f"{v:4} {u2_hex}")
+
+
+                    ### read all as u8s
+                    u2 = rb.bget_u8() // 3
+                    u3 = rb.bget_u8() // 3
+                    u4 = rb.bget_u8()
+                    u5 = rb.bget_u8()
+                    print(f"{v:4}{u2:6}{u3:6}{u4:4}{u5:4} {u0}")
+                    temp_u2_stuff.append((v, u2, u3, u4, u5))
+
+                    # if u3 != 0:
+                    #     print(f"{v:4}{(u2 // u3):6}{u3:6}{u4:4}{u5:4} {u0}")
+                    #     temp_u2_stuff.append((v, u2 // u3, u3, u4, u5))
+                    # else:
+                    #     print(f"{v:4}{(-1):6}{u3 // 3:6}{u4:4}{u5:4} {u0}")
+                    #     temp_u2_stuff.append((v, -1, u3, u4, u5))
+
+                    # print(f"{v:4}{(u2):6}{u3 // 3:6}{u4:4}{u5:4} {u0}")
+                    # temp_u2_stuff.append((v, u2 // 3, u3, u4, u5))
+
+
+                    ### read mixed
+                    # u2 = rb.bget_u16() // 3
+                    # u3 = rb.bget_u8()
+                    # u4 = rb.bget_u8()
+                    # # print(f"{v:4}{u2:8}{u3:6}{u4:6} {u0}")
+                    # print(f"{v:4}{(u2):8}{u3:6}{u4:6} {u0}")
+                    # temp_u2_stuff.append((v, u2, u4, u5))
+
+
+                    # if v == 14:
+                    #     break
+
 
                     #print(f"{v:4}{unk2:3}{unk3:3}{unk4:6}")
                     ent.vertices.append(xyz)
-                    ent.tex_coords.append(uv)
+                    ent.tex_coords.append(uv_coords)
             else:
                 print("Different Vertex Mode!", ent.vertex_mode, file_path)
-                return False
+                return
+
+
+
+            print("\nSorted by u2:")
+            sorted_list = sorted(temp_u2_stuff, key=lambda x: x[1]) # sort by u2
+            vtx_indices = []
+            for a in sorted_list:
+                print(a)
+                v = a[0]
+                u2 = a[1]
+                u3 = a[2]
+                
+
+                #print(v)
+                if u2 == 1:
+                    vtx_indices.append(v)
+
+            print("\nSelected vertices:")
+            print(vtx_indices) # to select in Blender
+            
+            #return
+
+            print("\nAll unique u2's:")
+
+            new_list = []
+            last_val = None
+            for b in sorted_list:
+                v = b[0]
+                u2 = b[1]
+                u3 = b[2]
+                u4 = b[3]
+                u5 = b[4]
+
+                # u4 = round(u4 / 255, 3)
+                #u5 = round(u5 / 255, 3)
+                # u5 = f"  0b{u5:08b}"
+                if u2 != last_val:
+                    new_list.append(u2)
+                    print(f"{v:4}{u2:4}{u3:4}{u4:4}{u5:4}")
+                    last_val = u2
+
+            #return
+
+
+
+
+
+
 
             rb.offset += 3 # padding?
 
@@ -267,15 +361,16 @@ def parse(file_path):
         elif data_id == 0x1A:
             print("    placements")
 
-            loop_idx = 0
+            place_idx = 0
             while rb.offset + 4 < len(rb.f):
+                local_offset = rb.offset + 4
                 global_offset = data_offset + rb.offset + 4
-                print("    placement    ", loop_idx, global_offset, rb.offset, len(rb.f))
+                
 
                 index = rb.bget_s16() # entity graphics index if not -1
                 unk0 = rb.bget_u16()
                 gfx_hashcode = rb.bget_u32() # external if not -1?
-                placement_type = rb.bget_s32()
+                place_type = rb.bget_s32()
                 translation = rb.bget_vec3()
                 rotation = rb.bget_vec3()
                 unk1 = s.unpack_from("<12B", rb.f, offset=rb.offset); rb.offset += 12
@@ -284,15 +379,15 @@ def parse(file_path):
                 num_extra_data = rb.bget_u32()
 
 
-                placement_name = placementTypes.get(placement_type, "unk")
-                print("   ", placement_name)
+                placement_name = placementTypes.get(place_type, "unk")
+                #print("   ", placement_name)
                 #print(f"('{placement_name}', {list(translation)}),")
                 #print((placement_name, translation), ",")
 
                 # print(index)
                 # print(unk0)
                 # print(hex(gfx_hashcode))
-                # print(placement_type & 0xff)
+                # print(place_type & 0xff)
                 # print(translation)
                 # print(rotation)
                 # print(unk1)
@@ -303,27 +398,32 @@ def parse(file_path):
                 extra_data = []
 
                 for i in range(num_extra_data):
-                    extra_data.append((rb.bget_u32(), rb.bget_u32()))
+                    extra_data.append((rb.bget_u32(), rb.bget_s16(), rb.bget_s16()))
 
-                if placement_type & 0xa000 != 0:
+                if place_type & 0xa000 != 0:
                     #print("Invalid or debug placement? Skipping")
                     pass
                     #continue
 
-                loop_idx += 1
+                print(f"{place_idx} global:{global_offset} local:{local_offset} indx:{index} unk0:{hex(unk0)} type:{place_type} gfx:{hex(gfx_hashcode)} {placement_name}")
+                #print(extra_data)
+
+                # local_end:{rb.btell()}
+
+                place_idx += 1
 
         elif data_id == 0x1D:
-            print("    end!"); break # <- keep!
+            print("    End!"); break # <- keep!
         else:
             #print("???", f.tell(), hex(data_id))
             #break
             print("    UNKNOWN", file_path)
-            return False
+            return
             #break
 
 
         # if idx == 124:
-        #     return False
+        #     return
         #     #break
 
 

@@ -20,6 +20,7 @@ __pycache__
 tmpvag.vag
 iso_dump_folder/*.iso
 iso_extract/
+temp/
 
 *.csv
 
