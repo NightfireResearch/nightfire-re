@@ -3,8 +3,9 @@
 import logging
 import os
 import struct
-from io import BufferedReaders
+from io import BufferedReader
 
+from common.compression.edl import Edl
 from common.nightfire_reader import NightfireReader
 from platform_eurocom_base import PlatformEurocomBase
 from platform_hash import PlatformHash
@@ -37,3 +38,5 @@ class GameCubeEurocomHandler(PlatformEurocomBase):
 
     def _edl_parse_file(self, file: str, reader: NightfireReader):
         logger.warning("File %s is EDL compressed...", file)
+        decompressed_data = Edl().decompress(reader)
+        # todo: write to file
