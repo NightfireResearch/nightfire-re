@@ -1,11 +1,13 @@
 # Credits: Nightfire Research Team - 2024#
 
-import logging
-import struct
+import os
 import sys
-
+import struct
+import logging
 from PIL import Image
 
+local_path = "platform_xbox/" if "common" in os.listdir(".") else ""
+sys.path.append("." if "common" in os.listdir(".") else "..")
 from common import util
 from common.parser import parse_map
 
@@ -15,18 +17,16 @@ level_hash = "07000026"
 file = "01000100"
 #file = "01000156"
 
-file_path = f"xbox_archives_extracted/{level_hash}/{file}.bin"
-out_folder_path = f"xbox_converted"
+file_path = f"{local_path}xbox_archives_extracted/{level_hash}/{file}.bin"
+out_folder_path = f"{local_path}xbox_converted/temp"
 
 with open(file_path, "rb") as f:
     data = f.read()
 
-logger.info("Loaded file with size", len(data))
-
+logger.info(f"Loaded file with size {len(data)}")
 
 # Loop over parsenextblock until we reach type=0x1d.
 finished = False
-
 
 idx = 0
 results = []
@@ -72,13 +72,13 @@ while not finished:
     pFileNextBlock += bh_size
     idx+=1
 
-    pass
-
 
 xboxEntities = [x for x in results if x['type'] == 'xboxentity']
 xboxTextures = [x for x in results if x['type'] == 'xboxtexture']
 
-logger.info(f"Found {len(xboxEntities)} xbox entities, first is {xboxEntities[0]['name'] if len(xboxEntities) > 0 else "none"}")
+first_entity_name = xboxEntities[0]['name'] if len(xboxEntities) > 0 else "none"
+
+logger.info(f"Found {len(xboxEntities)} xbox entities, first is {first_entity_name}")
 
 
 import common.parser.map_file_exporters as mfe

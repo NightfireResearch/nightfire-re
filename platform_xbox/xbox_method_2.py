@@ -7,7 +7,8 @@ from binascii import hexlify
 
 from PIL import Image
 
-sys.path.append("../")
+local_path = "platform_xbox/" if "common" in os.listdir(".") else "./"
+sys.path.append("." if "common" in os.listdir(".") else "..")
 import common.util as util
 from common.external_knowledge import placementTypes
 from common.nightfire_reader import NightfireReader
@@ -27,8 +28,8 @@ save_entities = 0 # save .obj, .mtl
 #level_hash = "07000024" # skyrail
 level_hash = "07000026" # phoenix base "stealthship" archive
 
-
-convert_folder = "xbox_converted"
+archives_extracted_folder = f"{local_path}xbox_archives_extracted"
+convert_folder = f"{local_path}xbox_converted"
 #saved_texture_file_names = []
 
 def testing():
@@ -42,14 +43,14 @@ def testing():
     file = "01000202" # Bond_hands_femwhite
 
     if test_mode == 0:
-        file_path = f"xbox_archives_extracted/{level_hash}/{file}.bin"
+        file_path = f"{archives_extracted_folder}/{level_hash}/{file}.bin"
         test = parse(file_path)
     if test_mode == 1:
-        all_files = next(os.walk(f"xbox_archives_extracted/{level_hash}/"))[2]
+        all_files = next(os.walk(f"{archives_extracted_folder}/{level_hash}"))[2]
 
         for i, file in enumerate(all_files):
             if file.startswith("01"):
-                test = parse(f"xbox_archives_extracted/{level_hash}/{file}")
+                test = parse(f"{archives_extracted_folder}/{level_hash}/{file}")
                 if test is None:
                     return
             # if i == 4:
