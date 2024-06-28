@@ -11,20 +11,21 @@ import struct
 from shutil import move
 from subprocess import run
 
-sys.path.append("../")
+local_path = "platform_gc/" if "common" in os.listdir(".") else "./"
+sys.path.append("." if "common" in os.listdir(".") else "..")
 from common.external_knowledge import hashcode_name_mapping
 from common.nightfire_reader import NightfireReader
 
 
 #logger = logging.getLogger()
 
-run_mode = 1 # 0 decompress all archives | 1 unpack an archive
+run_mode = 0 # 0 decompress all archives | 1 unpack an archive
 archive_choice = "07000026" # e.g "07000026"
 cancel_saving = False # to only print info set this to True
 
-decompressor = "ep2.exe"
-archives_folder = "gc_archives"
-archives_extracted_folder = "gc_archives_extracted"
+decompressor = "ep2.exe" # requires ep2.exe edl compressor/decompressor
+archives_folder = f"{local_path}gc_archives"
+archives_extracted_folder = f"{local_path}gc_archives_extracted"
 
 def main():
 	if run_mode == 0:
@@ -122,7 +123,7 @@ def unpack_archive(path):
 def decompress_archives(all_archives):
 	print("Decompressing")
 
-	move(decompressor, archives_folder) # ep2 doesn't take paths so it has to be next to files
+	move(f"{local_path}{decompressor}", archives_folder) # ep2 doesn't take paths so it has to be next to files
 
 	for file in all_archives:
 		archive_hash = int(os.path.splitext(file)[0], 16)
@@ -136,8 +137,9 @@ def decompress_archives(all_archives):
 		command = f""""{decompressor}" u {file} -q""" # u = unpack, q = quiet
 		#print(command)
 		run(command, cwd=archives_folder, shell=True, capture_output=True)
+		break
 
-	move(f"{archives_folder}/{decompressor}", ".")
+	move(f"{archives_folder}/{decompressor}", f"{local_path}")
 	print("Decompressing Done")
 
 

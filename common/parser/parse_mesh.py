@@ -7,7 +7,8 @@ import shutil
 import struct
 from pathlib import Path
 
-sys.path.append("../../")
+local_path = "common/parser/" if "common" in os.listdir(".") else "./"
+sys.path.append("." if "common" in os.listdir(".") else "../..")
 import common.util as util
 
 logger = logging.getLogger()
@@ -293,7 +294,7 @@ map_Kd {n}.png
     #directory = "../../platform_ps2/ps2_converted/07000025_HT_Level_SubPen"
     #directory = "../../platform_ps2/ps2_converted/07000012_HT_Level_Tower2B"
     #directory = "../../platform_ps2/ps2_converted/07000009_HT_Level_TowerA"
-    directory = "../../platform_ps2/ps2_converted/skins/Bond_hands_femwhite"
+    directory = f"{local_path}../../platform_ps2/ps2_converted/skins/Bond_hands_femwhite"
 
     for filename in sorted(os.listdir(directory)):
 
