@@ -129,6 +129,7 @@ class NightfirePlatform:
             handler = None
 
         if handler is None:
+            logger.info("Driving folder dumped, but files not extracted")
             logger.warning("No driving handler configured for %s", self.current_platform)
             return
 
