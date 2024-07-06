@@ -175,7 +175,7 @@ def extract_leveldir(directory, level_name):
             pass
 
         archivepath = external_knowledge.archive_names.get(archive_hashcode, os.path.join(level_name, f"unknown_{archive_hashcode}"))
-        savepath = os.path.join(directory, "..", "..", "platform_ps2", "ps2_converted", archivepath)
+        savepath = os.path.abspath(os.path.join(directory, "..", "..", "platform_ps2", "ps2_converted", archivepath))
         Path(savepath).mkdir(parents=True, exist_ok=True)
         #logger.info(f"ARCHIVE {archive_hashcode} ({archivepath}) DECODED - RESULT: {len(results)} blocks")
 
@@ -219,9 +219,10 @@ def extract_leveldir(directory, level_name):
             with open(os.path.join(savepath, f"{i:04}_{u['type']}.bin"), "wb") as f:
                 f.write(u['data'])
 
+
 def parse_maps(directory: str):
     logger.info("Extracting all level content from levels in %s", directory)
-    fnames=sorted(os.listdir(directory))
+    fnames = sorted(os.listdir(directory))
     levels = [x.replace(".bin_extract", "") for x in fnames if ".bin_extract" in x]
 
     for l in levels:

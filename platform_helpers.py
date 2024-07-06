@@ -1,6 +1,6 @@
 # Credits: Nightfire Research Team - 2024
 
-class PlatformHelper():
+class PlatformHelper:
     xiso_sector_size = 2048
     xbox_identifier_string = "MICROSOFT*XBOX*MEDIA"
     xiso_attribute_directory = 0x10

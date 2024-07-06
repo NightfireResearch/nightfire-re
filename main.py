@@ -7,15 +7,16 @@ import logging
 import os
 import sys
 
+
 from common.util import Utils
 from nightfire_platform import NightfirePlatform
 
 logger = logging.getLogger()
 logging.basicConfig(
-	stream=sys.stdout,
-	level=logging.DEBUG,
-	format='[%(asctime)s] [%(module)s] [%(levelname)s] %(message)s',
-	datefmt='%H:%M:%S')
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format='[%(asctime)s] [%(module)s] [%(levelname)s] %(message)s',
+    datefmt='%H:%M:%S')
 
 TOOL_VERSION = "0.0.1"
 
@@ -41,11 +42,11 @@ if __name__ == '__main__':
         computed_hash = Utils.calc_file_hash(abs_path)
         logger.debug("Hash is %s", computed_hash.hexdigest())
         platform_tools = NightfirePlatform()
-        success, dump_folder, playform_hash = platform_tools.dump_iso_if_known(iso, computed_hash.hexdigest())
+        success, dump_folder, platform_hash = platform_tools.dump_iso_if_known(iso, computed_hash.hexdigest())
 
         if success is False:
             logger.error("Unknown ISO provided!")
             continue
 
-        platform_tools.extract_and_expand_game_files(dump_folder, playform_hash, args.skip_driving, args.skip_action)
+        platform_tools.extract_and_expand_game_files(dump_folder, platform_hash, args.skip_driving, args.skip_action)
         logger.info("Known ISO provided and dumped!")

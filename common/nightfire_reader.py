@@ -2,11 +2,12 @@
 
 import struct
 from io import IOBase
+from typing import BinaryIO
 
 
 class NightfireReader:
-    def __init__(self, buffer: IOBase, big_endian=False):
-        self.f = buffer # file/buffer
+    def __init__(self, buffer: BinaryIO | IOBase, big_endian=False):
+        self.f = buffer  # file/buffer
         self.en = ">" if big_endian else "<"
         self.offset = 0
         # self.is_buffer = True
