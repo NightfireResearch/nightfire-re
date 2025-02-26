@@ -6,9 +6,9 @@ from typing import BinaryIO
 
 
 class NightfireReader:
-    def __init__(self, buffer: BinaryIO | IOBase, big_endian=False):
-        self.f = buffer  # file/buffer
-        self.en = ">" if big_endian else "<"
+    def __init__(self, buffer: BinaryIO | IOBase, en='<'):
+        self.f = buffer # file/buffer
+        self.en = en # '<' little endian, '>' big endian
         self.offset = 0
         # self.is_buffer = True
         # if str(type(buffer)) == "<class '_io.BufferedReader'>":
@@ -28,8 +28,14 @@ class NightfireReader:
     u64 | 8 | 0 to 18446744073709551615 # <- not added
     """
 
+    ### Buffer Misc
+
     def btell(self):
         return self.offset
+
+    def bget_data_header(self): # data header is the same on all platforms
+        val = struct.unpack_from("I", self.f, offset=self.offset)[0]; self.offset += 4
+        return (val & 0xFFFFFF, val >> 24)
 
     ### Buffer Get
 
@@ -83,7 +89,7 @@ class NightfireReader:
     def bget_string_c(self):
         string = b''
         while True:
-            c = struct.unpack_from(self.en + "B", self.f, offset=self.offset)[0]
+            c = self.bget(1)
             if c == b'\x00':
                 break
             string += c

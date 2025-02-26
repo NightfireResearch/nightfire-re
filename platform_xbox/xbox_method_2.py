@@ -104,7 +104,7 @@ def parse(file_path):
 
         rb = NightfireReader(ra.bget(data_size - 4)) #ra.f[ra.offset:ra.offset + data_size]
         print("----------------------------------------------")
-        print(f"Data {idx} offset:{data_offset} id:{hex(data_id)} size:{data_size}")
+        print(f"Data {idx} id:{hex(data_id)} offset:{data_offset} size:{data_size}")
 
 
         if data_id in skip_data_ids:
@@ -138,17 +138,16 @@ def parse(file_path):
             tex.unk8 = rb.bget_u32()
             tex.name = rb.bget_string(36)
 
-            # types
+            # types https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dformat
             # 0x00 |  0 | DXT1
             # 0x04 |  4 | DXT5
-            # 0x08 |  8 | RGBA Morton swizzled??
+            # 0x08 |  8 | RGBA Morton swizzled. X8R8G8B8? A8R8G8B8?
 
             # unk6
             # 0x1E | 30 | RGBA, possibly with frames/mipmaps
 
 
             print(f"    {tex.name} type:{tex.type}   ends:{data_offset + data_size}")
-            
 
             if data_size <= 92:
                 textures.append(tex)
@@ -158,7 +157,7 @@ def parse(file_path):
                 # fc 01 54 44 METALTHIN_silverradioplain
                 # d5 01 54 44 irisflag
                 # 74 00 54 44 Ruger_Muzz_back3
-                # ~  ~  T  68
+                # ~  ~  T  D  # TD = Texture Data?
                 #print("signature", hexlify(signature))
 
             elif tex.type == 1:
@@ -490,7 +489,7 @@ def extract_entities(entities, file_path, textures = []):
     for i, ent in enumerate(entities):
 
         if "/" in ent.name:
-            ent.name = ent.name.replace("/", "________________")
+            ent.name = ent.name.replace("/", "FORWARDSLASH")
 
         print(ent.name)
 
